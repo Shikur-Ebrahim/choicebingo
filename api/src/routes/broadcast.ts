@@ -170,19 +170,47 @@ async function sendTelegramMessage(
     }
   }
 
-  // Attractive "Play Now" inline action button for channel posts and bot broadcasts
+  // Fetch dynamic links for channel & support
+  let channelUrl = 'https://t.me/ChoiceBingo';
+  let supportUrl = 'https://t.me/choicebingo_admin';
+  try {
+    const { data: rows } = await supabase
+      .from('settings')
+      .select('key, value')
+      .in('key', ['channel_link', 'support_username']);
+    if (rows) {
+      const ch = rows.find(r => r.key === 'channel_link')?.value;
+      const sp = rows.find(r => r.key === 'support_username')?.value;
+      if (ch && ch.trim()) channelUrl = ch.trim();
+      if (sp && sp.trim()) supportUrl = sp.trim().startsWith('http') ? sp.trim() : `https://t.me/${sp.trim().replace(/^@/, '')}`;
+    }
+  } catch {}
+
+  const miniAppUrl = process.env.MINI_APP_URL || 'https://ChoiceBingo.vercel.app';
   const botUsername = 'choicebingo_bot';
-  const startParam = isChannel ? 'channel' : 'broadcast';
-  const replyMarkup = {
-    inline_keyboard: [
-      [
-        {
-          text: '🎮 PLAY CHOICE BINGO NOW 🎯',
-          url: `https://t.me/${botUsername}?start=${startParam}`,
-        },
-      ],
-    ],
-  };
+
+  // For Channel: use direct t.me link (Telegram channels only allow URL buttons)
+  // For Bot Direct Chat: use direct WebApp launch for instant 1-tap full-screen play!
+  const playButton = isChannel
+    ? { text: '🎮 PLAY CHOICE BINGO NOW 🎯', url: `https://t.me/${botUsername}?start=channel` }
+    : { text: '🎮 PLAY CHOICE BINGO NOW 🎯', web_app: { url: miniAppUrl } };
+
+  const replyMarkup = isChannel
+    ? {
+        inline_keyboard: [
+          [playButton],
+          [{ text: '💬 24/7 Support', url: supportUrl }],
+        ],
+      }
+    : {
+        inline_keyboard: [
+          [playButton],
+          [
+            { text: '📢 Official Channel', url: channelUrl },
+            { text: '💬 24/7 Support', url: supportUrl },
+          ],
+        ],
+      };
 
   if (mediaUrl && mediaType === 'video') {
     result = await sendTelegramRequest(base, 'sendVideo', {
@@ -307,11 +335,9 @@ async function executeBroadcast(postId: string): Promise<void> {
 
       if (!users || users.length === 0) break;
 
-      // Filter in JS: only regular players (not admin, not worker, not inactive)
+      // Filter in JS: send to all active accounts (so admins can test too)
       const eligible = users.filter((u: any) =>
         u.telegram_id &&
-        u.role !== 'admin' &&
-        u.role !== 'worker' &&
         u.status !== 'inactive'
       );
 
