@@ -1484,8 +1484,23 @@ export default function BingoGame() {
                     </span>
                   </div>
                 ) : (
-                  <div className="rounded-full flex items-center justify-center bg-slate-800 border border-slate-700 text-slate-500 text-xs font-bold animate-pulse shrink-0" style={{ width: '48px', height: '48px' }}>
-                    ...
+                  <div
+                    className="rounded-full flex flex-col items-center justify-center shrink-0 relative select-none animate-bounce"
+                    style={{
+                      width: '48px',
+                      height: '48px',
+                      background: 'radial-gradient(circle at 35% 25%, #ffffff 0%, #f8fafc 25%, #e2e8f0 55%, #94a3b8 85%, #475569 100%)',
+                      boxShadow: 'inset -4px -5px 10px rgba(15, 23, 42, 0.5), inset 3px 4px 6px rgba(255, 255, 255, 0.95), 0 8px 16px rgba(0, 0, 0, 0.6), 0 0 14px rgba(245, 158, 11, 0.45)',
+                      border: '1.5px solid rgba(255, 255, 255, 0.95)',
+                      animationDuration: '2.5s',
+                    }}
+                  >
+                    <span className="text-[7.5px] font-black leading-none text-amber-500 font-mono -mt-0.5 drop-shadow-sm">
+                      BINGO
+                    </span>
+                    <span className="text-slate-950 font-black text-xl leading-none tracking-tight font-sans animate-pulse">
+                      ?
+                    </span>
                   </div>
                 )}
 
@@ -1496,23 +1511,39 @@ export default function BingoGame() {
                   
                   {/* Previous Called Balls — 5 mini 3D spheres */}
                   <div className="flex items-center gap-1 mt-1">
-                    {recent.slice(1, 6).map((num, idx) => {
-                      const l = getLetter(num);
-                      return (
+                    {recent.length > 0 ? (
+                      recent.slice(1, 6).map((num, idx) => {
+                        const l = getLetter(num);
+                        return (
+                          <div
+                            key={`${num}-${idx}`}
+                            className="w-[23px] h-[23px] rounded-full flex flex-col items-center justify-center shadow-md select-none shrink-0"
+                            style={{
+                              background: 'radial-gradient(circle at 35% 25%, #ffffff 0%, #f1f5f9 35%, #cbd5e1 70%, #64748b 100%)',
+                              boxShadow: 'inset -2px -2px 3px rgba(15, 23, 42, 0.4), inset 1px 1.5px 2px rgba(255, 255, 255, 0.9), 0 2px 4px rgba(0, 0, 0, 0.4)',
+                              border: '1px solid rgba(255, 255, 255, 0.7)',
+                            }}
+                          >
+                            <span className="text-[5px] font-black leading-none text-amber-500 font-mono">{l}</span>
+                            <span className="text-[8.5px] font-black leading-none text-slate-900">{num}</span>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      Array.from({ length: 5 }).map((_, i) => (
                         <div
-                          key={`${num}-${idx}`}
-                          className="w-[23px] h-[23px] rounded-full flex flex-col items-center justify-center shadow-md select-none shrink-0"
+                          key={i}
+                          className="w-[23px] h-[23px] rounded-full flex items-center justify-center select-none shrink-0"
                           style={{
-                            background: 'radial-gradient(circle at 35% 25%, #ffffff 0%, #f1f5f9 35%, #cbd5e1 70%, #64748b 100%)',
-                            boxShadow: 'inset -2px -2px 3px rgba(15, 23, 42, 0.4), inset 1px 1.5px 2px rgba(255, 255, 255, 0.9), 0 2px 4px rgba(0, 0, 0, 0.4)',
-                            border: '1px solid rgba(255, 255, 255, 0.7)',
+                            background: 'radial-gradient(circle at 35% 25%, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.08) 50%, rgba(0,0,0,0.35) 100%)',
+                            border: '1px solid rgba(255, 255, 255, 0.18)',
+                            boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.25), 0 2px 4px rgba(0,0,0,0.3)',
                           }}
                         >
-                          <span className="text-[5px] font-black leading-none text-amber-500 font-mono">{l}</span>
-                          <span className="text-[8.5px] font-black leading-none text-slate-900">{num}</span>
+                          <span className="text-[8px] font-black text-amber-400/50">•</span>
                         </div>
-                      );
-                    })}
+                      ))
+                    )}
                   </div>
                 </div>
               </div>
