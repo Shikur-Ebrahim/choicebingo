@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useGameStore } from '../store/gameStore';
-import { ArrowLeft, Plus, Edit2, Trash2, UploadCloud, Save, X, ChevronDown, CheckCircle2, CreditCard, Power } from 'lucide-react';
+import { ArrowLeft, Plus, Edit2, Trash2, UploadCloud, Save, X, ChevronDown, CheckCircle2, CreditCard } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import WebApp from '@twa-dev/sdk';
 import { uploadImage } from '../lib/upload';
@@ -36,23 +36,23 @@ const methodNames: Record<string, string> = {
 };
 
 const methodColors: Record<string, string> = {
-  cbe: 'bg-amber-50 text-amber-700 border-amber-200',
-  boa: 'bg-blue-50 text-blue-700 border-blue-200',
-  telebirr: 'bg-purple-50 text-purple-700 border-purple-200',
-  mpesa: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  cbebirr: 'bg-yellow-50 text-yellow-800 border-yellow-200',
-  ebirr: 'bg-orange-50 text-orange-700 border-orange-200',
-  awash: 'bg-slate-50 text-slate-700 border-slate-200',
-  dashen: 'bg-blue-50 text-blue-800 border-blue-200',
-  amhara: 'bg-teal-50 text-teal-700 border-teal-200',
-  coop: 'bg-indigo-50 text-indigo-700 border-indigo-200',
-  amole: 'bg-rose-50 text-rose-700 border-rose-200',
-  hello_cash: 'bg-emerald-50 text-emerald-800 border-emerald-200',
-  nib: 'bg-purple-50 text-purple-800 border-purple-200',
-  wegagen: 'bg-slate-50 text-slate-800 border-slate-200',
-  zemen: 'bg-amber-50 text-amber-800 border-amber-200',
-  oromia: 'bg-teal-50 text-teal-800 border-teal-200',
-  hibret: 'bg-yellow-50 text-yellow-800 border-yellow-200',
+  cbe: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/60',
+  boa: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800/60',
+  telebirr: 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800/60',
+  mpesa: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/60',
+  cbebirr: 'bg-yellow-50 text-yellow-800 border-yellow-200 dark:bg-yellow-950/40 dark:text-yellow-300 dark:border-yellow-800/60',
+  ebirr: 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-800/60',
+  awash: 'bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700',
+  dashen: 'bg-blue-50 text-blue-800 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800/60',
+  amhara: 'bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-800/60',
+  coop: 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-800/60',
+  amole: 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800/60',
+  hello_cash: 'bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/60',
+  nib: 'bg-purple-50 text-purple-800 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800/60',
+  wegagen: 'bg-slate-50 text-slate-800 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700',
+  zemen: 'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/60',
+  oromia: 'bg-teal-50 text-teal-800 border-teal-200 dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-800/60',
+  hibret: 'bg-yellow-50 text-yellow-800 border-yellow-200 dark:bg-yellow-950/40 dark:text-yellow-300 dark:border-yellow-800/60',
 };
 
 export default function AdminWithdrawalMethods() {
@@ -213,29 +213,29 @@ export default function AdminWithdrawalMethods() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#070b14] text-slate-800 dark:text-slate-100 transition-colors duration-200 pb-20">
-      {/* Header */}
-      <div className="bg-white dark:bg-slate-900 px-4 py-4 rounded-b-2xl shadow-sm border-b border-slate-100 dark:border-slate-800 flex items-center justify-between sticky top-0 z-20">
-        <Link to="/admin" className="p-2.5 bg-slate-100 dark:bg-slate-800 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-200 transition-colors">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#070b14] text-slate-800 dark:text-slate-100 transition-colors duration-200 pb-24">
+      {/* ── HEADER ── */}
+      <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md px-4 py-3.5 rounded-b-2xl shadow-sm border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between sticky top-0 z-30">
+        <Link to="/admin" className="p-2.5 bg-slate-100 dark:bg-slate-800 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 active:scale-95 transition-all">
           <ArrowLeft size={18} />
         </Link>
-        <div className="text-center">
-          <h1 className="font-black text-slate-800 dark:text-white text-base">Withdrawal Methods</h1>
-          <p className="text-[11px] text-slate-400 font-medium">1 active method per category allowed</p>
+        <div className="text-center px-2">
+          <h1 className="font-black text-slate-800 dark:text-white text-base tracking-tight">Withdrawal Methods</h1>
+          <p className="text-[10px] text-amber-600 dark:text-amber-400 font-bold uppercase tracking-wider">1 active method per category</p>
         </div>
         <button
           onClick={openNewModal}
-          className="bg-amber-500 hover:bg-amber-600 text-white p-2.5 rounded-xl shadow-md flex items-center justify-center transition-transform active:scale-95"
+          className="bg-amber-500 hover:bg-amber-600 active:scale-95 text-white p-2.5 rounded-xl shadow-md flex items-center justify-center transition-all shrink-0"
         >
           <Plus size={18} />
         </button>
       </div>
 
-      {/* Methods List */}
+      {/* ── METHODS LIST (MOBILE-FIRST CARDS) ── */}
       <div className="p-4 space-y-3.5">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20">
-            <div className="w-10 h-10 border-4 border-amber-400 border-t-transparent rounded-full animate-spin mb-3" />
+            <div className="w-10 h-10 border-4 border-amber-400 border-t-transparent rounded-full animate-spin mb-3 shadow-[0_0_15px_rgba(245,158,11,0.3)]" />
             <p className="text-slate-400 font-bold text-sm">Loading methods...</p>
           </div>
         ) : methods.length === 0 ? (
@@ -244,10 +244,10 @@ export default function AdminWithdrawalMethods() {
               <CreditCard size={32} />
             </div>
             <h3 className="font-black text-slate-700 dark:text-slate-200 text-base">No Withdrawal Methods Added</h3>
-            <p className="text-slate-400 text-xs mt-1 mb-4">Click below to add your first withdrawal banking method.</p>
+            <p className="text-slate-400 text-xs mt-1 mb-4">Tap the + button above to add your first withdrawal banking method.</p>
             <button
               onClick={openNewModal}
-              className="bg-amber-500 text-white font-black text-xs px-5 py-2.5 rounded-xl shadow-md"
+              className="bg-amber-500 text-white font-black text-xs px-5 py-2.5 rounded-xl shadow-md active:scale-95 transition-all"
             >
               Add First Method
             </button>
@@ -255,88 +255,91 @@ export default function AdminWithdrawalMethods() {
         ) : (
           methods.map((method) => {
             const isActive = method.is_active !== false;
-            const badgeColor = methodColors[method.type] || 'bg-slate-50 text-slate-700 border-slate-200';
+            const badgeColor = methodColors[method.type] || 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300';
 
             return (
               <div
                 key={method.id}
-                className={`bg-white dark:bg-slate-900/95 p-4 rounded-3xl shadow-sm border transition-all ${
+                className={`bg-white dark:bg-slate-900/95 p-4 rounded-3xl shadow-[0_4px_16px_rgba(0,0,0,0.03)] dark:shadow-[0_6px_20px_rgba(0,0,0,0.4)] border transition-all ${
                   isActive
                     ? 'border-emerald-300 dark:border-emerald-500/40 ring-1 ring-emerald-400/20'
-                    : 'border-slate-200/80 dark:border-slate-800 opacity-75'
+                    : 'border-slate-200/80 dark:border-slate-800 opacity-80'
                 }`}
               >
-                <div className="flex items-center justify-between gap-3">
-                  {/* Logo / Thumbnail */}
-                  <div className="flex items-center space-x-3 min-w-0 flex-1">
+                {/* 1. TOP ROW: Category Badge + Status + 3D Toggle */}
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800/80 mb-3 gap-2">
+                  <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                    <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-lg border ${badgeColor} truncate max-w-[170px]`}>
+                      {methodNames[method.type] || method.type.toUpperCase()}
+                    </span>
+                    {isActive ? (
+                      <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800/60 px-2 py-0.5 rounded-md flex items-center gap-1 shrink-0">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> ACTIVE
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-black text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md shrink-0">
+                        INACTIVE
+                      </span>
+                    )}
+                  </div>
+
+                  {/* 3D Switch */}
+                  <button
+                    type="button"
+                    onClick={() => handleToggleActive(method)}
+                    title={isActive ? 'Click to deactivate' : 'Click to activate'}
+                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                      isActive ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.4)]' : 'bg-slate-300 dark:bg-slate-700'
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                        isActive ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {/* 2. MIDDLE ROW: Squircle Logo Box (Strictly 56x56) + Details */}
+                <div className="flex items-center gap-3.5 mb-3">
+                  <div className="w-14 h-14 min-w-[56px] max-w-[56px] h-[56px] max-h-[56px] rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 p-1 flex items-center justify-center shrink-0 overflow-hidden shadow-sm">
                     {method.logo_url ? (
                       <img
                         src={method.logo_url}
                         alt="Logo"
-                        className="w-13 h-13 rounded-2xl object-contain bg-slate-50 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 p-1 shrink-0 shadow-sm"
+                        className="w-full h-full object-cover rounded-xl"
                       />
                     ) : (
-                      <div className="w-13 h-13 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 flex items-center justify-center text-amber-600 dark:text-amber-400 text-lg font-black shrink-0">
-                        💳
-                      </div>
+                      <span className="text-2xl">💳</span>
                     )}
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md border ${badgeColor}`}>
-                          {methodNames[method.type] || method.type.toUpperCase()}
-                        </span>
-                        {isActive ? (
-                          <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800/60 px-2 py-0.5 rounded-md flex items-center gap-1">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> ACTIVE
-                          </span>
-                        ) : (
-                          <span className="text-[10px] font-black text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
-                            INACTIVE
-                          </span>
-                        )}
-                      </div>
-                      <p className="font-black text-slate-800 dark:text-white text-sm truncate mt-1">
-                        {methodNames[method.type] || method.type.toUpperCase()}
-                      </p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold mt-0.5">
-                        Min Withdrawal: <span className="font-black text-slate-700 dark:text-slate-200">{method.min_withdrawal} ETB</span>
-                      </p>
-                    </div>
                   </div>
 
-                  {/* Actions Column */}
-                  <div className="flex flex-col items-end space-y-2 shrink-0">
-                    {/* Active / Inactive 3D Toggle Switch */}
-                    <button
-                      type="button"
-                      onClick={() => handleToggleActive(method)}
-                      title={isActive ? 'Click to deactivate' : 'Click to activate'}
-                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                        isActive ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.4)]' : 'bg-slate-300 dark:bg-slate-700'
-                      }`}
-                    >
-                      <span
-                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                          isActive ? 'translate-x-5' : 'translate-x-0'
-                        }`}
-                      />
-                    </button>
-
-                    <div className="flex items-center space-x-1.5 pt-1">
-                      <button
-                        onClick={() => openEditModal(method)}
-                        className="p-2 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 rounded-xl hover:bg-blue-100 transition-colors border border-blue-100 dark:border-blue-900/50"
-                      >
-                        <Edit2 size={15} />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(method.id)}
-                        className="p-2 bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 rounded-xl hover:bg-rose-100 transition-colors border border-rose-100 dark:border-rose-900/50"
-                      >
-                        <Trash2 size={15} />
-                      </button>
-                    </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-black text-slate-800 dark:text-white text-base leading-snug truncate">
+                      {methodNames[method.type] || method.type.toUpperCase()}
+                    </p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold mt-0.5">
+                      Min Withdrawal: <span className="font-black text-amber-600 dark:text-amber-400">{method.min_withdrawal} ETB</span>
+                    </p>
                   </div>
+                </div>
+
+                {/* 3. BOTTOM ROW: Mobile Action Buttons */}
+                <div className="flex items-center gap-2 pt-2.5 border-t border-slate-100 dark:border-slate-800/80">
+                  <button
+                    onClick={() => openEditModal(method)}
+                    className="flex-1 py-2 px-3 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 active:scale-95 text-blue-600 dark:text-blue-400 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 border border-blue-100 dark:border-blue-900/50 shadow-sm"
+                  >
+                    <Edit2 size={13} />
+                    <span>Edit</span>
+                  </button>
+                  <button
+                    onClick={() => handleDelete(method.id)}
+                    className="py-2 px-4 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 active:scale-95 text-rose-600 dark:text-rose-400 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 border border-rose-100 dark:border-rose-900/50 shadow-sm"
+                  >
+                    <Trash2 size={13} />
+                    <span>Delete</span>
+                  </button>
                 </div>
               </div>
             );
@@ -344,17 +347,19 @@ export default function AdminWithdrawalMethods() {
         )}
       </div>
 
-      {/* Main Form Modal */}
+      {/* ── MAIN MODAL (MOBILE-FIRST) ── */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
           <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 animate-slide-up">
             <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/40">
-              <h2 className="font-black text-slate-800 dark:text-white text-lg">{editingId ? 'Edit Method' : 'Add New Method'}</h2>
+              <h2 className="font-black text-slate-800 dark:text-white text-base">
+                {editingId ? 'Edit Withdrawal Method' : 'Add Withdrawal Method'}
+              </h2>
               <button
                 onClick={() => setIsModalOpen(false)}
                 className="bg-white dark:bg-slate-800 p-2 rounded-full text-slate-400 hover:text-slate-600 shadow-sm border border-slate-100 dark:border-slate-700"
               >
-                <X size={18} strokeWidth={3} />
+                <X size={16} strokeWidth={3} />
               </button>
             </div>
 
@@ -415,7 +420,7 @@ export default function AdminWithdrawalMethods() {
               <div className="bg-slate-50 dark:bg-slate-800/60 p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-700 flex items-center justify-between">
                 <div>
                   <p className="text-xs font-black text-slate-800 dark:text-white">Active Status</p>
-                  <p className="text-[10px] text-slate-400 font-medium">Activating deactivates other methods of this type</p>
+                  <p className="text-[10px] text-slate-400 font-medium">Activating deactivates other methods of this category</p>
                 </div>
                 <button
                   type="button"
@@ -447,16 +452,16 @@ export default function AdminWithdrawalMethods() {
                     />
                   </label>
                   {(file || existingLogoUrl) && (
-                    <div className="w-14 h-14 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex-shrink-0 flex items-center justify-center p-1 shadow-inner relative group">
+                    <div className="w-14 h-14 min-w-[56px] max-w-[56px] h-[56px] max-h-[56px] rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex-shrink-0 flex items-center justify-center p-1 shadow-inner relative group overflow-hidden">
                       <img
                         src={file ? URL.createObjectURL(file) : existingLogoUrl}
                         alt="Preview"
-                        className="w-full h-full object-contain rounded-xl"
+                        className="w-full h-full object-cover rounded-xl"
                       />
                       <button
                         type="button"
                         onClick={() => { setFile(null); setExistingLogoUrl(''); }}
-                        className="absolute -top-1 -right-1 bg-rose-500 text-white rounded-full p-0.5 shadow-md"
+                        className="absolute top-0.5 right-0.5 bg-rose-500 text-white rounded-full p-0.5 shadow-md"
                         title="Remove image"
                       >
                         <X size={12} />
