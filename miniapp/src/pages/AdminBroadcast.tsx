@@ -109,6 +109,7 @@ export default function AdminBroadcast() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState<string | null>(null);
+  const [testingPostId, setTestingPostId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
@@ -390,6 +391,31 @@ export default function AdminBroadcast() {
       showNotification(err.message || 'Error saving post', true);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleTestSend = async (postId: string) => {
+    setTestingPostId(postId);
+    setError('');
+
+    try {
+      const r = await fetch(`${API_URL}/broadcast/${postId}/test`, {
+        method: 'POST',
+        headers: { 'x-telegram-init-data': initData },
+      });
+      const d = await r.json();
+      if (!r.ok) {
+        showNotification(d.error || 'Test send failed', true);
+        return;
+      }
+      showNotification('🎯 Test preview sent directly to your Telegram chat!');
+      if (typeof WebApp !== 'undefined') {
+        WebApp.HapticFeedback?.notificationOccurred('success');
+      }
+    } catch (err: any) {
+      showNotification(err.message || 'Failed to send test preview', true);
+    } finally {
+      setTestingPostId(null);
     }
   };
 
@@ -713,19 +739,80 @@ export default function AdminBroadcast() {
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-black text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
                     <Sparkles size={13} />
-                    <span>Channel &amp; Bot Interactive Button</span>
+                    <span>Interactive Buttons Preview</span>
                   </span>
                   <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                     ✓ Auto-Attached
                   </span>
                 </div>
-                <p className="text-[10px] text-slate-400 leading-relaxed">
-                  Every post sent to <strong>@ChoiceBingo</strong> or players automatically includes this attractive 1-tap button:
-                </p>
-                <div className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 text-slate-950 font-black text-xs flex items-center justify-center space-x-1.5 shadow-[0_3px_0_0_#b45309]">
-                  <span className="text-sm">🎮</span>
-                  <span>PLAY CHOICE BINGO NOW 🎯</span>
-                </div>
+
+                {sendTo === 'channel' ? (
+                  <div className="space-y-1.5 pt-1">
+                    <p className="text-[10px] text-slate-400 font-semibold">For Channel (@ChoiceBingo):</p>
+                    <div className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 text-slate-950 font-black text-xs flex items-center justify-center space-x-1.5 shadow-[0_3px_0_0_#b45309]">
+                      <span className="text-sm">🎮</span>
+                      <span>PLAY CHOICE BINGO NOW 🎯</span>
+                    </div>
+                    <div className="w-full py-2 px-3 rounded-xl bg-slate-800 border border-slate-700 text-slate-200 font-bold text-xs flex items-center justify-center space-x-1.5 shadow-[0_2px_0_0_#1e293b]">
+                      <span>💬</span>
+                      <span>24/7 Support</span>
+                    </div>
+                  </div>
+                ) : sendTo === 'bot' ? (
+                  <div className="space-y-1.5 pt-1">
+                    <p className="text-[10px] text-slate-400 font-semibold">For Bot Direct Message (All Active Players):</p>
+                    <div className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 text-slate-950 font-black text-xs flex items-center justify-center space-x-1.5 shadow-[0_3px_0_0_#b45309]">
+                      <span className="text-sm">🎮</span>
+                      <span>PLAY CHOICE BINGO NOW 🎯</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <div className="py-2 px-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-200 font-bold text-[11px] flex items-center justify-center space-x-1 shadow-[0_2px_0_0_#1e293b]">
+                        <span>📢</span>
+                        <span>Official Channel</span>
+                      </div>
+                      <div className="py-2 px-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-200 font-bold text-[11px] flex items-center justify-center space-x-1 shadow-[0_2px_0_0_#1e293b]">
+                        <span>💬</span>
+                        <span>24/7 Support</span>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2 pt-1">
+                    <div>
+                      <p className="text-[10px] text-amber-300 font-bold mb-1">🤖 Bot Direct Message Layout:</p>
+                      <div className="space-y-1">
+                        <div className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 text-slate-950 font-black text-xs flex items-center justify-center space-x-1 shadow-[0_2px_0_0_#b45309]">
+                          <span>🎮</span>
+                          <span>PLAY CHOICE BINGO NOW 🎯</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-1">
+                          <div className="py-1.5 px-1 rounded-lg bg-slate-800 border border-slate-700 text-slate-200 font-bold text-[10px] flex items-center justify-center space-x-1">
+                            <span>📢</span>
+                            <span>Official Channel</span>
+                          </div>
+                          <div className="py-1.5 px-1 rounded-lg bg-slate-800 border border-slate-700 text-slate-200 font-bold text-[10px] flex items-center justify-center space-x-1">
+                            <span>💬</span>
+                            <span>24/7 Support</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="text-[10px] text-teal-300 font-bold mb-1">📢 Channel Layout:</p>
+                      <div className="space-y-1">
+                        <div className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 text-slate-950 font-black text-xs flex items-center justify-center space-x-1 shadow-[0_2px_0_0_#b45309]">
+                          <span>🎮</span>
+                          <span>PLAY CHOICE BINGO NOW 🎯</span>
+                        </div>
+                        <div className="w-full py-1.5 px-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-200 font-bold text-[10px] flex items-center justify-center space-x-1">
+                          <span>💬</span>
+                          <span>24/7 Support</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -994,12 +1081,30 @@ export default function AdminBroadcast() {
                       )}
                     </div>
 
-                    {/* Interactive Play Now Button Preview */}
-                    <div className="pt-0.5">
+                    {/* Interactive Action Buttons Preview */}
+                    <div className="pt-0.5 space-y-1.5">
                       <div className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 text-slate-950 font-black text-xs flex items-center justify-center space-x-1.5 shadow-[0_2px_0_0_#b45309] pointer-events-none select-none">
                         <span>🎮</span>
                         <span>PLAY CHOICE BINGO NOW 🎯</span>
                       </div>
+
+                      {post.send_to === 'channel' ? (
+                        <div className="w-full py-1.5 px-3 rounded-xl bg-slate-800/90 border border-slate-700 text-slate-200 font-bold text-[11px] flex items-center justify-center space-x-1.5 shadow-[0_2px_0_0_#1e293b] pointer-events-none select-none">
+                          <span>💬</span>
+                          <span>24/7 Support</span>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-1.5 pointer-events-none select-none">
+                          <div className="py-1.5 px-2 rounded-xl bg-slate-800/90 border border-slate-700 text-slate-200 font-bold text-[10px] flex items-center justify-center space-x-1 shadow-[0_2px_0_0_#1e293b]">
+                            <span>📢</span>
+                            <span className="truncate">Official Channel</span>
+                          </div>
+                          <div className="py-1.5 px-2 rounded-xl bg-slate-800/90 border border-slate-700 text-slate-200 font-bold text-[10px] flex items-center justify-center space-x-1 shadow-[0_2px_0_0_#1e293b]">
+                            <span>💬</span>
+                            <span>24/7 Support</span>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     {/* Delivery Stats */}
@@ -1020,6 +1125,21 @@ export default function AdminBroadcast() {
 
                     {/* 3D Action Buttons */}
                     <div className="flex items-center space-x-2 pt-1 border-t border-slate-800/80">
+                      {/* Test to Me Button */}
+                      <button
+                        onClick={() => handleTestSend(post.id)}
+                        disabled={testingPostId === post.id}
+                        className="py-2.5 px-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black text-xs flex items-center justify-center space-x-1.5 shadow-[0_3px_0_0_#1e3a8a] active:translate-y-0.5 active:shadow-none transition-all disabled:opacity-50 shrink-0"
+                        title="Send instant preview directly to your Telegram chat"
+                      >
+                        {testingPostId === post.id ? (
+                          <Loader2 size={13} className="animate-spin" />
+                        ) : (
+                          <Sparkles size={13} />
+                        )}
+                        <span>{testingPostId === post.id ? 'Testing...' : 'Test to Me'}</span>
+                      </button>
+
                       {isSendable && (
                         <button
                           onClick={() => handleSend(post.id)}

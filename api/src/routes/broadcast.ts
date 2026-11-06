@@ -324,7 +324,7 @@ async function executeBroadcast(postId: string): Promise<void> {
     while (true) {
       const { data: users, error: uErr } = await supabase
         .from('users')
-        .select('telegram_id, role, status')
+        .select('telegram_id, role, status, username')
         .range(page * pageSize, (page + 1) * pageSize - 1);
 
       if (uErr) {
@@ -335,19 +335,24 @@ async function executeBroadcast(postId: string): Promise<void> {
 
       if (!users || users.length === 0) break;
 
-      // Filter in JS: send to all active accounts (so admins can test too)
+      // Send to all active accounts: role 'admin', 'user', 'worker' all included!
       const eligible = users.filter((u: any) =>
         u.telegram_id &&
-        u.status !== 'inactive'
+        u.status !== 'inactive' &&
+        u.status !== 'banned'
       );
+
+      console.log(`[Broadcast] Dispatching to ${eligible.length} active users (page ${page})`);
 
       for (const u of eligible) {
         await new Promise(r => setTimeout(r, 35)); // ~28 msg/sec Telegram rate limit
+        console.log(`[Broadcast] Dispatching to ${u.telegram_id} (@${u.username || 'unknown'}, role: ${u.role})`);
         const res = await sendTelegramMessage(botToken, u.telegram_id, messageText, mediaUrl, mediaType, false);
         if (res.ok) {
           sentCount++;
         } else {
           failedCount++;
+          console.warn(`[Broadcast] Failed to send to ${u.telegram_id}: ${res.error}`);
           if (!lastError && res.error) lastError = res.error;
         }
       }
@@ -577,6 +582,80 @@ router.delete('/:id', validateTelegramAuth, requireAdmin, async (req, res) => {
 });
 
 // â”€â”€ POST /api/broadcast/:id/send â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── POST /api/broadcast/:id/test (Send preview test directly to admin Telegram chat) ──
+router.post('/:id/test', validateTelegramAuth, requireAdmin, async (req: AuthRequest, res) => {
+  const { id } = req.params;
+  const adminTelegramId = req.telegramUser!.id.toString();
+
+  const { data: post } = await supabase
+    .from('broadcast_posts')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (!post) {
+    res.status(404).json({ error: 'Post not found' });
+    return;
+  }
+
+  const botToken = process.env.BOT_TOKEN;
+  if (!botToken) {
+    res.status(500).json({ error: 'BOT_TOKEN is not configured on the server' });
+    return;
+  }
+
+  const mediaUrl = post.media_url || null;
+  const mediaType = post.media_type || null;
+  const messageText = post.title && post.title.trim()
+    ? `*${post.title.trim()}*\n\n${post.body.trim()}`
+    : post.body.trim();
+
+  try {
+    if (post.send_to === 'both') {
+      // Send both previews so admin sees exact Bot DM and Channel buttons
+      const botRes = await sendTelegramMessage(
+        botToken,
+        adminTelegramId,
+        `🤖 *[TEST PREVIEW - BOT DIRECT MESSAGE]*\n\n${messageText}`,
+        mediaUrl,
+        mediaType,
+        false
+      );
+      const chRes = await sendTelegramMessage(
+        botToken,
+        adminTelegramId,
+        `📢 *[TEST PREVIEW - CHANNEL LAYOUT]*\n\n${messageText}`,
+        mediaUrl,
+        mediaType,
+        true
+      );
+      if (botRes.ok || chRes.ok) {
+        res.json({ success: true, message: 'Test previews (Bot + Channel) sent to your Telegram chat!' });
+      } else {
+        res.status(500).json({ error: botRes.error || chRes.error || 'Failed to send test preview' });
+      }
+    } else {
+      const isChannel = post.send_to === 'channel';
+      const label = isChannel ? 'CHANNEL LAYOUT' : 'BOT DIRECT MESSAGE';
+      const result = await sendTelegramMessage(
+        botToken,
+        adminTelegramId,
+        `🧪 *[TEST PREVIEW - ${label}]*\n\n${messageText}`,
+        mediaUrl,
+        mediaType,
+        isChannel
+      );
+      if (result.ok) {
+        res.json({ success: true, message: `Test preview (${label}) sent to your Telegram chat!` });
+      } else {
+        res.status(500).json({ error: result.error || 'Failed to send test preview' });
+      }
+    }
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Test send exception' });
+  }
+});
+
 router.post('/:id/send', validateTelegramAuth, requireAdmin, async (req, res) => {
   const { id } = req.params;
   const { data: post } = await supabase.from('broadcast_posts').select('status').eq('id', id).single();
