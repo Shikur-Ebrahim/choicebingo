@@ -244,8 +244,8 @@ router.get('/audit', validateTelegramAuth, async (req: AuthRequest, res) => {
       const row = allSettings?.find(s => s.key === key);
       return row ? row.value : def;
     };
-    const depPct = parseFloat(getSetting('first_deposit_bonus_pct', '20')) / 100;
-    const secondDepPct = parseFloat(getSetting('second_deposit_bonus_pct', '10')) / 100;
+    const depPct = parseFloat(getSetting('first_deposit_bonus_pct', '7')) / 100;
+    const secondDepPct = parseFloat(getSetting('second_deposit_bonus_pct', '3')) / 100;
     const invPct = parseFloat(getSetting('invitation_reward_pct', '10')) / 100;
     const weekendBonusEnabled = getSetting('weekend_bonus_enabled', 'false') === 'true';
     const weekendBonusDays = getSetting('weekend_bonus_days', '[0,6]');
