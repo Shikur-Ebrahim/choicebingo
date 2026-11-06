@@ -46,7 +46,7 @@ router.post('/chat', validateTelegramAuth, async (req: AuthRequest, res) => {
       return;
     }
 
-    const systemPrompt = `You are the official AI Support Agent for ADWA Bingo, a Telegram mini-app bingo game in Ethiopia.
+    const systemPrompt = `You are the official AI Support Agent for Choice Bingo, a Telegram mini-app bingo game in Ethiopia.
 Be helpful, concise, and friendly. Answer in the same language the user writes in (Amharic or English).
 Game Rules:
 - Players select Medeb (stake): 10, 20, 50, or 100 ETB.

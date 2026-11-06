@@ -116,7 +116,7 @@ export async function startDeposit(ctx: Context) {
   sessions.set(userId, { step: 'choose_method' });
 
   await ctx.reply(
-    `💰 *ADWA Bingo Deposit*\n\nSelect your preferred deposit method:`,
+    `💰 *Choice Bingo Deposit*\n\nSelect your preferred deposit method:`,
     {
       parse_mode: 'Markdown',
       reply_markup: { inline_keyboard: rows },

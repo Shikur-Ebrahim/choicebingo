@@ -7,18 +7,18 @@ export async function handleCallback(ctx: Context) {
   if (data === 'btn_invite') {
     await ctx.answerCallbackQuery();
     const user = ctx.from!;
-    const inviteLink = `https://t.me/ChoiceBingo_bot?start=ref_${user.id}`;
-    const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent('ðŸŽ® Play ADWA Bingo with me! Join and win together! ðŸŽ±')}`;
+    const inviteLink = `https://t.me/choicebingo_bot?start=ref_${user.id}`;
+    const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent('🎮 Play Choice Bingo with me! Join and win together! 🎯')}`;
 
     await ctx.reply(
-      `ðŸ‘¥ *Your Personal Invite Link*\n\n` +
+      `👥 *Your Personal Invite Link*\n\n` +
       `\`${inviteLink}\`\n\n` +
-      `ðŸ“Œ Share this link with your friends! When they join and make their *first deposit*, you earn *10% bonus* in your wallet! ðŸŽ`,
+      `📌 Share this link with your friends! When they join and make their *first deposit*, you earn *10% bonus* in your wallet! 🎁`,
       {
         parse_mode: 'Markdown',
         reply_markup: {
           inline_keyboard: [
-            [{ text: 'ðŸ“¤ Share with Friends', url: shareUrl }],
+            [{ text: '📤 Share with Friends', url: shareUrl }],
           ],
         },
       }
@@ -37,7 +37,7 @@ export async function handleCallback(ctx: Context) {
     return;
   }
 
-  // Copy account number â†’ show popup
+  // Copy account number → show popup
   if (data.startsWith('dep_copy_')) {
     const accountNumber = data.replace('dep_copy_', '');
     await handleCopyAccount(ctx, accountNumber);
@@ -48,6 +48,4 @@ export async function handleCallback(ctx: Context) {
     await cancelDeposit(ctx);
     return;
   }
-
-  await ctx.answerCallbackQuery();
 }

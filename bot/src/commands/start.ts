@@ -22,17 +22,17 @@ export async function startCommand(ctx: Context) {
     await upsertUser(user.id.toString(), user.username || user.first_name, user.first_name, inviterId);
   } catch (e: any) {
     if (e.message === 'ACCOUNT_INACTIVE') {
-      await ctx.reply('âŒ Your account has been deactivated by the admin. You can no longer use this bot.');
+      await ctx.reply('❌ Your account has been deactivated by the admin. You can no longer use this bot.');
       return;
     }
     console.error('Upsert user error:', e); 
   }
 
-  const miniAppUrl = process.env.MINI_APP_URL || 'https://ChoiceBingo.vercel.app';
+  const miniAppUrl = process.env.MINI_APP_URL || 'https://choicebingo.vercel.app';
   
   // Fetch dynamic links from Supabase settings
-  let supportUsername = 'ChoiceBingo_admin';
-  let channelLink = 'https://t.me/ChoiceBingo';
+  let supportUsername = 'choicebingo_admin';
+  let channelLink = 'https://t.me/choicebingo';
   try {
     const { supabase } = await import('../services/supabase');
     const { data: supportData } = await supabase.from('settings').select('value').eq('key', 'support_username').single();
@@ -45,29 +45,29 @@ export async function startCommand(ctx: Context) {
 
   const channelUrl = channelLink;
   const supportUrl = `https://t.me/${supportUsername.replace('@', '')}`;
-  const botUsername = 'ChoiceBingo_bot';
+  const botUsername = 'choicebingo_bot';
   const inviteLink = `https://t.me/${botUsername}?start=ref_${user.id}`;
-  const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent('ðŸŽ® Play ADWA Bingo with me! Join and let\'s win together! ðŸŽ±')}`;
+  const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent('🎮 Play Choice Bingo with me! Join and let\'s win together! 🎯')}`;
 
   const keyboard = {
     inline_keyboard: [
-      [{ text: 'ðŸŽ± START PLAYING!', web_app: { url: miniAppUrl } }],
+      [{ text: '🎯 START PLAYING!', web_app: { url: miniAppUrl } }],
       [
-        { text: 'ðŸ’¬ Get Support', url: supportUrl },
-        { text: 'ðŸ“¢ Join Channel', url: channelUrl },
+        { text: '💬 Get Support', url: supportUrl },
+        { text: '📢 Join Channel', url: channelUrl },
       ],
       [
-        { text: 'ðŸ‘¥ Invite Friend', url: `https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent('ðŸŽ® Play ADWA Bingo with me! Join using my invite link and let\'s win together! ðŸŽ±')}` },
-        { text: 'ðŸ’° Deposit', callback_data: 'btn_deposit' },
+        { text: '👥 Invite Friend', url: shareUrl },
+        { text: '💰 Deposit', callback_data: 'btn_deposit' },
       ],
     ],
   };
 
   const caption =
-    `ðŸŽ‰ *áŠ¥áŠ•áŠ³áŠ• á‰ á‹°áˆ…áŠ“ áˆ˜áŒ¡, ${user.first_name}!*\n\n` +
-    `ðŸŽ± *ADWA Bingo* áˆ‹á‹­ áŠ¥áŠ•áŠ³áŠ• á‹°áˆ…áŠ“ áˆ˜áŒ¡!\n\n` +
-    `áŠ¨áŒ“á‹°áŠžá‰½á‹Ž áŒ‹áˆ­ á‰¢áŠ•áŒŽ á‹­áŒ«á‹ˆá‰±á£ á‰³áˆ‹áˆ‹á‰… áˆ¸áˆáˆ›á‰¶á‰½áŠ• á‹«áˆ¸áŠ•á‰! ðŸ†\n\n` +
-    `*Victory in Every Ball â€¢ Ethiopia ðŸ‡ªðŸ‡¹*`;
+    `🎉 *እንኳን በደህና መጡ, ${user.first_name}!*\n\n` +
+    `🎯 *Choice Bingo* ላይ እንኳን ደህና መጡ!\n\n` +
+    `ከጓደኞችዎ ጋር ቢንጎ ይጫወቱ፤ ትላልቅ ሽልማቶችን ያሸንፉ! 🏆\n\n` +
+    `*Victory in Every Ball • Choice Bingo 🇪🇹*`;
 
   try {
     let msg;

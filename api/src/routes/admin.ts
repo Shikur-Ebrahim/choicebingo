@@ -980,10 +980,10 @@ router.post('/send-qr-poster', validateTelegramAuth, requireAdmin, async (req: A
 
     const formData = new FormData();
     formData.append('chat_id', telegramId);
-    formData.append('photo', new Blob([buffer], { type: 'image/png' }), 'ADWA_BINGO_QR.png');
+    formData.append('photo', new Blob([buffer], { type: 'image/png' }), 'CHOICE_BINGO_QR.png');
     formData.append(
       'caption',
-      '🎉 *ADWA BINGO — Official QR Poster*\n\n🖼️ *To Save to Phone Gallery:*\n1. Tap this photo to open it\n2. Tap the three dots (⋮) in the top-right\n3. Tap *Save to Gallery* / *Save to Photos*!\n\nYou can also forward this directly to your channels & groups.'
+      '🎉 *CHOICE BINGO — Official QR Poster*\n\n🖼️ *To Save to Phone Gallery:*\n1. Tap this photo to open it\n2. Tap the three dots (⋮) in the top-right\n3. Tap *Save to Gallery* / *Save to Photos*!\n\nYou can also forward this directly to your channels & groups.'
     );
     formData.append('parse_mode', 'Markdown');
 
