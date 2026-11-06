@@ -51,13 +51,13 @@ export async function deleteFromR2(key: string): Promise<void> {
  */
 export async function getPresignedUploadUrl(
   key: string,
-  contentType: string,
-  expiresIn = 300 // 5 minutes
+  contentType?: string,
+  expiresIn = 600
 ): Promise<string> {
+  // Omit ContentType from signed headers so any browser PUT works without signature mismatch
   const command = new PutObjectCommand({
     Bucket: BUCKET,
     Key: key,
-    ContentType: contentType,
   });
   return getSignedUrl(r2Client, command, { expiresIn });
 }

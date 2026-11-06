@@ -152,7 +152,7 @@ async function sendTelegramMessage(
 
   let result: { ok: boolean; error?: string };
 
-  // Handle base64 Data URLs directly via multipart FormData
+  // If mediaUrl is a legacy base64 Data URL, upload to R2 first so Telegram downloads smoothly
   if (mediaUrl && mediaUrl.startsWith('data:')) {
     try {
       const match = mediaUrl.match(/^data:([^;]+);base64,(.+)$/);
@@ -161,40 +161,15 @@ async function sendTelegramMessage(
         const buffer = Buffer.from(match[2], 'base64');
         const isVid = mime.startsWith('video/') || mediaType === 'video';
         const ext = mime.split('/')[1] || (isVid ? 'mp4' : 'png');
-        const filename = `media.${ext}`;
-
-        const formData = new FormData();
-        formData.append('chat_id', chatId);
-        if (caption) formData.append('caption', caption);
-        formData.append('parse_mode', 'Markdown');
-
-        if (isVid) {
-          formData.append('video', new Blob([buffer], { type: mime }), filename);
-          formData.append('supports_streaming', 'true');
-          const r = await fetch(`${base}/sendVideo`, { method: 'POST', body: formData });
-          if (!r.ok) {
-            const errJson = await r.json().catch(() => null) as any;
-            result = { ok: false, error: errJson?.description || r.statusText };
-          } else {
-            result = { ok: true };
-          }
-        } else {
-          formData.append('photo', new Blob([buffer], { type: mime }), filename);
-          const r = await fetch(`${base}/sendPhoto`, { method: 'POST', body: formData });
-          if (!r.ok) {
-            const errJson = await r.json().catch(() => null) as any;
-            result = { ok: false, error: errJson?.description || r.statusText };
-          } else {
-            result = { ok: true };
-          }
-        }
-      } else {
-        result = { ok: false, error: 'Invalid base64 media data' };
+        const key = `${isVid ? 'post-videos' : 'post-images'}/${Date.now()}-legacy.${ext}`;
+        mediaUrl = await uploadToR2(key, buffer, mime);
       }
     } catch (e: any) {
-      result = { ok: false, error: e.message };
+      console.error('Failed to convert base64 to R2 in sendTelegramMessage:', e);
     }
-  } else if (mediaUrl && mediaType === 'video') {
+  }
+
+  if (mediaUrl && mediaType === 'video') {
     result = await sendTelegramRequest(base, 'sendVideo', {
       chat_id: chatId,
       video: mediaUrl,

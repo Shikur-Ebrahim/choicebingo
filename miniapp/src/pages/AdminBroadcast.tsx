@@ -20,9 +20,8 @@ import {
   Check,
   Calendar,
   Sparkles,
-  Users,
-  Eye,
-  RefreshCw,
+  Play,
+  RotateCcw,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import WebApp from '@twa-dev/sdk';
@@ -118,7 +117,7 @@ export default function AdminBroadcast() {
   const showNotification = (msg: string, isErr = false) => {
     if (isErr) {
       setError(msg);
-      setTimeout(() => setError(''), 4000);
+      setTimeout(() => setError(''), 4500);
     } else {
       setSuccessMsg(msg);
       setTimeout(() => setSuccessMsg(''), 3500);
@@ -201,7 +200,6 @@ export default function AdminBroadcast() {
     setShowForm(true);
   };
 
-  // Convert file to base64 Data URL
   const readFileAsDataUrl = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -211,7 +209,7 @@ export default function AdminBroadcast() {
     });
   };
 
-  // Safe High-Reliability Media Upload (Server-Side R2 with Base64 Fallback - 0 CORS drops)
+  // High-Reliability Dual Upload: Presigned R2 Direct PUT + Server API Fallback
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -223,67 +221,99 @@ export default function AdminBroadcast() {
       return;
     }
 
+    // 1. Instant local preview using ObjectURL (instant video playback & thumbnail)
+    const localBlobUrl = URL.createObjectURL(file);
+    setMediaPreview(localBlobUrl);
+    setMediaType(isVideo ? 'video' : 'image');
+    setUploadedMediaUrl(null);
+    setUploadedMediaKey(null);
     setUploading(true);
     setUploadProgress(15);
     setError('');
 
     try {
-      // 1. Read file locally as Data URL for instant preview & zero-network fallback
-      const dataUrl = await readFileAsDataUrl(file);
-      setMediaPreview(dataUrl);
-      setMediaType(isVideo ? 'video' : 'image');
-      setUploadProgress(40);
+      let publicUrl = '';
+      let mediaKey = '';
 
-      // 2. Upload to server endpoint which streams directly into R2
-      const res = await fetch(`${API_URL}/broadcast/upload-media`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-telegram-init-data': initData,
-        },
-        body: JSON.stringify({
-          filename: file.name,
-          contentType: file.type,
-          base64: dataUrl,
-        }),
-      });
+      // Method A: Direct Presigned Upload directly to Cloudflare R2 (Bypasses VPS body limits completely)
+      try {
+        setUploadProgress(30);
+        const presignRes = await fetch(`${API_URL}/broadcast/presign`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-telegram-init-data': initData,
+          },
+          body: JSON.stringify({
+            filename: file.name,
+            contentType: file.type || (isVideo ? 'video/mp4' : 'image/jpeg'),
+          }),
+        });
 
-      setUploadProgress(80);
-      const data = await res.json().catch(() => ({}));
+        if (presignRes.ok) {
+          const presignData = await presignRes.json();
+          if (presignData.uploadUrl && presignData.publicUrl) {
+            setUploadProgress(50);
+            // PUT directly to Cloudflare R2
+            const r2Put = await fetch(presignData.uploadUrl, {
+              method: 'PUT',
+              body: file,
+            });
 
-      if (res.ok && data.publicUrl) {
-        setUploadedMediaUrl(data.publicUrl);
-        setUploadedMediaKey(data.key || null);
-        setUploadProgress(100);
-        showNotification('Media uploaded successfully!');
-      } else {
-        // Fallback: If R2 direct upload had an issue, keep the base64 data URL
-        // (Our server sendTelegramMessage directly supports base64 Data URLs via FormData Blob!)
-        console.warn('R2 upload warning, using direct buffer fallback:', data.error);
-        setUploadedMediaUrl(dataUrl);
-        setUploadedMediaKey(null);
-        setUploadProgress(100);
-        showNotification('Media prepared and ready to broadcast!');
+            if (r2Put.ok) {
+              publicUrl = presignData.publicUrl;
+              mediaKey = presignData.key;
+            }
+          }
+        }
+      } catch (presignErr) {
+        console.warn('Presign upload attempt notice:', presignErr);
       }
 
-      if (typeof WebApp !== 'undefined') {
-        WebApp.HapticFeedback?.notificationOccurred('success');
+      // Method B: Server-side upload endpoint (if presigned upload didn't complete)
+      if (!publicUrl) {
+        setUploadProgress(60);
+        const dataUrl = await readFileAsDataUrl(file);
+        setUploadProgress(80);
+
+        const res = await fetch(`${API_URL}/broadcast/upload-media`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-telegram-init-data': initData,
+          },
+          body: JSON.stringify({
+            filename: file.name,
+            contentType: file.type || (isVideo ? 'video/mp4' : 'image/jpeg'),
+            base64: dataUrl,
+          }),
+        });
+
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.publicUrl) {
+          publicUrl = data.publicUrl;
+          mediaKey = data.key || null;
+        } else {
+          throw new Error(data.error || 'Upload to media storage failed');
+        }
+      }
+
+      if (publicUrl) {
+        setUploadedMediaUrl(publicUrl);
+        setUploadedMediaKey(mediaKey);
+        setUploadProgress(100);
+        showNotification(isVideo ? 'Video uploaded to R2 successfully!' : 'Image uploaded successfully!');
+        if (typeof WebApp !== 'undefined') {
+          WebApp.HapticFeedback?.notificationOccurred('success');
+        }
+      } else {
+        throw new Error('Upload could not be verified');
       }
     } catch (err: any) {
-      console.error('Upload error:', err);
-      // Fallback to local DataURL so user is never blocked
-      try {
-        const fallbackUrl = await readFileAsDataUrl(file);
-        setMediaPreview(fallbackUrl);
-        setUploadedMediaUrl(fallbackUrl);
-        setMediaType(isVideo ? 'video' : 'image');
-        setUploadProgress(100);
-        showNotification('Media ready for direct broadcast!');
-      } catch (e) {
-        showNotification('Failed to read media file', true);
-        setMediaPreview(null);
-        setMediaType(null);
-      }
+      console.error('Upload failed:', err);
+      showNotification(`Upload failed: ${err.message || 'File upload error'}. Please choose a file under 50MB.`, true);
+      // DO NOT set base64 string to uploadedMediaUrl! That prevents statement timeout!
+      setUploadedMediaUrl(null);
     } finally {
       setUploading(false);
     }
@@ -305,6 +335,10 @@ export default function AdminBroadcast() {
     }
     if (uploading) {
       showNotification('Please wait for media upload to finish', true);
+      return;
+    }
+    if (mediaPreview && !uploadedMediaUrl) {
+      showNotification('Please wait for the media file to finish uploading to Cloudflare R2.', true);
       return;
     }
     if (scheduleEnabled && !scheduledAt) {
@@ -478,37 +512,56 @@ export default function AdminBroadcast() {
                   Image or Video <span className="text-[10px] text-slate-500 normal-case">(Optional)</span>
                 </label>
                 {mediaPreview && !uploading && (
-                  <button
-                    type="button"
-                    onClick={removeMedia}
-                    className="text-[10px] font-bold text-rose-400 hover:text-rose-300 flex items-center gap-1"
-                  >
-                    <Trash2 size={11} /> Remove
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="text-[10px] font-bold text-amber-400 hover:text-amber-300 flex items-center gap-1"
+                    >
+                      <RotateCcw size={11} /> Change
+                    </button>
+                    <button
+                      type="button"
+                      onClick={removeMedia}
+                      className="text-[10px] font-bold text-rose-400 hover:text-rose-300 flex items-center gap-1"
+                    >
+                      <Trash2 size={11} /> Remove
+                    </button>
+                  </div>
                 )}
               </div>
 
               {mediaPreview ? (
-                <div className="relative rounded-2xl overflow-hidden border-2 border-amber-500/40 bg-slate-950 shadow-lg group">
+                <div className="relative rounded-2xl overflow-hidden border-2 border-amber-500/40 bg-black shadow-lg">
+                  {/* FULLY VISIBLE & PLAYABLE VIDEO / IMAGE */}
                   {mediaType === 'video' ? (
-                    <div className="relative w-full h-48 bg-slate-950 flex items-center justify-center overflow-hidden">
-                      <video src={mediaPreview} className="h-full w-full object-cover rounded-xl" muted playsInline />
-                      <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-                        <div className="bg-amber-500/90 text-slate-950 rounded-full p-3 shadow-lg">
-                          <Film size={26} />
-                        </div>
-                      </div>
+                    <div className="relative w-full bg-black flex items-center justify-center">
+                      <video
+                        src={mediaPreview}
+                        controls
+                        playsInline
+                        preload="auto"
+                        className="w-full max-h-72 object-contain bg-black mx-auto block rounded-xl"
+                      />
                     </div>
                   ) : (
-                    <img src={mediaPreview} alt="preview" className="w-full h-48 object-cover rounded-xl block" />
+                    <div className="relative w-full bg-black flex items-center justify-center">
+                      <img
+                        src={mediaPreview}
+                        alt="preview"
+                        className="w-full max-h-72 object-contain bg-black mx-auto block rounded-xl"
+                      />
+                    </div>
                   )}
 
                   {/* Upload Progress Overlay */}
                   {uploading && (
-                    <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm rounded-xl flex flex-col items-center justify-center space-y-2.5 p-4 z-10">
-                      <Loader2 size={30} className="text-amber-400 animate-spin" />
-                      <span className="text-amber-300 text-xs font-black">Uploading Media... {uploadProgress}%</span>
-                      <div className="w-3/4 h-2 bg-slate-800 rounded-full overflow-hidden border border-slate-700">
+                    <div className="absolute inset-0 bg-slate-950/85 backdrop-blur-sm rounded-xl flex flex-col items-center justify-center space-y-2.5 p-4 z-20">
+                      <Loader2 size={32} className="text-amber-400 animate-spin" />
+                      <span className="text-amber-300 text-xs font-black">
+                        Uploading to Cloudflare R2... {uploadProgress}%
+                      </span>
+                      <div className="w-3/4 h-2.5 bg-slate-800 rounded-full overflow-hidden border border-slate-700">
                         <div
                           className="h-full bg-gradient-to-r from-amber-500 to-yellow-400 rounded-full transition-all duration-300"
                           style={{ width: `${uploadProgress}%` }}
@@ -518,7 +571,7 @@ export default function AdminBroadcast() {
                   )}
 
                   {/* Type Badge */}
-                  <div className="absolute bottom-2.5 left-2.5 flex items-center gap-1.5 z-10">
+                  <div className="absolute bottom-2.5 left-2.5 flex items-center gap-1.5 z-10 pointer-events-none">
                     <span
                       className={`text-[10px] font-black px-2.5 py-1 rounded-lg shadow-md border ${
                         mediaType === 'video'
@@ -528,18 +581,12 @@ export default function AdminBroadcast() {
                     >
                       {mediaType === 'video' ? '🎬 Video Clip' : '🖼️ Image Banner'}
                     </span>
+                    {uploadedMediaUrl && (
+                      <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-emerald-900/90 text-emerald-200 border border-emerald-500/40">
+                        ✓ R2 Ready
+                      </span>
+                    )}
                   </div>
-
-                  {/* Change Media Button */}
-                  {!uploading && (
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="absolute top-2.5 right-2.5 bg-slate-900/90 hover:bg-slate-800 text-slate-200 text-[10px] font-bold px-2.5 py-1 rounded-lg border border-slate-700 shadow-md flex items-center gap-1 active:scale-95"
-                    >
-                      <UploadCloud size={12} /> Change
-                    </button>
-                  )}
                 </div>
               ) : (
                 <div
@@ -552,7 +599,7 @@ export default function AdminBroadcast() {
                   <span className="text-xs font-black text-slate-200 group-hover:text-amber-300">
                     Tap to upload Image or Video
                   </span>
-                  <span className="text-[10px] text-slate-500 mt-0.5">JPG, PNG, GIF • MP4, MOV, WebM</span>
+                  <span className="text-[10px] text-slate-500 mt-0.5">MP4, MOV, WebM • JPG, PNG, GIF</span>
                 </div>
               )}
 
@@ -865,24 +912,24 @@ export default function AdminBroadcast() {
                   key={post.id}
                   className="bg-slate-900/90 backdrop-blur-md rounded-2xl border border-slate-800 shadow-[0_6px_20px_rgba(0,0,0,0.4)] overflow-hidden transition-all hover:border-slate-700"
                 >
-                  {/* Media Banner */}
+                  {/* FULLY VISIBLE & PLAYABLE MEDIA BANNER IN CARD */}
                   {post.media_url && post.media_type === 'image' && (
-                    <div className="relative w-full h-40 bg-slate-950 overflow-hidden">
-                      <img src={post.media_url} alt="post" className="w-full h-full object-cover" />
-                      <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent" />
+                    <div className="relative w-full bg-black flex items-center justify-center overflow-hidden border-b border-slate-800">
+                      <img src={post.media_url} alt="post" className="w-full max-h-60 object-contain bg-black mx-auto block" />
                     </div>
                   )}
 
                   {post.media_url && post.media_type === 'video' && (
-                    <div className="relative w-full h-40 bg-slate-950 flex items-center justify-center overflow-hidden">
-                      <video src={post.media_url} className="h-full w-full object-cover" muted playsInline />
-                      <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-                        <div className="bg-amber-500 text-slate-950 rounded-full p-2.5 shadow-lg">
-                          <Film size={22} />
-                        </div>
-                      </div>
-                      <span className="absolute bottom-2 left-2 text-[10px] font-black px-2 py-0.5 rounded-md bg-purple-900/90 text-purple-200 border border-purple-500/40">
-                        🎬 Video
+                    <div className="relative w-full bg-black flex items-center justify-center overflow-hidden border-b border-slate-800">
+                      <video
+                        src={post.media_url}
+                        controls
+                        playsInline
+                        preload="metadata"
+                        className="w-full max-h-60 object-contain bg-black mx-auto block"
+                      />
+                      <span className="absolute top-2.5 left-2.5 text-[10px] font-black px-2 py-0.5 rounded-md bg-purple-900/90 text-purple-200 border border-purple-500/40 pointer-events-none shadow z-10">
+                        🎬 Video Clip
                       </span>
                     </div>
                   )}
