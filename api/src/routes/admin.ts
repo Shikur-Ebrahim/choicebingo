@@ -384,12 +384,32 @@ router.post('/deposits/:id/approve', async (req, res) => {
   const isFirstDeposit = approvedCount === 0;
   const isSecondDeposit = approvedCount === 1;
 
-  // Atomic balance increment for the depositor
-  const { error: balErr } = await supabase.rpc('increment_user_balance', {
-    p_telegram_id: deposit.telegram_id,
-    p_amount: deposit.amount,
-  });
-  if (balErr) { res.status(500).json({ error: balErr.message }); return; }
+  // Fetch user record for the depositor
+  const { data: depRecord, error: userFetchErr } = await supabase
+    .from('users')
+    .select('main_balance, bonus_balance, inviter_id')
+    .eq('telegram_id', deposit.telegram_id)
+    .single();
+
+  if (userFetchErr || !depRecord) {
+    res.status(404).json({ error: 'User record not found' });
+    return;
+  }
+
+  // Update depositor's main balance directly (safe & atomic without missing RPC)
+  const currentMainBal = Number(depRecord.main_balance || 0);
+  const depositAmount = Number(deposit.amount || 0);
+  const newMainBalance = currentMainBal + depositAmount;
+
+  const { error: balErr } = await supabase
+    .from('users')
+    .update({ main_balance: newMainBalance, updated_at: new Date() })
+    .eq('telegram_id', deposit.telegram_id);
+
+  if (balErr) {
+    res.status(500).json({ error: balErr.message });
+    return;
+  }
 
   let depositorBonus = 0;
   let inviterBonus = 0;
@@ -429,22 +449,20 @@ router.post('/deposits/:id/approve', async (req, res) => {
     && weekendBonusPct > 0
     && !hasApprovedDepositOnSameDay;
 
-  const weekendBonusAmount = qualifiesWeekend ? Number(deposit.amount) * weekendBonusPct : 0;
+  const weekendBonusAmount = qualifiesWeekend ? depositAmount * weekendBonusPct : 0;
 
   let firstOrSecondBonus = 0;
   const bonusReasons: string[] = [];
 
-  const { data: depRecord } = await supabase.from('users').select('bonus_balance, inviter_id').eq('telegram_id', deposit.telegram_id).single();
-
   if (isFirstDeposit && firstDepositPct > 0) {
-    firstOrSecondBonus = Number(deposit.amount) * firstDepositPct;
+    firstOrSecondBonus = depositAmount * firstDepositPct;
     bonusReasons.push(`1st Deposit Bonus (${Number(firstOrSecondBonus).toLocaleString('en-US')} ETB)`);
     if (depRecord && depRecord.inviter_id) {
       inviterId = depRecord.inviter_id;
-      inviterBonus = Number(deposit.amount) * invitationPct;
+      inviterBonus = depositAmount * invitationPct;
     }
   } else if (isSecondDeposit && secondDepositPct > 0) {
-    firstOrSecondBonus = Number(deposit.amount) * secondDepositPct;
+    firstOrSecondBonus = depositAmount * secondDepositPct;
     bonusReasons.push(`2nd Deposit Bonus (${Number(firstOrSecondBonus).toLocaleString('en-US')} ETB)`);
   }
 
@@ -457,7 +475,7 @@ router.post('/deposits/:id/approve', async (req, res) => {
 
   if (depRecord && depositorBonus > 0) {
     const currentDepBonus = Number(depRecord.bonus_balance || 0);
-    await supabase.from('users').update({ bonus_balance: currentDepBonus + depositorBonus }).eq('telegram_id', deposit.telegram_id);
+    await supabase.from('users').update({ bonus_balance: currentDepBonus + depositorBonus, updated_at: new Date() }).eq('telegram_id', deposit.telegram_id);
   }
 
   if (inviterId && inviterBonus > 0) {
