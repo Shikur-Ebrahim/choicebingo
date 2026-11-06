@@ -1,7 +1,10 @@
 {
-  "buildCommand": "npm run build",
-  "outputDirectory": "dist",
-  "framework": "vite",
+  "rewrites": [
+    {
+      "source": "/((?!assets/|audio/|.*\\.(?:ico|png|jpg|jpeg|svg|mp3|wav|ogg|json|webp|webmanifest)).*)",
+      "destination": "/index.html"
+    }
+  ],
   "headers": [
     {
       "source": "/audio/(.*)",
@@ -10,16 +13,6 @@
         { "key": "Accept-Ranges", "value": "bytes" },
         { "key": "Cache-Control", "value": "public, max-age=3600, must-revalidate" }
       ]
-    }
-  ],
-  "rewrites": [
-    {
-      "source": "/api/:path*",
-      "destination": "http://169.58.138.229:3002/api/:path*"
-    },
-    {
-      "source": "/((?!assets/|audio/|.*\\.(?:ico|png|jpg|jpeg|svg|mp3|wav|ogg|json|webp|webmanifest)).*)",
-      "destination": "/index.html"
     }
   ]
 }
