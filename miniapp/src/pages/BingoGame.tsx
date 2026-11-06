@@ -1123,9 +1123,9 @@ export default function BingoGame() {
             </div>
           </div>
           
-          {/* Logo Banner */}
-          <div className="w-full flex justify-center py-2 z-20 shrink-0">
-            <img src="/hero.png" alt="Choice Bingo" className="max-w-[340px] h-[85px] object-contain drop-shadow-sm" />
+          {/* Full-width Edge-to-Edge Logo Banner */}
+          <div className="w-full flex justify-center py-1 z-20 shrink-0 px-0">
+            <img src="/hero.png" alt="Choice Bingo" className="w-full max-h-[105px] object-contain drop-shadow-md px-0" />
           </div>
 
           <p className="text-center text-slate-500 dark:text-slate-400 text-[10px] uppercase tracking-widest font-bold pt-1.5 pb-2">
@@ -1232,16 +1232,115 @@ export default function BingoGame() {
   }
 
 
-  if (loading && !game) return <div className="h-[calc(100dvh-80px)] w-full bg-[#05081a] flex items-center justify-center"><RefreshCw size={28} className="text-orange-500 animate-spin" /></div>;
+  if (loading && !game) {
+    return (
+      <div
+        className="h-[calc(100dvh-80px)] w-full flex flex-col items-center justify-center relative overflow-hidden select-none px-4"
+        style={{
+          background: 'radial-gradient(circle at 50% 40%, #1a123a 0%, #0c0d20 50%, #03040a 100%)',
+        }}
+      >
+        {/* Ambient 3D Glow Rings */}
+        <div className="absolute w-72 h-72 rounded-full bg-pink-500/15 blur-3xl pointer-events-none animate-pulse" />
+        <div className="absolute w-56 h-56 rounded-full bg-yellow-400/10 blur-2xl pointer-events-none" />
 
-  if (!game) return (
-    <div className="h-[calc(100dvh-80px)] w-full bg-[#05081a] flex flex-col items-center justify-center text-white gap-4">
-      <span className="text-5xl">🎱</span>
-      <p className="font-bold text-lg">{t[language].bingo.preparingNext}</p>
-      <button onClick={fetchState} className="px-6 py-2.5 bg-orange-500 text-black font-black rounded-full text-sm">{t[language].bingo.refresh}</button>
-      <button onClick={() => setSelectedStake(null)} className="text-white/40 text-xs underline mt-2">{t[language].bingo.changeStake}</button>
-    </div>
-  );
+        <div className="relative z-10 flex flex-col items-center text-center">
+          {/* Logo with 3D drop-shadow */}
+          <div className="relative mb-5">
+            <img
+              src="/hero.png"
+              alt="Choice Bingo"
+              className="w-64 max-w-[85vw] object-contain drop-shadow-[0_10px_25px_rgba(236,72,153,0.45)] animate-pulse"
+            />
+          </div>
+
+          {/* 3D Casino Bingo Ball Loading Spinner */}
+          <div className="relative flex items-center justify-center mb-4">
+            {/* Spinning Outer Ring */}
+            <div
+              className="w-16 h-16 rounded-full border-4 border-t-pink-500 border-r-yellow-400 border-b-cyan-400 border-l-transparent animate-spin"
+              style={{
+                boxShadow: '0 0 20px rgba(236, 72, 153, 0.5)',
+              }}
+            />
+            {/* 3D Center Sphere */}
+            <div
+              className="absolute w-10 h-10 rounded-full flex items-center justify-center font-black text-white text-sm"
+              style={{
+                background: 'radial-gradient(circle at 35% 25%, #ff2a8d 0%, #db2777 50%, #831843 100%)',
+                boxShadow: 'inset 0 2px 3px rgba(255,255,255,0.8), 0 3px 6px rgba(0,0,0,0.5)',
+              }}
+            >
+              <span className="drop-shadow">7</span>
+            </div>
+          </div>
+
+          {/* Glowing Brand Headline */}
+          <h2 className="text-xl font-black tracking-wider uppercase bg-gradient-to-r from-purple-300 via-pink-400 to-yellow-300 bg-clip-text text-transparent drop-shadow-[0_0_12px_rgba(236,72,153,0.5)] mb-1">
+            ChoiceBingo
+          </h2>
+          <p className="text-xs font-bold text-slate-300 tracking-widest uppercase animate-pulse">
+            {t[language].bingo.preparingNext}
+          </p>
+
+          {/* 3D Sleek Progress Shimmer Track */}
+          <div
+            className="w-48 h-1.5 rounded-full overflow-hidden mt-4"
+            style={{
+              background: 'rgba(255, 255, 255, 0.1)',
+              boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.5)',
+            }}
+          >
+            <div
+              className="h-full rounded-full w-24 animate-[pulse_1.5s_ease-in-out_infinite]"
+              style={{
+                background: 'linear-gradient(90deg, #ec4899, #facc15, #34d399)',
+                boxShadow: '0 0 10px rgba(236, 72, 153, 0.8)',
+              }}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!game) {
+    return (
+      <div
+        className="h-[calc(100dvh-80px)] w-full flex flex-col items-center justify-center text-white gap-4 p-6 text-center select-none"
+        style={{
+          background: 'radial-gradient(circle at 50% 40%, #1a123a 0%, #0c0d20 50%, #03040a 100%)',
+        }}
+      >
+        <img
+          src="/hero.png"
+          alt="Choice Bingo"
+          className="w-56 max-w-[80vw] object-contain mb-2 drop-shadow-[0_10px_25px_rgba(236,72,153,0.4)] animate-pulse"
+        />
+        <h2 className="text-xl font-black tracking-wider uppercase bg-gradient-to-r from-purple-300 via-pink-400 to-yellow-300 bg-clip-text text-transparent drop-shadow-[0_0_10px_rgba(236,72,153,0.5)]">
+          ChoiceBingo
+        </h2>
+        <p className="font-black text-sm text-yellow-300 drop-shadow-sm">{t[language].bingo.preparingNext}</p>
+        <button
+          onClick={fetchState}
+          className="px-7 py-2.5 rounded-full font-black text-sm active:translate-y-1 transition-all select-none cursor-pointer"
+          style={{
+            background: 'linear-gradient(180deg, #fef08a 0%, #facc15 35%, #ca8a04 100%)',
+            boxShadow: '0 4px 0 #854d0e, 0 6px 15px rgba(234,179,8,0.4)',
+            color: '#451a03',
+          }}
+        >
+          {t[language].bingo.refresh}
+        </button>
+        <button
+          onClick={() => setSelectedStake(null)}
+          className="text-slate-400 text-xs underline mt-2 hover:text-white transition-colors cursor-pointer"
+        >
+          {t[language].bingo.changeStake}
+        </button>
+      </div>
+    );
+  }
 
   const renderCallingBoard = () => {
     const recent = [...called].reverse().slice(0, 4);
