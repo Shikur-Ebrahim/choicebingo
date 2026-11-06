@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import WebApp from '@twa-dev/sdk';
 import { useGameStore } from '../store/gameStore';
 import { t } from '../lib/translations';
+import { uploadImage } from '../lib/upload';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -123,21 +124,7 @@ export default function Deposit() {
   };
 
   const uploadScreenshot = async (file: File): Promise<string> => {
-    const initData = typeof WebApp !== 'undefined' ? WebApp.initData : '';
-    const res = await fetch(`${API_URL}/upload/presign`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-telegram-init-data': initData },
-      body: JSON.stringify({ filename: file.name, contentType: file.type })
-    });
-    if (!res.ok) throw new Error('Could not get upload URL');
-    const { uploadUrl, publicUrl } = await res.json();
-    const uploadRes = await fetch(uploadUrl, {
-      method: 'PUT',
-      headers: { 'Content-Type': file.type },
-      body: file
-    });
-    if (!uploadRes.ok) throw new Error('Screenshot upload failed. Check R2 CORS settings.');
-    return publicUrl;
+    return await uploadImage(file);
   };
 
   const handleSubmit = async () => {

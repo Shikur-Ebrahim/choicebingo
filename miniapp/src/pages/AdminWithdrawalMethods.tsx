@@ -3,6 +3,7 @@ import { useGameStore } from '../store/gameStore';
 import { ArrowLeft, Plus, Edit2, Trash2, UploadCloud, Save, X, ChevronDown, CheckCircle2, CreditCard } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import WebApp from '@twa-dev/sdk';
+import { uploadImage } from '../lib/upload';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -117,33 +118,12 @@ export default function AdminWithdrawalMethods() {
     } catch (err) { console.error(err); }
   };
 
-  const uploadLogo = async (file: File): Promise<string> => {
-    const initData = typeof WebApp !== 'undefined' ? WebApp.initData : '';
-    const res = await fetch(`${API_URL}/upload/presign`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-telegram-init-data': initData },
-      body: JSON.stringify({ filename: file.name, contentType: file.type })
-    });
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.error || 'Failed to get upload URL');
-    }
-    const { uploadUrl, publicUrl } = await res.json();
-    const uploadRes = await fetch(uploadUrl, {
-      method: 'PUT',
-      headers: { 'Content-Type': file.type },
-      body: file
-    });
-    if (!uploadRes.ok) throw new Error('Cloudflare rejected the upload. Check R2 CORS settings.');
-    return publicUrl;
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
       let finalLogoUrl = existingLogoUrl;
-      if (file) finalLogoUrl = await uploadLogo(file);
+      if (file) finalLogoUrl = await uploadImage(file);
 
       const payload = { ...formData, logo_url: finalLogoUrl, is_active: true };
       const initData = typeof WebApp !== 'undefined' ? WebApp.initData : '';
