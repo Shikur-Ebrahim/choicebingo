@@ -1,0 +1,25 @@
+{
+  "buildCommand": "cd miniapp && npm install && npm run build",
+  "outputDirectory": "miniapp/dist",
+  "framework": "vite",
+  "headers": [
+    {
+      "source": "/audio/(.*)",
+      "headers": [
+        { "key": "Content-Type", "value": "audio/mpeg" },
+        { "key": "Accept-Ranges", "value": "bytes" },
+        { "key": "Cache-Control", "value": "public, max-age=3600, must-revalidate" }
+      ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "http://169.58.138.229:3002/api/:path*"
+    },
+    {
+      "source": "/((?!assets/|audio/|.*\\.(?:ico|png|jpg|jpeg|svg|mp3|wav|ogg|json|webp|webmanifest)).*)",
+      "destination": "/index.html"
+    }
+  ]
+}
