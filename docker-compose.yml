@@ -17,6 +17,6 @@ services:
     container_name: choicebingo-api
     restart: unless-stopped
     ports:
-      - "3002:3002"
+      - "3004:3002"
     env_file:
       - ./api/.env
