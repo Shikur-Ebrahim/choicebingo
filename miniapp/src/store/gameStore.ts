@@ -83,9 +83,28 @@ export const useGameStore = create<GameStore>()(
             set({ user: data.user, loading: false, isBlocked: false });
           } else if (response.status === 403) {
             set({ loading: false, isBlocked: true, user: null });
+          } else {
+            // Direct Supabase fetch fallback
+            const tgId = WebApp.initDataUnsafe?.user?.id?.toString();
+            if (tgId) {
+              const { data: dbUser } = await supabase.from('users').select('*').eq('telegram_id', tgId).maybeSingle();
+              if (dbUser) {
+                set({ user: dbUser, loading: false });
+              }
+            }
           }
         } catch (error: any) {
           console.error('Error fetching user:', error);
+          const tgId = WebApp.initDataUnsafe?.user?.id?.toString();
+          if (tgId) {
+            try {
+              const { data: dbUser } = await supabase.from('users').select('*').eq('telegram_id', tgId).maybeSingle();
+              if (dbUser) {
+                set({ user: dbUser, loading: false });
+                return;
+              }
+            } catch (_) {}
+          }
           set({ loading: false });
         }
       },
