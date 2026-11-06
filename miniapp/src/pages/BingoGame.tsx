@@ -563,8 +563,62 @@ export default function BingoGame() {
         } else if (d.game) {
           setGame(d.game); setTaken(d.taken_cartelas ?? []); setMyCard(d.my_card ?? null);
         }
+      } else {
+        // Direct Supabase fallback if API returns non-ok
+        const { data: dbGame } = await supabase
+          .from('bingo_games')
+          .select('*')
+          .eq('stake', selectedStake)
+          .in('status', ['waiting', 'calling'])
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (dbGame) {
+          setGame(dbGame as BGame);
+          if (dbGame.id !== gameIdRef.current) {
+            gameIdRef.current = dbGame.id;
+            prevCalledLenRef.current = dbGame.called_numbers?.length || 0;
+            setManuallyMarked(new Set());
+          }
+          const { data: pRows } = await supabase
+            .from('bingo_players')
+            .select('cartela_number, telegram_id, card_matrix')
+            .eq('game_id', dbGame.id);
+
+          const takenNums = (pRows || []).map((p: any) => Number(p.cartela_number));
+          setTaken(takenNums);
+          const myTgId = user?.telegram_id || WebApp?.initDataUnsafe?.user?.id?.toString();
+          if (myTgId) {
+            const myRows = (pRows || []).filter((p: any) => p.telegram_id === myTgId);
+            const myCart = myRows.map((p: any) => ({ cartela_number: p.cartela_number, card_matrix: p.card_matrix }));
+            setMyCartelas(myCart);
+            if (myCart.length > 0) setMyCard(myCart[0]);
+          }
+        }
       }
-    } catch { } finally { setLoading(false); }
+    } catch {
+      // Direct Supabase fallback on network exception
+      try {
+        const { data: dbGame } = await supabase
+          .from('bingo_games')
+          .select('*')
+          .eq('stake', selectedStake)
+          .in('status', ['waiting', 'calling'])
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (dbGame) {
+          setGame(dbGame as BGame);
+          if (dbGame.id !== gameIdRef.current) {
+            gameIdRef.current = dbGame.id;
+            prevCalledLenRef.current = dbGame.called_numbers?.length || 0;
+            setManuallyMarked(new Set());
+          }
+        }
+      } catch {}
+    } finally { setLoading(false); }
   }, [selectedStake]);
 
   useEffect(() => { if (selectedStake) fetchState(); }, [selectedStake, fetchState]);
