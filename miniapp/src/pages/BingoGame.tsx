@@ -752,44 +752,36 @@ export default function BingoGame() {
 
   const hasCelebratedRef = useRef<string | null>(null);
 
-  // Fire celebration when game finishes — play sound + fetch winner card
+  // Fire celebration when game finishes — play stop sound + display 3D celebration card by any means
   useEffect(() => {
     if (game?.status !== 'finished') return;
     if (hasCelebratedRef.current === game.id) return;
 
-    // Suppress celebration if game finished more than 3500ms ago (e.g. user just opened the page)
+    // Suppress only if game finished more than 30s ago (stale game history)
     const finishTime = game.finished_at ? new Date(game.finished_at).getTime() : 0;
-    if (finishTime > 0 && Date.now() - finishTime > 3500) {
+    if (finishTime > 0 && Date.now() - finishTime > 30_000) {
       hasCelebratedRef.current = game.id;
       fetchState();
       return;
     }
 
-    // Safety fallback: if finished game has no winner details after 4s, clear and move to next game
-    const fallbackTimer = setTimeout(() => {
-      if (hasCelebratedRef.current !== game.id) {
-        hasCelebratedRef.current = game.id;
-        setCelebration(null);
-        setMyCard(null);
-        setMyCartelas([]);
-        setActiveCartelaIdx(0);
-        setTaken([]);
-        fetchState();
-        refreshUser();
-      }
-    }, 4000);
-
-    // Guard: wait for backend to finish populating winner fields before celebrating
-    if (!game.winner_cartela && game.winner_first_name !== 'REMATCH') {
-      return () => clearTimeout(fallbackTimer);
-    }
-    clearTimeout(fallbackTimer);
-
     hasCelebratedRef.current = game.id;
 
-    // ── REMATCH: 3+ way tie ───────────────────────────────────────────────────
+    // 1. Play stop.mp3 sound immediately with dual audio fallback for 100% reliability
+    playSpecial('stop');
+    try {
+      const directAudio = new Audio(`/audio/bingo/stop.mp3?v=${AUDIO_VERSION}`);
+      directAudio.volume = 1.0;
+      directAudio.play().catch(() => {});
+    } catch {}
+
+    // 2. Vibration / haptic feedback
+    if (WebApp?.HapticFeedback) {
+      WebApp.HapticFeedback.notificationOccurred('success');
+    }
+
+    // 3. ── REMATCH: 3+ way tie ──
     if (game.winner_first_name === 'REMATCH') {
-      playSpecial('stop');
       setCelebration({
         winner_name: 'REMATCH',
         winner_cartela: 0,
@@ -801,56 +793,81 @@ export default function BingoGame() {
       return;
     }
 
-    // ── Normal or 2-way tie ───────────────────────────────────────────────────
+    // 4. ── Normal Win or 2-way tie ──
     const iWon = game.winner_telegram_id === String(user?.telegram_id);
     let isMounted = true;
-    playSpecial('stop');
-      
-      if (game.winner_first_name && game.winner_first_name.includes(' & ')) {
-        fetch(`${API}/bingo/winners?game_id=${game.id}`, { headers: hdrs() })
+
+    if (game.winner_first_name && game.winner_first_name.includes(' & ')) {
+      fetch(`${API}/bingo/winners?game_id=${game.id}`, { headers: hdrs() })
+        .then(r => r.json())
+        .then(data => {
+          if (!isMounted) return;
+          setCelebration({
+            winner_name: game.winner_first_name || 'Players',
+            winner_cartela: 0,
+            winner_prize: game.winner_prize || 0,
+            winner_matrix: null,
+            winners_list: data.winners,
+            iWon,
+            called: [...(game.called_numbers || [])],
+          });
+        })
+        .catch(() => {
+          if (isMounted) {
+            setCelebration({
+              winner_name: game.winner_first_name || 'Players',
+              winner_cartela: 0,
+              winner_prize: game.winner_prize || 0,
+              winner_matrix: null,
+              iWon,
+              called: [...(game.called_numbers || [])],
+            });
+          }
+        });
+    } else {
+      const localCard = myCartelas.find(c => c.cartela_number === game.winner_cartela)?.card_matrix;
+      if (localCard) {
+        setCelebration({
+          winner_name: game.winner_first_name || 'Player',
+          winner_cartela: game.winner_cartela || 0,
+          winner_prize: game.winner_prize || 0,
+          winner_matrix: localCard,
+          iWon,
+          called: [...(game.called_numbers || [])],
+        });
+      } else if (game.winner_cartela) {
+        // Immediately show celebration card so user sees it with zero delay!
+        setCelebration({
+          winner_name: game.winner_first_name || 'Player',
+          winner_cartela: game.winner_cartela,
+          winner_prize: game.winner_prize || 0,
+          winner_matrix: null,
+          iWon,
+          called: [...(game.called_numbers || [])],
+        });
+
+        fetch(`${API}/bingo/card?game_id=${game.id}&cartela=${game.winner_cartela}`, { headers: hdrs() })
           .then(r => r.json())
           .then(data => {
             if (!isMounted) return;
-            setCelebration({
-              winner_name: game.winner_first_name || 'Player',
-              winner_cartela: 0,
-              winner_prize: game.winner_prize!,
-              winner_matrix: null,
-              winners_list: data.winners,
-              iWon, called: [...game.called_numbers]
-            });
-          }).catch(() => {
-            if (isMounted) setCelebration({ winner_name: game.winner_first_name || 'Player', winner_cartela: 0, winner_prize: game.winner_prize!, winner_matrix: null, iWon, called: [...game.called_numbers] });
-          });
+            setCelebration(prev => (prev ? { ...prev, winner_matrix: data.matrix || null } : null));
+          })
+          .catch(() => {});
       } else {
-        const localCard = myCartelas.find(c => c.cartela_number === game.winner_cartela)?.card_matrix;
-        if (localCard) {
-          setCelebration({
-            winner_name: game.winner_first_name || 'Player',
-            winner_cartela: game.winner_cartela!,
-            winner_prize: game.winner_prize!,
-            winner_matrix: localCard,
-            iWon, called: [...(game.called_numbers || [])]
-          });
-        } else {
-          fetch(`${API}/bingo/card?game_id=${game.id}&cartela=${game.winner_cartela}`, { headers: hdrs() })
-            .then(r => r.json())
-            .then(data => {
-              if (!isMounted) return;
-              setCelebration({
-                winner_name: game.winner_first_name || 'Player',
-                winner_cartela: game.winner_cartela!,
-                winner_prize: game.winner_prize!,
-                winner_matrix: data.matrix || null,
-                iWon, called: [...(game.called_numbers || [])]
-              });
-            }).catch(() => {
-              if (isMounted) setCelebration({ winner_name: game.winner_first_name || 'Player', winner_cartela: game.winner_cartela!, winner_prize: game.winner_prize!, winner_matrix: null, iWon, called: [...(game.called_numbers || [])] });
-            });
-        }
+        // Fallback for any other game finish: by any means show celebration card!
+        setCelebration({
+          winner_name: game.winner_first_name || 'Bingo Winner',
+          winner_cartela: 0,
+          winner_prize: game.winner_prize || 0,
+          winner_matrix: null,
+          iWon,
+          called: [...(game.called_numbers || [])],
+        });
       }
-      return () => { isMounted = false; };
-  }, [game?.status, game?.id, game?.winner_cartela, game?.winner_first_name]);
+    }
+
+    return () => { isMounted = false; };
+  }, [game?.status, game?.id, game?.winner_cartela, game?.winner_first_name, game?.winner_prize, game?.finished_at]);
 
   // Auto-dismiss celebration after exactly 5 seconds with live countdown
   useEffect(() => {
@@ -1343,7 +1360,7 @@ export default function BingoGame() {
   }
 
   const renderCallingBoard = () => {
-    const recent = [...called].reverse().slice(0, 4);
+    const recent = [...called].reverse().slice(0, 6);
     const currentLetter = lastNum ? getLetter(lastNum) : null;
     const currentAmharic = lastNum ? AMHARIC_NUM[lastNum] : null;
 
@@ -1477,22 +1494,22 @@ export default function BingoGame() {
                     {currentAmharic || (recent.length === 0 ? 'በመጠበቅ ላይ...' : '')}
                   </span>
                   
-                  {/* Previous Called Balls — mini 3D spheres */}
+                  {/* Previous Called Balls — 5 mini 3D spheres */}
                   <div className="flex items-center gap-1 mt-1">
-                    {recent.slice(1, 4).map((num, idx) => {
+                    {recent.slice(1, 6).map((num, idx) => {
                       const l = getLetter(num);
                       return (
                         <div
                           key={`${num}-${idx}`}
-                          className="w-6 h-6 rounded-full flex flex-col items-center justify-center shadow-md select-none shrink-0"
+                          className="w-[23px] h-[23px] rounded-full flex flex-col items-center justify-center shadow-md select-none shrink-0"
                           style={{
                             background: 'radial-gradient(circle at 35% 25%, #ffffff 0%, #f1f5f9 35%, #cbd5e1 70%, #64748b 100%)',
                             boxShadow: 'inset -2px -2px 3px rgba(15, 23, 42, 0.4), inset 1px 1.5px 2px rgba(255, 255, 255, 0.9), 0 2px 4px rgba(0, 0, 0, 0.4)',
                             border: '1px solid rgba(255, 255, 255, 0.7)',
                           }}
                         >
-                          <span className="text-[5.5px] font-black leading-none text-amber-500 font-mono">{l}</span>
-                          <span className="text-[9px] font-black leading-none text-slate-900">{num}</span>
+                          <span className="text-[5px] font-black leading-none text-amber-500 font-mono">{l}</span>
+                          <span className="text-[8.5px] font-black leading-none text-slate-900">{num}</span>
                         </div>
                       );
                     })}
@@ -2220,158 +2237,278 @@ export default function BingoGame() {
         {game.status === 'waiting' ? renderCartelaPicker() : renderCallingBoard()}
       </div>
 
-      {/* Winner Celebration */}
+      {/* Winner Celebration (Fantastic 3D Luxury Casino Celebration Card) */}
       {celebration && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center p-3 bg-black/95 backdrop-blur-md overflow-y-auto">
-          <div className="bg-gradient-to-b from-[#1a0a3e] to-[#0a0f1e] border border-yellow-400/30 rounded-3xl p-4 text-center max-w-sm w-full shadow-[0_0_40px_rgba(250,204,21,0.3)] flex flex-col items-center relative">
-
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/90 backdrop-blur-md overflow-y-auto animate-in fade-in duration-200">
+          <div
+            className="rounded-3xl p-5 text-center max-w-sm w-full relative select-none flex flex-col items-center animate-in zoom-in-95 duration-300"
+            style={{
+              background: 'radial-gradient(ellipse at 50% -10%, #311042 0%, #150928 45%, #080314 100%)',
+              border: '2px solid rgba(245, 158, 11, 0.75)',
+              boxShadow: '0 25px 60px rgba(0,0,0,0.95), 0 0 50px rgba(245, 158, 11, 0.35), inset 0 2px 4px rgba(255,255,255,0.25)',
+            }}
+          >
             {/* Close button */}
             <button
-              onClick={() => { setCelebration(null); setMyCard(null); setMyCartelas([]); setActiveCartelaIdx(0); setTaken([]); fetchState(); refreshUser(); }}
-              className="absolute top-3 right-3 w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-white/50 active:scale-90 transition-all text-sm font-black z-10"
-            >✕</button>
+              onClick={() => {
+                setCelebration(null);
+                setMyCard(null);
+                setMyCartelas([]);
+                setActiveCartelaIdx(0);
+                setTaken([]);
+                fetchState();
+                refreshUser();
+              }}
+              className="absolute top-3.5 right-3.5 w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 text-white/70 hover:text-white flex items-center justify-center border border-white/20 active:scale-90 transition-all text-xs font-black z-20"
+            >
+              ✕
+            </button>
 
             {/* ── REMATCH ── */}
-            {celebration.winner_name === 'REMATCH' ? (<>
-              <div className="text-5xl mb-2 animate-spin">🔄</div>
-              <h2 className="text-3xl font-black text-orange-400 mb-2">{t[language].bingo.rematch}</h2>
-              <div className="bg-orange-500/10 rounded-2xl p-3 mb-3 w-full border border-orange-500/30">
-                <p className="text-orange-300 font-black text-sm mb-1">{t[language].bingo.tieDesc}</p>
-                <p className="text-white/60 text-xs">{t[language].bingo.stakeRefunded}</p>
-                <p className="text-white/40 text-xs mt-1">{t[language].bingo.newGameStarts}</p>
-              </div>
-
-            {/* ── 2-WAY TIE🌟 */}
-              </>) : celebration.winner_name.includes(' & ') ? (<>
-                <h2 className="text-xl font-black text-yellow-400 mb-1">{t[language].bingo.tieTitle}</h2>
-                <div className="mb-2 inline-block bg-emerald-500/20 text-emerald-400 px-3 py-0.5 rounded-full font-black text-sm border border-emerald-500/30">
-                  🎉 {Number(celebration.winner_prize || 0).toLocaleString()} ETB {t[language].bingo.each}
+            {celebration.winner_name === 'REMATCH' ? (
+              <>
+                <div className="text-5xl mb-2 animate-spin filter drop-shadow-[0_8px_16px_rgba(249,115,22,0.5)]">🔄</div>
+                <h2 className="text-3xl font-black text-orange-400 mb-2 drop-shadow-sm">{t[language].bingo.rematch}</h2>
+                <div
+                  className="rounded-2xl p-3.5 mb-3 w-full border"
+                  style={{
+                    background: 'linear-gradient(180deg, rgba(249,115,22,0.15) 0%, rgba(249,115,22,0.05) 100%)',
+                    borderColor: 'rgba(249,115,22,0.4)',
+                  }}
+                >
+                  <p className="text-orange-300 font-black text-sm mb-1">{t[language].bingo.tieDesc}</p>
+                  <p className="text-white/70 text-xs font-medium">{t[language].bingo.stakeRefunded}</p>
+                  <p className="text-white/50 text-xs mt-1">{t[language].bingo.newGameStarts}</p>
                 </div>
-                
+                <div
+                  className="py-1.5 px-4 rounded-full text-[11px] font-black flex items-center gap-1.5 shadow-md mt-1"
+                  style={{
+                    background: 'linear-gradient(180deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.04) 100%)',
+                    border: '1px solid rgba(249,115,22,0.4)',
+                    color: '#fdba74',
+                  }}
+                >
+                  <span className="animate-spin text-[10px]">⏳</span>
+                  <span>{t[language].bingo.returning} ({celebrationSecondsLeft}s)</span>
+                </div>
+              </>
+            ) : celebration.winner_name.includes(' & ') ? (
+              <>
+                {/* ── 2-WAY TIE ── */}
+                <div className="flex flex-col items-center mb-2.5">
+                  <div className="text-5xl mb-1 filter drop-shadow-[0_8px_16px_rgba(245,158,11,0.6)] animate-bounce">🏆</div>
+                  <h2 className="text-xl font-black text-amber-300 mb-1 drop-shadow-sm">{t[language].bingo.tieTitle}</h2>
+                  <div
+                    className="px-5 py-1.5 rounded-full font-black text-sm text-white flex items-center gap-1.5 shadow-md"
+                    style={{
+                      background: 'linear-gradient(180deg, #10b981 0%, #059669 100%)',
+                      boxShadow: '0 3px 0 0 #047857, 0 6px 15px rgba(16, 185, 129, 0.45)',
+                    }}
+                  >
+                    <span>🎉</span>
+                    <span>{Number(celebration.winner_prize || 0).toLocaleString()} ETB {t[language].bingo.each}</span>
+                  </div>
+                </div>
+
                 {celebration.winners_list && celebration.winners_list.length > 0 ? (
                   <div className="flex gap-2 w-full justify-center overflow-x-auto pb-2" style={{ scrollbarWidth: 'none' }}>
                     {celebration.winners_list.map((w, idx) => {
                       const winCells = getWinningCells(w.card_matrix, celebration.called);
                       const winTitle = getWinningPatternTitle(w.card_matrix, celebration.called);
                       return (
-                      <div key={idx} className="flex-shrink-0 w-[140px] bg-white/5 rounded-2xl p-2 border border-white/10 flex flex-col items-center">
-                        <p className="text-white font-black text-sm truncate w-full">{w.first_name}</p>
-                        <div className="flex items-center justify-between w-full mb-1">
-                          <p className="text-yellow-400/70 text-[9px] font-bold">{t[language].bingo.cartelaNum}{w.cartela_number}</p>
-                          <span className="text-emerald-400 text-[7px] font-black">{winTitle.replace(' BINGO!', '')}</span>
-                        </div>
-                        <div className="w-full">
-                          <div className="grid grid-cols-5">
-                            {['B','I','N','G','O'].map(l => (
-                              <div key={l} className="flex items-center justify-center py-0.5 font-black text-white text-[9px]" style={{ background: l==='B'?'#3b82f6':l==='I'?'#8b5cf6':l==='N'?'#ec4899':l==='G'?'#22c55e':'#3b82f6' }}>{l}</div>
-                            ))}
+                        <div
+                          key={idx}
+                          className="flex-shrink-0 w-[140px] rounded-2xl p-2.5 flex flex-col items-center shadow-lg"
+                          style={{
+                            background: 'linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%)',
+                            border: '1.5px solid rgba(245, 158, 11, 0.4)',
+                          }}
+                        >
+                          <p className="text-white font-black text-sm truncate w-full">{w.first_name}</p>
+                          <div className="flex items-center justify-between w-full mb-1.5">
+                            <p className="text-yellow-400 font-bold text-[9px]">{t[language].bingo.cartelaNum}{w.cartela_number}</p>
+                            <span className="text-emerald-400 text-[8px] font-black">{winTitle.replace(' BINGO!', '')}</span>
                           </div>
-                          <div className="grid grid-cols-5 gap-[1px] p-[1px] bg-[#0a0f1e]">
-                            {w.card_matrix.map((row, r) => row.map((num, c) => {
-                              const isFree = num === 0;
-                              const isWin = winCells.has(`${r}-${c}`);
-                              const isCalled = celebration.called?.map(Number).includes(Number(num));
-                              return (
-                                <div key={c} className={`aspect-square flex items-center justify-center text-[8px] font-black ${
-                                  isFree
-                                    ? 'bg-yellow-400 text-yellow-900 font-black'
-                                    : isWin
-                                    ? 'bg-emerald-500 text-white shadow-[0_0_4px_rgba(16,185,129,0.9)] ring-1 ring-yellow-300 font-black'
-                                    : isCalled
-                                    ? 'bg-amber-100 text-slate-700'
-                                    : 'bg-white text-slate-700'
-                                }`}>
-                                  {isFree ? '★' : num}
-                                </div>
-                              )
-                            }))}
+                          <div className="w-full rounded-xl overflow-hidden border border-amber-400/40">
+                            <div className="grid grid-cols-5">
+                              {['B', 'I', 'N', 'G', 'O'].map(l => (
+                                <div key={l} className="flex items-center justify-center py-0.5 font-black text-white text-[9px]" style={{ background: l === 'B' ? '#3b82f6' : l === 'I' ? '#8b5cf6' : l === 'N' ? '#ec4899' : l === 'G' ? '#22c55e' : '#3b82f6' }}>{l}</div>
+                              ))}
+                            </div>
+                            <div className="grid grid-cols-5 gap-[1px] p-[1px] bg-slate-900">
+                              {w.card_matrix.map((row, r) =>
+                                row.map((num, c) => {
+                                  const isFree = num === 0;
+                                  const isWin = winCells.has(`${r}-${c}`);
+                                  const isCalled = celebration.called?.map(Number).includes(Number(num));
+                                  return (
+                                    <div
+                                      key={c}
+                                      className={`aspect-square flex items-center justify-center text-[8px] font-black ${
+                                        isFree
+                                          ? 'bg-amber-400 text-yellow-950 font-black'
+                                          : isWin
+                                          ? 'bg-emerald-500 text-white shadow-[0_0_4px_rgba(16,185,129,0.9)] ring-1 ring-yellow-300 font-black'
+                                          : isCalled
+                                          ? 'bg-amber-100 text-slate-800'
+                                          : 'bg-white text-slate-800'
+                                      }`}
+                                    >
+                                      {isFree ? '★' : num}
+                                    </div>
+                                  );
+                                })
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );})}
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="bg-white/5 rounded-2xl p-3 mb-3 w-full border border-white/10">
                     <p className="text-white font-black text-lg">{celebration.winner_name}</p>
                   </div>
                 )}
-                
-                <p className="text-white/40 text-[10px] font-bold animate-pulse">{t[language].bingo.returning} ({celebrationSecondsLeft}s)</p>
-  
-              {/* 🌟  ── */}
-            </>) : (<>
-              {/* Trophy + BINGO label — NO overlap */}
-              <div className="flex flex-col items-center mb-3">
-                <div className="text-5xl mb-1 animate-bounce">🏆</div>
-                <div className="bg-yellow-400 text-yellow-900 px-6 py-1 rounded-full font-black text-2xl tracking-widest shadow-[0_0_20px_rgba(250,204,21,0.5)]">
-                  BINGO!
-                </div>
-              </div>
 
-              {/* Winner info */}
-              <div className="w-full bg-white/5 rounded-2xl p-3 mb-3 border border-white/10">
-                <p className="text-white/50 text-[9px] uppercase tracking-widest mb-1">{t[language].bingo.winner}</p>
-                <p className="text-white font-black text-xl leading-tight">{celebration.winner_name}</p>
-                <p className="text-yellow-400/70 text-xs font-bold mt-0.5">{t[language].bingo.cartelaNum}{celebration.winner_cartela}</p>
-                <div className="mt-2 inline-block bg-emerald-500 text-white px-5 py-1 rounded-full font-black text-lg shadow-[0_0_15px_rgba(16,185,129,0.4)]">
-                  🎉 {Number(celebration.winner_prize || 0).toLocaleString()} ETB
+                <div
+                  className="py-1.5 px-4 rounded-full text-[11px] font-black flex items-center gap-1.5 shadow-md mt-1"
+                  style={{
+                    background: 'linear-gradient(180deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.04) 100%)',
+                    border: '1px solid rgba(245, 158, 11, 0.35)',
+                    color: '#fef08a',
+                  }}
+                >
+                  <span className="animate-spin text-[10px]">⏳</span>
+                  <span>{t[language].bingo.returning} ({celebrationSecondsLeft}s)</span>
                 </div>
-              </div>
-
-              {/* Winner Card — green win cells, gold ring, pattern badge */}
-              {celebration.winner_matrix ? (() => {
-                const winCells = getWinningCells(celebration.winner_matrix, celebration.called);
-                const winTitle = getWinningPatternTitle(celebration.winner_matrix, celebration.called);
-                return (
-                  <div className="w-full rounded-2xl overflow-hidden border-2 border-yellow-400/50 mb-3 shadow-[0_0_25px_rgba(250,204,21,0.25)]">
-                    {/* BINGO header */}
-                    <div className="grid grid-cols-5">
-                      {BINGO_LETTERS.map(l => (
-                        <div key={l} className="flex items-center justify-center py-1.5 font-black text-white text-sm" style={{ background: LETTER_BG[l] }}>{l}</div>
-                      ))}
-                    </div>
-                    {/* Card grid */}
-                    <div className="grid grid-cols-5 gap-[2px] p-[2px] bg-slate-200">
-                      {Array.from({ length: 5 }).flatMap((_, r) => Array.from({ length: 5 }).map((_, c) => {
-                        const num = celebration.winner_matrix![r][c];
-                        const isFree = num === 0;
-                        const isWin = winCells.has(`${r}-${c}`);
-                        const isCalled = celebration.called?.map(Number).includes(Number(num));
-                        return (
-                          <div key={`${r}-${c}`} className={`aspect-square flex items-center justify-center font-black text-xs rounded transition-all ${
-                            isFree
-                              ? 'bg-yellow-400 text-yellow-900 font-black'
-                              : isWin
-                              ? 'bg-emerald-500 text-white font-black shadow-[0_0_8px_rgba(16,185,129,0.9)] ring-2 ring-yellow-300 scale-105 z-10'
-                              : isCalled
-                              ? 'bg-amber-100 text-slate-700'
-                              : 'bg-white text-slate-700'
-                          }`}>
-                            {isFree ? '★' : num}
-                          </div>
-                        );
-                      }))}
-                    </div>
-                    {/* Cartela label + Winning Rule Tag */}
-                    <div className="py-2 px-3 flex items-center justify-between bg-[#0a0f1e] border-t border-white/10">
-                      <p className="text-yellow-400 font-black text-[11px] tracking-wider uppercase">CARTELA # {celebration.winner_cartela}</p>
-                      <span className="text-emerald-400 text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 px-2.5 py-0.5 rounded-full border border-emerald-500/40 shadow-[0_0_6px_rgba(16,185,129,0.3)]">
-                        {winTitle}
-                      </span>
-                    </div>
+              </>
+            ) : (
+              <>
+                {/* ── FANTASTIC 3D SINGLE WINNER CELEBRATION ── */}
+                <div className="flex flex-col items-center mb-2.5">
+                  <div className="text-5xl mb-1 filter drop-shadow-[0_8px_16px_rgba(245,158,11,0.6)] animate-bounce">
+                    🏆
                   </div>
-                );
-              })() : (
-                <div className="w-full bg-white/5 rounded-2xl p-4 mb-3 border border-white/10 flex flex-col items-center">
-                  <div className="animate-spin text-2xl mb-1">⏳</div>
-                  <p className="text-white/60 text-xs font-bold">Loading winning cartela...</p>
+                  <div
+                    className="px-8 py-1.5 rounded-full font-black text-2xl tracking-widest text-slate-950 uppercase select-none"
+                    style={{
+                      background: 'linear-gradient(180deg, #fef08a 0%, #f59e0b 50%, #b45309 100%)',
+                      boxShadow: '0 4px 0 0 #78350f, 0 8px 20px rgba(245, 158, 11, 0.6), inset 0 2px 2px rgba(255,255,255,0.8)',
+                      textShadow: '0 1px 0 rgba(255,255,255,0.6)',
+                    }}
+                  >
+                    BINGO!
+                  </div>
                 </div>
-              )}
 
-              {/* Auto-dismiss indicator */}
-              <p className="text-white/40 text-[10px] font-bold animate-pulse">{t[language].bingo.returning} ({celebrationSecondsLeft}s)</p>
-            </>)}
+                {/* 3D Winner Info Card */}
+                <div
+                  className="w-full rounded-2xl p-3 mb-3 flex flex-col items-center"
+                  style={{
+                    background: 'linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%)',
+                    border: '1px solid rgba(245, 158, 11, 0.35)',
+                    boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.15)',
+                  }}
+                >
+                  <p className="text-amber-300 font-black text-[10px] uppercase tracking-widest mb-0.5">
+                    {celebration.iWon ? '🎉 YOU ARE THE WINNER!' : '🏆 BINGO WINNER'}
+                  </p>
+                  <p className="text-white font-black text-xl leading-tight drop-shadow-sm">{celebration.winner_name}</p>
+                  {celebration.winner_cartela > 0 && (
+                    <p className="text-yellow-400 font-bold text-xs mt-0.5">{t[language].bingo.cartelaNum}{celebration.winner_cartela}</p>
+                  )}
+                  <div
+                    className="mt-2.5 px-6 py-1.5 rounded-full font-black text-lg text-white flex items-center gap-1.5 shadow-md"
+                    style={{
+                      background: 'linear-gradient(180deg, #10b981 0%, #059669 100%)',
+                      boxShadow: '0 3px 0 0 #047857, 0 6px 15px rgba(16, 185, 129, 0.45)',
+                    }}
+                  >
+                    <span>🎉</span>
+                    <span>{Number(celebration.winner_prize || 0).toLocaleString()} ETB</span>
+                  </div>
+                </div>
 
+                {/* Winner Card 3D Display */}
+                {celebration.winner_matrix ? (
+                  (() => {
+                    const winCells = getWinningCells(celebration.winner_matrix, celebration.called);
+                    const winTitle = getWinningPatternTitle(celebration.winner_matrix, celebration.called);
+                    return (
+                      <div
+                        className="w-full rounded-2xl overflow-hidden mb-3"
+                        style={{
+                          border: '2px solid rgba(245, 158, 11, 0.7)',
+                          boxShadow: '0 10px 25px rgba(0,0,0,0.6), 0 0 20px rgba(245, 158, 11, 0.25)',
+                        }}
+                      >
+                        {/* BINGO Header */}
+                        <div className="grid grid-cols-5 text-center font-black text-white text-xs py-1.5">
+                          {BINGO_LETTERS.map(l => (
+                            <div key={l} style={{ background: LETTER_BG[l] }} className="py-1">{l}</div>
+                          ))}
+                        </div>
+                        {/* Card Grid */}
+                        <div className="grid grid-cols-5 gap-[2px] p-[2px] bg-slate-900">
+                          {Array.from({ length: 5 }).flatMap((_, r) =>
+                            Array.from({ length: 5 }).map((_, c) => {
+                              const num = celebration.winner_matrix![r][c];
+                              const isFree = num === 0;
+                              const isWin = winCells.has(`${r}-${c}`);
+                              const isCalled = celebration.called?.map(Number).includes(Number(num));
+                              return (
+                                <div
+                                  key={`${r}-${c}`}
+                                  className={`aspect-square flex items-center justify-center font-black text-xs rounded transition-all ${
+                                    isFree
+                                      ? 'bg-amber-400 text-yellow-950 font-black shadow-inner'
+                                      : isWin
+                                      ? 'bg-gradient-to-br from-emerald-400 to-emerald-600 text-white font-black shadow-[0_0_10px_rgba(16,185,129,0.95)] ring-2 ring-yellow-300 scale-105 z-10'
+                                      : isCalled
+                                      ? 'bg-amber-100 text-slate-800'
+                                      : 'bg-white text-slate-800'
+                                  }`}
+                                >
+                                  {isFree ? '★' : num}
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
+                        {/* Cartela Label + Winning Pattern Tag */}
+                        <div className="py-2 px-3 flex items-center justify-between bg-slate-950 border-t border-white/10">
+                          <p className="text-yellow-400 font-black text-[11px] tracking-wider uppercase">
+                            CARTELA # {celebration.winner_cartela}
+                          </p>
+                          <span className="text-emerald-400 text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 px-2.5 py-0.5 rounded-full border border-emerald-500/40 shadow-[0_0_6px_rgba(16,185,129,0.3)]">
+                            {winTitle}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })()
+                ) : (
+                  <div className="w-full bg-white/5 rounded-2xl p-4 mb-3 border border-white/10 flex flex-col items-center">
+                    <div className="animate-spin text-2xl mb-1">⏳</div>
+                    <p className="text-white/60 text-xs font-bold">Loading winning cartela...</p>
+                  </div>
+                )}
+
+                {/* 3D Countdown Return Pill */}
+                <div
+                  className="py-1.5 px-4 rounded-full text-[11px] font-black flex items-center gap-1.5 shadow-md mt-0.5"
+                  style={{
+                    background: 'linear-gradient(180deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.04) 100%)',
+                    border: '1px solid rgba(245, 158, 11, 0.35)',
+                    color: '#fef08a',
+                  }}
+                >
+                  <span className="animate-spin text-[10px]">⏳</span>
+                  <span>{t[language].bingo.returning} ({celebrationSecondsLeft}s)</span>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
