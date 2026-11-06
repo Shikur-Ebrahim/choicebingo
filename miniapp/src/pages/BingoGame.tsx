@@ -1017,14 +1017,69 @@ export default function BingoGame() {
   else if (game?.status === "calling") { statusTxt = "Active"; statusCls = "text-emerald-400"; }
 
   const Header = () => (
-    <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between shrink-0">
-      <div className="flex items-center space-x-3">
-        <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center text-white font-bold text-lg">{initial}</div>
-        <p className="font-bold text-sm uppercase tracking-wider text-slate-200">{user?.first_name || "USER"}</p>
+    <div
+      className="px-3.5 py-2.5 border-b flex items-center justify-between shrink-0"
+      style={{
+        background: 'linear-gradient(180deg, #1e293b 0%, #0f172a 100%)',
+        borderColor: 'rgba(255, 255, 255, 0.08)',
+        boxShadow: '0 4px 10px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.12)',
+      }}
+    >
+      <div className="flex items-center space-x-2.5">
+        <div
+          className="w-10 h-10 rounded-full flex items-center justify-center text-white font-black text-lg"
+          style={{
+            background: 'radial-gradient(circle at 35% 25%, #34d399 0%, #10b981 50%, #047857 100%)',
+            boxShadow: '0 3px 0 #064e3b, 0 3px 8px rgba(0,0,0,0.4), inset 0 1px 2px rgba(255,255,255,0.7)',
+            border: '1.5px solid #6ee7b7',
+          }}
+        >
+          {initial}
+        </div>
+        <div>
+          <p className="font-black text-sm uppercase tracking-wider text-slate-100 drop-shadow-sm leading-tight">
+            {user?.first_name || "USER"}
+          </p>
+          <span className="text-[8.5px] font-bold text-emerald-400 bg-emerald-500/15 px-1.5 py-0.5 rounded border border-emerald-500/30">
+            ONLINE
+          </span>
+        </div>
       </div>
-      <div className="flex items-center space-x-4 text-right">
-        <div className="flex flex-col items-center"><Gift size={14} className="text-purple-400 mb-0.5" /><p className="text-xs font-bold text-slate-300">{fm(user?.bonus_balance)} ETB</p></div>
-        <div className="flex flex-col items-end"><p className="text-[11px] text-slate-400">{t[language].bingo.wallet}</p><p className="text-sm font-bold text-green-400">{fm(user?.main_balance)} ETB</p></div>
+      <div className="flex items-center space-x-2 text-right">
+        {/* Bonus Balance 3D capsule */}
+        <div
+          className="flex flex-col items-center px-2 py-1 rounded-xl"
+          style={{
+            background: 'linear-gradient(180deg, #2e1065 0%, #170933 100%)',
+            border: '1px solid rgba(192, 132, 252, 0.35)',
+            boxShadow: '0 2px 0 #0f0720, inset 0 1px 1px rgba(255,255,255,0.1)',
+          }}
+        >
+          <div className="flex items-center gap-1">
+            <Gift size={11} className="text-purple-400" />
+            <span className="text-[8px] font-bold text-purple-300 uppercase">BONUS</span>
+          </div>
+          <p className="text-[11px] font-black text-purple-200 leading-tight">
+            {fm(user?.bonus_balance)} ETB
+          </p>
+        </div>
+
+        {/* Main Balance 3D capsule */}
+        <div
+          className="flex flex-col items-end px-2.5 py-1 rounded-xl"
+          style={{
+            background: 'linear-gradient(180deg, #064e3b 0%, #022c22 100%)',
+            border: '1px solid rgba(52, 211, 153, 0.4)',
+            boxShadow: '0 2px 0 #011a14, inset 0 1px 1px rgba(255,255,255,0.15)',
+          }}
+        >
+          <p className="text-[8px] font-bold text-emerald-300 uppercase leading-none">
+            {t[language].bingo.wallet}
+          </p>
+          <p className="text-xs font-black text-emerald-300 drop-shadow-[0_0_5px_rgba(52,211,153,0.5)] leading-tight">
+            {fm(user?.main_balance)} ETB
+          </p>
+        </div>
       </div>
     </div>
   );
@@ -1702,52 +1757,140 @@ export default function BingoGame() {
     const myNums = myCartelas.map(c => c.cartela_number);
     const canPickMore = myCartelas.length < maxCartelasPerUser;
     return (
-    <div className="flex-1 overflow-y-auto relative p-2 pb-16">
-      <div className="flex items-center justify-between mb-2">
-        <p className="text-[10px] text-cyan-300 font-black uppercase tracking-widest">
-          {canPickMore ? `TAP TO PICK — ${taken.length}/${maxPlayers} TAKEN` : `ALL CARTELAS SELECTED ✓`}
-        </p>
-        <p className="text-[10px] text-yellow-300 font-black">
-          {myCartelas.length}/{maxCartelasPerUser} PICKED
-        </p>
-      </div>
-      {/* My Cartelas chips */}
-      {myNums.length > 0 && (
-        <div className="flex gap-2 mb-2 flex-wrap">
-          {myNums.map(n => (
-            <span key={n} className="px-3 py-1 bg-emerald-500 text-white text-xs font-black rounded-full ring-2 ring-yellow-300">#{n} ✓</span>
-          ))}
+      <div className="flex-1 overflow-y-auto relative p-2.5 pb-16">
+        {/* 3D Header Bar: Status Capsule & Picked Badge */}
+        <div className="flex items-center justify-between mb-2.5 gap-2">
+          <div
+            className="flex items-center gap-1.5 px-3 py-1 rounded-full shadow-md"
+            style={{
+              background: 'linear-gradient(180deg, #0e2238 0%, #061320 100%)',
+              border: '1px solid rgba(34, 211, 238, 0.45)',
+              boxShadow: '0 2px 0 #020b12, inset 0 1px 1px rgba(255, 255, 255, 0.15)',
+            }}
+          >
+            <div className={`w-2 h-2 rounded-full ${canPickMore ? 'bg-cyan-400 animate-ping' : 'bg-emerald-400'}`} />
+            <p className="text-[9.5px] text-cyan-300 font-black uppercase tracking-wider">
+              {canPickMore ? `TAP TO PICK — ${taken.length}/${maxPlayers} TAKEN` : `ALL CARTELAS SELECTED ✓`}
+            </p>
+          </div>
+
+          <div
+            className="px-3 py-1 rounded-full text-center"
+            style={{
+              background: 'linear-gradient(180deg, #fef08a 0%, #facc15 40%, #ca8a04 100%)',
+              boxShadow: '0 2.5px 0 #854d0e, inset 0 1px 1px rgba(255,255,255,0.9)',
+              border: '1px solid #fef08a',
+            }}
+          >
+            <p className="text-[9.5px] text-[#451a03] font-black tracking-wider uppercase drop-shadow-sm">
+              {myCartelas.length}/{maxCartelasPerUser} PICKED
+            </p>
+          </div>
         </div>
-      )}
-      <div className="rounded-2xl border-[3px] border-cyan-400 overflow-hidden bg-[#05081a] shadow-[0_0_25px_rgba(34,211,238,0.4)]">
-        <div className="grid gap-[2px] p-[2px]" style={{ gridTemplateColumns: "repeat(10, 1fr)" }}>
-          {Array.from({ length: maxPlayers }, (_, i) => {
-            const n = i + 1;
-            const isTaken = taken.includes(n), isMine = myNums.includes(n), isBuying = buying === n;
-            if (isMine) {
+
+        {/* My Cartelas chips */}
+        {myNums.length > 0 && (
+          <div className="flex gap-2 mb-2.5 flex-wrap">
+            {myNums.map(n => (
+              <span
+                key={n}
+                className="px-3 py-1 text-white text-xs font-black rounded-full flex items-center gap-1"
+                style={{
+                  background: 'linear-gradient(180deg, #10b981 0%, #059669 100%)',
+                  boxShadow: '0 3px 0 #047857, inset 0 1px 1px rgba(255,255,255,0.7), 0 0 10px rgba(16,185,129,0.5)',
+                  border: '1.5px solid #fef08a',
+                }}
+              >
+                <span>CARTELA #{n}</span>
+                <span className="text-yellow-300 font-black">✓</span>
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* 3D Casino Board Container */}
+        <div
+          className="rounded-2xl p-1.5"
+          style={{
+            background: 'linear-gradient(180deg, #0b1329 0%, #020617 100%)',
+            border: '2px solid rgba(34, 211, 238, 0.65)',
+            boxShadow: '0 0 25px rgba(6, 182, 212, 0.35), inset 0 3px 8px rgba(0,0,0,0.8), 0 8px 24px rgba(0,0,0,0.7)',
+          }}
+        >
+          <div className="grid gap-[3px]" style={{ gridTemplateColumns: "repeat(10, 1fr)" }}>
+            {Array.from({ length: maxPlayers }, (_, i) => {
+              const n = i + 1;
+              const isTaken = taken.includes(n), isMine = myNums.includes(n), isBuying = buying === n;
+              
+              if (isMine) {
+                return (
+                  <div
+                    key={n}
+                    className="aspect-square flex flex-col items-center justify-center rounded-[6px] font-black z-10 select-none"
+                    style={{
+                      background: 'radial-gradient(circle at 35% 25%, #34d399 0%, #10b981 50%, #047857 100%)',
+                      boxShadow: '0 2.5px 0 #064e3b, 0 0 12px rgba(16,185,129,0.85), inset 0 1px 2px rgba(255,255,255,0.85)',
+                      border: '1.5px solid #fef08a',
+                      color: '#ffffff',
+                    }}
+                  >
+                    <span className="text-[10px] leading-none">{n}</span>
+                    <span className="text-[8px] text-yellow-300 leading-none">✓</span>
+                  </div>
+                );
+              }
+              
+              if (isTaken) {
+                return (
+                  <div
+                    key={n}
+                    className="aspect-square flex items-center justify-center rounded-[6px] text-[9.5px] font-black select-none"
+                    style={{
+                      background: 'linear-gradient(180deg, #3b0707 0%, #1c0505 100%)',
+                      boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.85), 0 1px 0 rgba(255,255,255,0.05)',
+                      border: '1px solid rgba(239, 68, 68, 0.25)',
+                      color: 'rgba(248, 113, 113, 0.4)',
+                    }}
+                  >
+                    <span className="line-through">{n}</span>
+                  </div>
+                );
+              }
+
               return (
-                <div key={n} className="aspect-square flex items-center justify-center rounded-[7px] text-[10px] font-black bg-emerald-500 text-white ring-[2.5px] ring-yellow-300 z-10">
-                  ✓
-                </div>
+                <button
+                  key={n}
+                  disabled={buying !== null || !canPickMore}
+                  onClick={() => openPreview(n)}
+                  className={`aspect-square flex items-center justify-center rounded-[6px] text-[10.5px] font-black transition-all select-none ${
+                    !canPickMore
+                      ? 'cursor-not-allowed opacity-40'
+                      : isBuying
+                      ? 'opacity-50 scale-90'
+                      : 'cursor-pointer active:translate-y-[2px]'
+                  }`}
+                  style={
+                    !canPickMore
+                      ? {
+                          background: 'linear-gradient(180deg, #334155 0%, #1e293b 100%)',
+                          border: '1px solid rgba(255,255,255,0.1)',
+                          color: 'rgba(255,255,255,0.3)',
+                        }
+                      : {
+                          background: 'linear-gradient(180deg, #ffffff 0%, #f8fafc 45%, #e2e8f0 85%, #cbd5e1 100%)',
+                          boxShadow: '0 2.5px 0 #94a3b8, 0 3px 5px rgba(0,0,0,0.35), inset 0 1px 0 #ffffff',
+                          border: '1px solid #e2e8f0',
+                          color: '#0f172a',
+                        }
+                  }
+                >
+                  {n}
+                </button>
               );
-            }
-            if (isTaken) {
-              return (
-                <div key={n} className="aspect-square flex items-center justify-center rounded-[7px] text-[9px] font-black bg-red-900/60 text-red-300/50 border border-red-700/30">
-                  ✕
-                </div>
-              );
-            }
-            return (
-              <button key={n} disabled={buying !== null || !canPickMore} onClick={() => openPreview(n)}
-                className={`aspect-square flex items-center justify-center rounded-[7px] text-[11px] font-black transition-all duration-150 ${!canPickMore ? 'bg-white/20 text-white/30 cursor-not-allowed' : isBuying ? 'bg-white opacity-40 scale-90' : 'bg-white text-black active:scale-90 cursor-pointer'}`}>
-                {n}
-              </button>
-            );
-          })}
+            })}
+          </div>
         </div>
       </div>
-    </div>
     );
   };
 
@@ -1756,25 +1899,58 @@ export default function BingoGame() {
       <div className="sticky top-0 z-40 bg-[#05081a] flex flex-col shrink-0">
         <Header />
         {game.status === 'waiting' && (
-          <div className="bg-[#0a0d1f] px-3 pt-3 pb-3">
+          <div
+            className="px-3 pt-2.5 pb-2.5"
+            style={{
+              background: 'linear-gradient(180deg, #0a0e1e 0%, #060814 100%)',
+              borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+            }}
+          >
             <div className="flex items-center gap-2 mb-2">
-              <button onClick={() => setSelectedStake(null)} className="h-9 w-10 flex items-center justify-center bg-white/5 border border-white/10 rounded-xl"><ArrowLeft size={18} className="text-white" /></button>
+              <button
+                onClick={() => setSelectedStake(null)}
+                className="h-9 w-10 flex items-center justify-center rounded-xl transition-all active:translate-y-0.5 cursor-pointer"
+                style={{
+                  background: 'linear-gradient(180deg, #334155 0%, #1e293b 100%)',
+                  boxShadow: '0 3px 0 #0f172a, inset 0 1px 1px rgba(255,255,255,0.2)',
+                  border: '1px solid rgba(255,255,255,0.15)',
+                }}
+              >
+                <ArrowLeft size={18} className="text-white drop-shadow" />
+              </button>
+
               <div className="relative">
                 <button 
                   onClick={() => {
                     if (myCartelas.length === 0) setShowStakeDropdown(!showStakeDropdown);
                   }}
-                  className={`flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl pl-3 pr-3 h-9 text-white font-black text-sm transition-colors ${myCartelas.length > 0 ? 'opacity-50 cursor-not-allowed' : 'active:bg-white/10'}`}
+                  className={`flex items-center gap-2 rounded-xl pl-3 pr-3 h-9 font-black text-sm transition-all select-none ${
+                    myCartelas.length > 0 ? 'opacity-50 cursor-not-allowed' : 'active:translate-y-0.5 cursor-pointer'
+                  }`}
+                  style={{
+                    background: 'linear-gradient(180deg, #1e293b 0%, #0f172a 100%)',
+                    boxShadow: '0 3px 0 #020617, inset 0 1px 1px rgba(255,255,255,0.15)',
+                    border: '1px solid rgba(250, 204, 21, 0.45)',
+                    color: '#facc15',
+                  }}
                 >
-                  <span>{selectedStake} ETB</span>
-                  <ChevronDown size={14} className={`text-white/50 transition-transform ${showStakeDropdown ? 'rotate-180' : ''}`} />
+                  <span className="drop-shadow-sm">{selectedStake} ETB</span>
+                  <ChevronDown size={14} className={`text-yellow-400 transition-transform ${showStakeDropdown ? 'rotate-180' : ''}`} />
                 </button>
                 
                 {/* Dropdown Menu */}
                 {showStakeDropdown && (
                   <>
                     <div className="fixed inset-0 z-40" onClick={() => setShowStakeDropdown(false)} />
-                    <div className="absolute top-[calc(100%+8px)] left-0 w-32 bg-[#1a2540] border border-white/10 rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] z-50 overflow-hidden">
+                    <div
+                      className="absolute top-[calc(100%+8px)] left-0 w-36 rounded-2xl z-50 overflow-hidden"
+                      style={{
+                        background: 'linear-gradient(180deg, #1e293b 0%, #0f172a 100%)',
+                        border: '1.5px solid rgba(250, 204, 21, 0.5)',
+                        boxShadow: '0 12px 30px rgba(0,0,0,0.8), 0 0 15px rgba(250,204,21,0.2)',
+                      }}
+                    >
                       {[10, 20, 50, 100].map(val => (
                         <button
                           key={val}
@@ -1783,27 +1959,103 @@ export default function BingoGame() {
                             setGame(null); setMyCard(null); setMyCartelas([]); setActiveCartelaIdx(0); setTaken([]);
                             setShowStakeDropdown(false);
                           }}
-                          className={`w-full text-left px-4 py-3 flex items-center justify-between border-b border-white/5 last:border-0 hover:bg-white/5 active:bg-white/10 transition-colors ${selectedStake === val ? 'text-white' : 'text-slate-400'}`}
+                          className={`w-full text-left px-4 py-2.5 flex items-center justify-between border-b border-white/5 last:border-0 hover:bg-white/10 active:bg-white/15 transition-colors ${
+                            selectedStake === val ? 'text-yellow-400 font-black' : 'text-slate-300 font-bold'
+                          }`}
                         >
-                          <span className="font-black text-sm">{val} ETB</span>
-                          {selectedStake === val && <div className="w-2 h-2 rounded-full bg-emerald-400" />}
+                          <span className="text-sm">{val} ETB</span>
+                          {selectedStake === val && <div className="w-2 h-2 rounded-full bg-yellow-400 shadow-[0_0_6px_rgba(250,204,21,0.8)]" />}
                         </button>
                       ))}
                     </div>
                   </>
                 )}
               </div>
-              <div className="flex-1 bg-white/5 border border-white/10 rounded-xl h-9 flex flex-col items-center justify-center">
-                <span className="text-[9px] text-white/30 font-bold leading-none">{t[language].bingo.gameId}</span>
-                <span className="text-sm font-black text-white leading-tight font-mono tracking-wider">{(game.game_id || game.id?.slice(0, 8) || '').toUpperCase()}</span>
+
+              {/* 3D Game ID pod */}
+              <div
+                className="flex-1 rounded-xl h-9 flex flex-col items-center justify-center px-2"
+                style={{
+                  background: 'linear-gradient(180deg, #1e293b 0%, #0f172a 100%)',
+                  boxShadow: '0 3px 0 #020617, inset 0 1px 1px rgba(255,255,255,0.15)',
+                  border: '1px solid rgba(56, 189, 248, 0.35)',
+                }}
+              >
+                <span className="text-[8px] text-slate-400 font-bold leading-none uppercase tracking-wider">
+                  {t[language].bingo.gameId}
+                </span>
+                <span className="text-xs font-black text-cyan-300 leading-tight font-mono tracking-wider drop-shadow-sm">
+                  {(game.game_id || game.id?.slice(0, 8) || '').toUpperCase()}
+                </span>
               </div>
             </div>
+
+            {/* 5-pod 3D Stats Matrix */}
             <div className="grid grid-cols-5 gap-1.5">
-              <div className="bg-white/5 border border-white/5 rounded-xl py-1.5 text-center"><p className="text-[8px] text-white/30 font-bold uppercase">{t[language].bingo.stake}</p><p className="text-xs font-black text-white">{game.stake} ETB</p></div>
-              <div className="bg-white/5 border border-white/5 rounded-xl py-1.5 text-center"><p className="text-[8px] text-white/30 font-bold uppercase">{t[language].bingo.players}</p><p className="text-xs font-black text-emerald-400">{uniquePlayers}</p></div>
-              <div className="bg-white/5 border border-white/5 rounded-xl py-1.5 text-center"><p className="text-[8px] text-white/30 font-bold uppercase">{t[language].bingo.cartelas}</p><p className="text-xs font-black text-cyan-400">{taken.length}</p></div>
-              <div className="bg-white/5 border border-white/5 rounded-xl py-1.5 text-center"><p className="text-[8px] text-white/30 font-bold uppercase">{t[language].bingo.derash}</p><p className="text-xs font-black text-yellow-400">{game.prize_pool} ETB</p></div>
-              <div className="bg-white/5 border border-white/5 rounded-xl py-1.5 text-center"><p className="text-[8px] text-white/30 font-bold uppercase">{t[language].bingo.status}</p><p className={`text-xs font-black ${statusCls}`}>{statusTxt}</p></div>
+              {/* Stake */}
+              <div
+                className="rounded-xl py-1.5 px-0.5 text-center"
+                style={{
+                  background: 'linear-gradient(180deg, #1e293b 0%, #0b1120 100%)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  boxShadow: '0 2.5px 0 #020617, inset 0 1px 1px rgba(255,255,255,0.15)',
+                }}
+              >
+                <p className="text-[7.5px] text-slate-400 font-bold uppercase">{t[language].bingo.stake}</p>
+                <p className="text-xs font-black text-white">{game.stake} ETB</p>
+              </div>
+
+              {/* Players */}
+              <div
+                className="rounded-xl py-1.5 px-0.5 text-center"
+                style={{
+                  background: 'linear-gradient(180deg, #1e293b 0%, #0b1120 100%)',
+                  border: '1px solid rgba(52, 211, 153, 0.25)',
+                  boxShadow: '0 2.5px 0 #020617, inset 0 1px 1px rgba(255,255,255,0.15)',
+                }}
+              >
+                <p className="text-[7.5px] text-emerald-400/80 font-bold uppercase">{t[language].bingo.players}</p>
+                <p className="text-xs font-black text-emerald-400 drop-shadow-[0_0_4px_rgba(52,211,153,0.5)]">{uniquePlayers}</p>
+              </div>
+
+              {/* Cartelas */}
+              <div
+                className="rounded-xl py-1.5 px-0.5 text-center"
+                style={{
+                  background: 'linear-gradient(180deg, #1e293b 0%, #0b1120 100%)',
+                  border: '1px solid rgba(56, 189, 248, 0.25)',
+                  boxShadow: '0 2.5px 0 #020617, inset 0 1px 1px rgba(255,255,255,0.15)',
+                }}
+              >
+                <p className="text-[7.5px] text-cyan-400/80 font-bold uppercase">{t[language].bingo.cartelas}</p>
+                <p className="text-xs font-black text-cyan-300 drop-shadow-[0_0_4px_rgba(56,189,248,0.5)]">{taken.length}</p>
+              </div>
+
+              {/* Derash (Prize Pool) */}
+              <div
+                className="rounded-xl py-1.5 px-0.5 text-center"
+                style={{
+                  background: 'linear-gradient(180deg, #2d2006 0%, #140d02 100%)',
+                  border: '1px solid rgba(250, 204, 21, 0.4)',
+                  boxShadow: '0 2.5px 0 #020617, inset 0 1px 1px rgba(255,255,255,0.2)',
+                }}
+              >
+                <p className="text-[7.5px] text-yellow-400/90 font-bold uppercase">{t[language].bingo.derash}</p>
+                <p className="text-xs font-black text-yellow-300 drop-shadow-[0_0_6px_rgba(250,204,21,0.6)]">{game.prize_pool} ETB</p>
+              </div>
+
+              {/* Status */}
+              <div
+                className="rounded-xl py-1.5 px-0.5 text-center"
+                style={{
+                  background: 'linear-gradient(180deg, #1e293b 0%, #0b1120 100%)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  boxShadow: '0 2.5px 0 #020617, inset 0 1px 1px rgba(255,255,255,0.15)',
+                }}
+              >
+                <p className="text-[7.5px] text-slate-400 font-bold uppercase">{t[language].bingo.status}</p>
+                <p className={`text-xs font-black animate-pulse ${statusCls}`}>{statusTxt}</p>
+              </div>
             </div>
           </div>
         )}
@@ -1976,38 +2228,113 @@ export default function BingoGame() {
         </div>
       )}
 
-      {/* Preview Modal */}
+      {/* 3D Luxury Casino Preview Modal */}
       {previewCartela && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setPreviewCartela(null)}>
-          <div className="bg-[#0f1829] border border-cyan-400/30 rounded-3xl p-5 w-full max-w-[320px] shadow-2xl" onClick={e => e.stopPropagation()}>
-            <h3 className="text-xl font-black text-white text-center mb-1">{t[language].bingo.cartelaNum}{previewCartela.seat}</h3>
-            <p className="text-cyan-300 text-[10px] uppercase font-bold text-center tracking-widest mb-4">{t[language].bingo.previewNumbers}</p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md" onClick={() => setPreviewCartela(null)}>
+          <div
+            className="rounded-3xl p-5 w-full max-w-[320px] select-none"
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: 'linear-gradient(180deg, #1e293b 0%, #0a0f1e 100%)',
+              border: '1.5px solid rgba(34, 211, 238, 0.45)',
+              boxShadow: '0 25px 60px rgba(0,0,0,0.95), 0 0 35px rgba(6,182,212,0.3), inset 0 1px 1px rgba(255,255,255,0.2)',
+            }}
+          >
+            <div className="flex flex-col items-center mb-3">
+              <span
+                className="text-[9.5px] font-black text-cyan-300 uppercase tracking-widest px-3 py-0.5 rounded-full mb-1"
+                style={{
+                  background: 'linear-gradient(180deg, rgba(6,182,212,0.2) 0%, rgba(6,182,212,0.05) 100%)',
+                  border: '1px solid rgba(34, 211, 238, 0.35)',
+                  boxShadow: '0 2px 0 #020b12',
+                }}
+              >
+                {t[language].bingo.previewNumbers}
+              </span>
+              <h3 className="text-2xl font-black text-white text-center tracking-wider drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+                {t[language].bingo.cartelaNum}{previewCartela.seat}
+              </h3>
+            </div>
             
-            <div className="rounded-2xl overflow-hidden border border-white/10 shadow-[0_0_15px_rgba(34,211,238,0.2)] mb-5">
-              <div className="grid grid-cols-5">
+            {/* 3D Cartela Preview Card */}
+            <div
+              className="rounded-2xl overflow-hidden mb-4 p-1.5"
+              style={{
+                background: 'linear-gradient(180deg, #0f172a 0%, #020617 100%)',
+                border: '1.5px solid rgba(250, 204, 21, 0.4)',
+                boxShadow: '0 8px 20px rgba(0,0,0,0.6), inset 0 2px 6px rgba(0,0,0,0.7)',
+              }}
+            >
+              <div className="grid grid-cols-5 gap-[1.5px] mb-1.5">
                 {BINGO_LETTERS.map(l => (
-                  <div key={l} className="flex items-center justify-center py-1.5 font-black text-white text-sm" style={{ background: LETTER_BG[l] }}>{l}</div>
+                  <div
+                    key={l}
+                    className="flex items-center justify-center py-1 font-black text-white text-sm rounded-md"
+                    style={{
+                      background: `linear-gradient(180deg, ${LETTER_BG[l]} 0%, #0f172a 100%)`,
+                      boxShadow: '0 1.5px 0 rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.4)',
+                    }}
+                  >
+                    {l}
+                  </div>
                 ))}
               </div>
-              <div className="grid grid-cols-5 gap-[2px] p-[2px] bg-[#0a0f1e]">
+              <div className="grid grid-cols-5 gap-[2.5px]">
                 {Array.from({ length: 5 }).flatMap((_, r) =>
                   Array.from({ length: 5 }, (_, c) => {
                     const num = previewCartela.matrix[r][c];
                     const isFree = num === 0;
                     return (
-                      <div key={`${r}-${c}`} className={`aspect-square flex items-center justify-center font-black text-sm rounded-md transition-all duration-300 ${
-                        isFree ? 'bg-yellow-400 text-yellow-900' : 'bg-white text-[#1a2540]'
-                      }`}>{isFree ? '★' : num}</div>
+                      <div
+                        key={`${r}-${c}`}
+                        className="aspect-square flex items-center justify-center font-black text-xs rounded-md"
+                        style={
+                          isFree
+                            ? {
+                                background: 'radial-gradient(circle at 35% 25%, #fef08a 0%, #facc15 50%, #ca8a04 100%)',
+                                boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.9), inset 0 -2px 3px rgba(161,98,7,0.7)',
+                                border: '1px solid #fef08a',
+                                color: '#713f12',
+                              }
+                            : {
+                                background: 'linear-gradient(180deg, #ffffff 0%, #f8fafc 50%, #e2e8f0 100%)',
+                                boxShadow: '0 1.5px 2px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.9)',
+                                border: '1px solid #cbd5e1',
+                                color: '#0f172a',
+                              }
+                        }
+                      >
+                        {isFree ? '★' : num}
+                      </div>
                     );
                   })
                 )}
               </div>
             </div>
 
-            <div className="flex gap-3">
-              <button onClick={() => setPreviewCartela(null)} className="flex-1 py-3 rounded-xl bg-white/10 text-white font-black active:scale-95 transition-transform border border-white/20">{t[language].bingo.cancel}</button>
-              <button onClick={() => joinGame(previewCartela.seat, previewCartela.matrix)} className="flex-1 py-3 rounded-xl bg-emerald-500 text-white font-black active:scale-95 transition-transform shadow-[0_0_15px_rgba(16,185,129,0.5)] border border-emerald-400">
-                {t[language].bingo.buy.replace('{stake}', String(game?.stake || 0))}
+            <div className="flex gap-2.5">
+              <button
+                onClick={() => setPreviewCartela(null)}
+                className="flex-1 py-2.5 rounded-xl text-slate-300 font-black text-sm active:translate-y-0.5 transition-all select-none cursor-pointer"
+                style={{
+                  background: 'linear-gradient(180deg, #334155 0%, #1e293b 100%)',
+                  boxShadow: '0 3px 0 #0f172a, inset 0 1px 1px rgba(255,255,255,0.2)',
+                  border: '1px solid rgba(255,255,255,0.15)',
+                }}
+              >
+                {t[language].bingo.cancel}
+              </button>
+              <button
+                onClick={() => joinGame(previewCartela.seat, previewCartela.matrix)}
+                className="flex-1 py-2.5 rounded-xl text-white font-black text-sm active:translate-y-0.5 transition-all select-none cursor-pointer flex items-center justify-center gap-1.5"
+                style={{
+                  background: 'linear-gradient(180deg, #34d399 0%, #10b981 40%, #059669 100%)',
+                  boxShadow: '0 3.5px 0 #047857, inset 0 1px 1px rgba(255,255,255,0.8), 0 0 15px rgba(16,185,129,0.4)',
+                  border: '1px solid #6ee7b7',
+                }}
+              >
+                <span>🛒</span>
+                <span>{t[language].bingo.buy.replace('{stake}', String(game?.stake || 0))}</span>
               </button>
             </div>
           </div>
