@@ -457,13 +457,6 @@ export default function BingoGame() {
     }
 
     playAudioExclusive(src, 1.0);
-
-    // Guaranteed native audio fallback so stop sound plays on all mobile devices
-    try {
-      const direct = new Audio(src);
-      direct.volume = 1.0;
-      direct.play().catch(() => {});
-    } catch {}
   }, [unlockAudio, playAudioExclusive]);
 
   // ── GAME START INTRO ─────────────────────────────────────────────────────────────────────
@@ -525,6 +518,9 @@ export default function BingoGame() {
   const gameIdRef = useRef<string | null>(null);
   const prevCalledLenRef = useRef(0);
   const hadCartelasRef = useRef(false);
+  const hasCelebratedRef = useRef<string | null>(null);
+  const hasCelebratedSoundRef = useRef<string | null>(null);
+  const isCelebratingRef = useRef(false);
 
   // Sync Auto/Manual play mode with backend BingoEngine
   useEffect(() => {
@@ -547,6 +543,8 @@ export default function BingoGame() {
     gameIdRef.current = null;
     prevCalledLenRef.current = 0;
     hasCelebratedRef.current = null;
+    hasCelebratedSoundRef.current = null;
+    isCelebratingRef.current = false;
     hasStartedAudioGameIdRef.current = null;
     lastPlayedBallRef.current = null;
     prevGameStatusRef.current = null;
@@ -574,6 +572,8 @@ export default function BingoGame() {
       setClaimErrMsg("");
       setIsClaiming(false);
       hasCelebratedRef.current = null;
+      hasCelebratedSoundRef.current = null;
+      isCelebratingRef.current = false;
       hasStartedAudioGameIdRef.current = null;
       lastPlayedBallRef.current = null;
       prevGameStatusRef.current = null;
@@ -585,6 +585,7 @@ export default function BingoGame() {
 
   const fetchState = useCallback(async () => {
     if (!selectedStake) return;
+    if (isCelebratingRef.current) return;
     setLoading(true);
     try {
       const excludeParam = hasCelebratedRef.current ? `&exclude_id=${hasCelebratedRef.current}` : '';
@@ -685,6 +686,7 @@ export default function BingoGame() {
     const ch = supabase.channel(`bingo-rt-${selectedStake}-${Date.now()}`)
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "bingo_games" }, ({ new: g }) => {
         if (Number(g.stake) === selectedStake) {
+          if (isCelebratingRef.current && g.id !== gameIdRef.current) return;
           setGame(g as BGame);
           if (g.status === 'finished') {
             setMyCartelas([]);
@@ -699,7 +701,10 @@ export default function BingoGame() {
           }
         }
       })
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "bingo_games" }, () => { fetchState(); })
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "bingo_games" }, () => {
+        if (isCelebratingRef.current) return;
+        fetchState();
+      })
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "bingo_players" }, ({ new: p }) => {
         const np = p as { game_id: string; cartela_number: number; telegram_id: string };
         if (np.game_id === gameIdRef.current) {
@@ -764,8 +769,6 @@ export default function BingoGame() {
     prevCalledLenRef.current = called.length;
   }, [called.length, game?.status, game?.id, lastNum, playCallAudio, playGameStart]);
 
-  const hasCelebratedRef = useRef<string | null>(null);
-
   // Fire celebration when game finishes — play stop sound + display 3D celebration card by any means
   useEffect(() => {
     if (game?.status !== 'finished') return;
@@ -780,14 +783,13 @@ export default function BingoGame() {
     }
 
     hasCelebratedRef.current = game.id;
+    isCelebratingRef.current = true;
 
-    // 1. Play stop.mp3 sound immediately with dual audio fallback for 100% reliability
-    playSpecial('stop');
-    try {
-      const directAudio = new Audio(`/audio/bingo/stop.mp3?v=${AUDIO_VERSION}`);
-      directAudio.volume = 1.0;
-      directAudio.play().catch(() => {});
-    } catch {}
+    // 1. Play stop.mp3 sound immediately — guaranteed once with zero echo
+    if (hasCelebratedSoundRef.current !== game.id) {
+      hasCelebratedSoundRef.current = game.id;
+      playSpecial('stop');
+    }
 
     // 2. Vibration / haptic feedback
     if (WebApp?.HapticFeedback) {
@@ -895,16 +897,12 @@ export default function BingoGame() {
     }, 1000);
 
     const timer = setTimeout(() => {
+      isCelebratingRef.current = false;
       setCelebration(null);
       setMyCard(null);
       setMyCartelas([]);
       setActiveCartelaIdx(0);
       setTaken([]);
-      // Immediately switch game status to waiting so previous game is never visible!
-      setGame(prev => prev && prev.status === 'finished' ? { ...prev, status: 'waiting', called_numbers: [] } : prev);
-      // NOTE: Do NOT reset hasCelebratedRef.current to null here.
-      // Keeping it set to the finished game id prevents repeating celebrations.
-      // It will reset to null only when a brand new game id arrives in fetchState().
       fetchState();
       refreshUser();
     }, 5000);
@@ -1032,8 +1030,7 @@ export default function BingoGame() {
           setClaimErrMsg(data.error || "Claim failed");
         }
       } else {
-        // Win confirmed! Play stop.mp3
-        playSpecial('stop');
+        // Win confirmed by server — celebration effect handles sound and 3D card
       }
     } catch (err: any) {
       console.error('Claim bingo error:', err);
@@ -2110,7 +2107,7 @@ export default function BingoGame() {
     <div className="h-[calc(100dvh-80px)] w-full bg-[#05081a] flex flex-col select-none" onClick={initWebAudio}>
       <div className="sticky top-0 z-40 bg-[#05081a] flex flex-col shrink-0">
         <Header />
-        {game.status !== 'calling' && (
+        {game.status === 'waiting' && !celebration && (
           <div
             className="px-3 pt-2.5 pb-2.5"
             style={{
@@ -2280,8 +2277,8 @@ export default function BingoGame() {
         </div>
       )}
 
-      <div className={`flex-1 min-h-0 ${game.status === 'calling' ? 'overflow-hidden' : 'overflow-y-auto'}`}>
-        {game.status === 'calling' ? renderCallingBoard() : renderCartelaPicker()}
+      <div className={`flex-1 min-h-0 ${game.status === 'waiting' && !celebration ? 'overflow-y-auto' : 'overflow-hidden'}`}>
+        {game.status === 'waiting' && !celebration ? renderCartelaPicker() : renderCallingBoard()}
       </div>
 
       {/* Winner Celebration (Fantastic 3D Luxury Casino Celebration Card) */}
