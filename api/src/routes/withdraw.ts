@@ -23,8 +23,10 @@ router.post('/request', async (req: AuthRequest, res) => {
   const telegramId = req.telegramUser!.id.toString();
   const { method_id, amount, account_name, account_number } = req.body;
 
-  if (!method_id || !amount || !account_name || !account_number) {
-    res.status(400).json({ error: 'All fields are required' });
+  const cleanAccountNumber = String(account_number || '').replace(/\D/g, '').trim();
+
+  if (!method_id || !amount || !account_name || !cleanAccountNumber) {
+    res.status(400).json({ error: 'All fields are required. Account number must contain only digits.' });
     return;
   }
 
@@ -92,7 +94,7 @@ router.post('/request', async (req: AuthRequest, res) => {
       method_id, 
       amount, 
       account_name, 
-      account_number, 
+      account_number: cleanAccountNumber, 
       status: 'pending' 
     }])
     .select()
@@ -113,7 +115,7 @@ router.post('/request', async (req: AuthRequest, res) => {
       const safeUsername = (req.telegramUser?.username || req.telegramUser?.first_name || 'User').replace(/[_*[\]]/g, '\\$&');
       const safeMethodType = (method.type).toUpperCase().replace(/[_*[\]]/g, '\\$&');
       const safeAccountName = account_name.replace(/[_*[\]]/g, '\\$&');
-      const safeAccountNumber = account_number.replace(/[_*[\]]/g, '\\$&');
+      const safeAccountNumber = cleanAccountNumber.replace(/[_*[\]]/g, '\\$&');
 
       const message = `💸 *New Withdrawal Request!*\n\n` +
                       `👤 User: @${safeUsername}\n` +

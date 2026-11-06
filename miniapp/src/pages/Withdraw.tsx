@@ -239,8 +239,9 @@ export default function Withdraw() {
       setError(language === 'am' ? 'እባክዎ ሙሉ ስምዎን ያስገቡ።' : 'Please enter your full name.'); 
       return; 
     }
-    if (!accountNumber.trim()) { 
-      setError(language === 'am' ? 'እባክዎ የሂሳብ ወይም የስልክ ቁጥርዎን ያስገቡ።' : 'Please enter your account/phone number.'); 
+    const cleanAcc = accountNumber.replace(/\D/g, '');
+    if (!cleanAcc) { 
+      setError(language === 'am' ? 'እባክዎ ትክክለኛ የሂሳብ ቁጥር ያስገቡ (ቁጥሮች ብቻ)።' : 'Please enter a valid account number (numbers only).'); 
       return; 
     }
 
@@ -253,7 +254,7 @@ export default function Withdraw() {
           method_id: selected.id,
           amount: amtNum,
           account_name: accountName.trim(),
-          account_number: accountNumber.trim(),
+          account_number: cleanAcc,
         }),
       });
 
@@ -269,7 +270,7 @@ export default function Withdraw() {
       // Set Success Info & Show Auto-Disappearing Modal
       setSuccessAmount(amtNum);
       setSuccessAccountName(accountName.trim());
-      setSuccessAccountNumber(accountNumber.trim());
+      setSuccessAccountNumber(cleanAcc);
       setSuccessMethodName(typeLabels[selected.type] || selected.type.toUpperCase());
       setSuccessCountdown(4);
       setShowSuccessModal(true);
@@ -443,10 +444,26 @@ export default function Withdraw() {
               <div className="relative">
                 <Phone size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
-                  type="text"
+                  type="tel"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   value={accountNumber}
-                  onChange={e => setAccountNumber(e.target.value)}
-                  placeholder={selected.type === 'telebirr' || selected.type === 'mpesa' ? '09XXXXXXXX' : 'Account number'}
+                  onChange={e => setAccountNumber(e.target.value.replace(/\D/g, ''))}
+                  onKeyDown={e => {
+                    // Allow navigation keys and shortcuts
+                    if (['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return;
+                    if ((e.ctrlKey || e.metaKey) && ['a', 'c', 'v', 'x'].includes(e.key.toLowerCase())) return;
+                    // Only allow numeric digits 0-9
+                    if (!/^\d$/.test(e.key)) {
+                      e.preventDefault();
+                    }
+                  }}
+                  onPaste={e => {
+                    e.preventDefault();
+                    const pasted = e.clipboardData.getData('text').replace(/\D/g, '');
+                    setAccountNumber(pasted);
+                  }}
+                  placeholder={selected.type === 'telebirr' || selected.type === 'mpesa' ? '09XXXXXXXX' : 'Account number (numbers only)'}
                   className="w-full pl-11 pr-4 py-3.5 border-2 border-slate-200/80 dark:border-slate-700/80 rounded-2xl focus:border-amber-400 focus:outline-none text-slate-800 dark:text-slate-100 font-bold text-sm bg-slate-50 dark:bg-slate-950/80 shadow-inner"
                   required
                 />

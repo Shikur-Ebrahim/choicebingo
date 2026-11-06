@@ -587,9 +587,14 @@ export default function BingoGame() {
     if (!selectedStake) return;
     setLoading(true);
     try {
-      const r = await fetch(`${API}/bingo/current?stake=${selectedStake}`, { headers: hdrs() });
+      const excludeParam = hasCelebratedRef.current ? `&exclude_id=${hasCelebratedRef.current}` : '';
+      const r = await fetch(`${API}/bingo/current?stake=${selectedStake}${excludeParam}`, { headers: hdrs() });
       if (r.ok) {
         const d = await r.json();
+        // If server returns finished game that we already celebrated, ignore it
+        if (d.game && d.game.status === 'finished' && hasCelebratedRef.current === d.game.id) {
+          return;
+        }
         if (d.max_players) setMaxPlayers(Number(d.max_players));
         if (d.max_cartelas_per_user) setMaxCartelasPerUser(Number(d.max_cartelas_per_user));
         if (d.my_cartelas) setMyCartelas(d.my_cartelas);
@@ -681,6 +686,11 @@ export default function BingoGame() {
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "bingo_games" }, ({ new: g }) => {
         if (Number(g.stake) === selectedStake) {
           setGame(g as BGame);
+          if (g.status === 'finished') {
+            setMyCartelas([]);
+            setMyCard(null);
+            setTaken([]);
+          }
           if (g.id !== gameIdRef.current) {
             gameIdRef.current = g.id;
             prevCalledLenRef.current = 0;
@@ -890,6 +900,8 @@ export default function BingoGame() {
       setMyCartelas([]);
       setActiveCartelaIdx(0);
       setTaken([]);
+      // Immediately switch game status to waiting so previous game is never visible!
+      setGame(prev => prev && prev.status === 'finished' ? { ...prev, status: 'waiting', called_numbers: [] } : prev);
       // NOTE: Do NOT reset hasCelebratedRef.current to null here.
       // Keeping it set to the finished game id prevents repeating celebrations.
       // It will reset to null only when a brand new game id arrives in fetchState().
@@ -2098,7 +2110,7 @@ export default function BingoGame() {
     <div className="h-[calc(100dvh-80px)] w-full bg-[#05081a] flex flex-col select-none" onClick={initWebAudio}>
       <div className="sticky top-0 z-40 bg-[#05081a] flex flex-col shrink-0">
         <Header />
-        {game.status === 'waiting' && (
+        {game.status !== 'calling' && (
           <div
             className="px-3 pt-2.5 pb-2.5"
             style={{
@@ -2268,8 +2280,8 @@ export default function BingoGame() {
         </div>
       )}
 
-      <div className={`flex-1 min-h-0 ${game.status === 'waiting' ? 'overflow-y-auto' : 'overflow-hidden'}`}>
-        {game.status === 'waiting' ? renderCartelaPicker() : renderCallingBoard()}
+      <div className={`flex-1 min-h-0 ${game.status === 'calling' ? 'overflow-hidden' : 'overflow-y-auto'}`}>
+        {game.status === 'calling' ? renderCallingBoard() : renderCartelaPicker()}
       </div>
 
       {/* Winner Celebration (Fantastic 3D Luxury Casino Celebration Card) */}

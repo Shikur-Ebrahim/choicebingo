@@ -55,9 +55,10 @@ router.get('/pools', validateTelegramAuth, async (_req, res) => {
 router.get('/current', validateTelegramAuth, async (req: AuthRequest, res) => {
   const telegramId = req.telegramUser!.id.toString();
   const stake = Number(req.query.stake) || 10;
+  const excludeId = req.query.exclude_id ? String(req.query.exclude_id) : null;
 
-  // 1. Check if a game finished very recently (< 6.5s)
-  // Guarantees all active players and any user opening the game see the celebration card & stop sound before next game!
+  // 1. Check if a game finished very recently (< 5.0s)
+  // Guarantees all active players and any user opening the game see the celebration card & stop sound for exactly 5s
   const { data: latestFinished } = await supabase
     .from('bingo_games')
     .select('*')
@@ -72,7 +73,10 @@ router.get('/current', validateTelegramAuth, async (req: AuthRequest, res) => {
     ? Date.now() - new Date(latestFinished.finished_at).getTime()
     : Infinity;
 
-  if (latestFinished && finishElapsed >= 0 && finishElapsed < 6500) {
+  const isExcluded = Boolean(excludeId && latestFinished && latestFinished.id === excludeId);
+
+  // Exactly 5 seconds (5000ms) for the celebration
+  if (latestFinished && finishElapsed >= 0 && finishElapsed < 5000 && !isExcluded) {
     game = latestFinished;
   } else {
     // 2. Otherwise serve active game (calling or waiting)
