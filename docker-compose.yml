@@ -1,20 +1,20 @@
-﻿services:
-  ChoiceBingo-bot:
+services:
+  choicebingo-bot:
     build:
       context: ./bot
       dockerfile: Dockerfile
-    container_name: ChoiceBingo-bot
+    container_name: choicebingo-bot
     restart: unless-stopped
     env_file:
       - ./bot/.env
     depends_on:
-      - ChoiceBingo-api
+      - choicebingo-api
 
-  ChoiceBingo-api:
+  choicebingo-api:
     build:
       context: ./api
       dockerfile: Dockerfile
-    container_name: ChoiceBingo-api
+    container_name: choicebingo-api
     restart: unless-stopped
     ports:
       - "3002:3002"
