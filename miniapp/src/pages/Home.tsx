@@ -299,28 +299,21 @@ export default function Home() {
           </div>
           
           <div className="relative z-10 flex flex-col items-center text-center px-4">
-            <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest mb-1 flex items-center">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse mr-1"></span>
-              {t[language].home.liveBingo}
-            </span>
-            <span className="text-yellow-400 font-black text-3xl mb-1 drop-shadow-[0_2px_8px_rgba(250,204,21,0.4)]">
+            <span className="text-yellow-400 font-black text-3xl mb-5 drop-shadow-[0_2px_8px_rgba(250,204,21,0.4)]">
               {t[language].home.joinNextGame}
             </span>
-            <span className="text-white/60 text-xs font-semibold mb-4">
-              {t[language].home.pickCartela}
-            </span>
             
-            {/* 3D CTA Button */}
+            {/* 3D Pencil Color (Graphite) CTA Button with "ካርቴላዎን አሁን ይምረጡ!" */}
             <div
               className="px-8 py-2.5 rounded-full font-black text-sm active:translate-y-1 transition-all flex items-center gap-2 select-none"
               style={{
-                background: 'linear-gradient(180deg, #fef08a 0%, #facc15 35%, #eab308 70%, #ca8a04 100%)',
-                boxShadow: '0 4px 0 #854d0e, 0 6px 15px rgba(234,179,8,0.4), inset 0 1px 1px rgba(255,255,255,0.95)',
-                border: '1px solid #fef08a',
-                color: '#451a03',
+                background: 'linear-gradient(180deg, #94a3b8 0%, #64748b 45%, #475569 100%)',
+                boxShadow: '0 4px 0 #1e293b, 0 6px 15px rgba(0,0,0,0.35), inset 0 1px 1px rgba(255,255,255,0.4)',
+                border: '1px solid #94a3b8',
+                color: '#ffffff',
               }}
             >
-              <span>{t[language].home.openCartela}</span>
+              <span>{t[language].home.pickCartela}</span>
               <span className="text-base leading-none">➔</span>
             </div>
           </div>
