@@ -551,23 +551,46 @@ export default function AdminDeposits() {
                   </button>
                 </div>
 
-                {/* Screenshot preview with tap-to-zoom */}
+                {/* Screenshot / SMS preview */}
                 {isExpanded && dep.screenshot_url && (
                   <div className="px-4 pb-3">
-                    <div
-                      onClick={() => setZoomImageUrl(dep.screenshot_url)}
-                      className="relative group rounded-xl overflow-hidden border border-gray-100 cursor-zoom-in bg-slate-900/5 hover:border-yellow-400 transition-colors"
-                    >
-                      <img
-                        src={dep.screenshot_url}
-                        alt="Payment receipt"
-                        className="w-full rounded-xl object-contain max-h-72 transition-transform duration-200 group-hover:scale-[1.01]"
-                      />
-                      <div className="absolute bottom-2 right-2 bg-black/75 hover:bg-black/90 text-white text-xs font-bold px-3 py-1.5 rounded-lg flex items-center space-x-1.5 shadow-lg backdrop-blur-sm">
-                        <ZoomIn size={14} className="text-yellow-400" />
-                        <span>Tap to Zoom</span>
+                    {dep.screenshot_url.startsWith('data:image') || dep.screenshot_url.startsWith('http') || dep.screenshot_url.startsWith('/') ? (
+                      <div
+                        onClick={() => setZoomImageUrl(dep.screenshot_url)}
+                        className="relative group rounded-xl overflow-hidden border border-gray-100 cursor-zoom-in bg-slate-900/5 hover:border-yellow-400 transition-colors"
+                      >
+                        <img
+                          src={dep.screenshot_url}
+                          alt="Payment receipt"
+                          className="w-full rounded-xl object-contain max-h-72 transition-transform duration-200 group-hover:scale-[1.01]"
+                        />
+                        <div className="absolute bottom-2 right-2 bg-black/75 hover:bg-black/90 text-white text-xs font-bold px-3 py-1.5 rounded-lg flex items-center space-x-1.5 shadow-lg backdrop-blur-sm">
+                          <ZoomIn size={14} className="text-yellow-400" />
+                          <span>Tap to Zoom</span>
+                        </div>
                       </div>
-                    </div>
+                    ) : (
+                      <div className="bg-slate-50 dark:bg-slate-800/80 rounded-2xl p-3.5 border border-slate-200 dark:border-slate-700">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-[11px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                            💬 Transaction SMS / Reference
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(dep.screenshot_url.replace(/^SMS:\s*/i, ''));
+                              alert('Copied to clipboard!');
+                            }}
+                            className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline bg-blue-50 dark:bg-blue-950/40 px-2 py-1 rounded-md"
+                          >
+                            Copy Text
+                          </button>
+                        </div>
+                        <pre className="text-xs font-mono font-medium text-slate-700 dark:text-slate-200 whitespace-pre-wrap break-all bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200/80 dark:border-slate-800">
+                          {dep.screenshot_url.replace(/^SMS:\s*/i, '')}
+                        </pre>
+                      </div>
+                    )}
                   </div>
                 )}
 

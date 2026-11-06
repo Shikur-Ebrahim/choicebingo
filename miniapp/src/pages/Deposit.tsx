@@ -1,24 +1,55 @@
-import { useState, useEffect } from 'react';
-import { ArrowLeft, ChevronRight, CheckCircle2, UploadCloud, X, Clock, AlertCircle, Copy, Check, MessageCircle } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { 
+  ArrowLeft, 
+  ChevronRight, 
+  CheckCircle2, 
+  UploadCloud, 
+  X, 
+  Clock, 
+  AlertCircle, 
+  Copy, 
+  Check, 
+  MessageCircle, 
+  Play, 
+  Sparkles, 
+  FileText, 
+  Camera, 
+  ShieldCheck, 
+  Zap,
+  Info
+} from 'lucide-react';
 import { Link } from 'react-router-dom';
 import WebApp from '@twa-dev/sdk';
 import { useGameStore } from '../store/gameStore';
 import { t } from '../lib/translations';
 import { uploadImage } from '../lib/upload';
+import { supabase } from '../lib/supabase';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 interface DepositMethod {
   id: string;
-  type: 'cbe' | 'boa' | 'telebirr' | 'mpesa';
+  type: string;
   name: string;
   account_number: string;
   logo_url: string;
   min_deposit: number;
 }
 
-const typeLabels: Record<string, string> = {
-    cbe: 'Commercial Bank of Ethiopia',
+interface PendingDeposit {
+  id: string;
+  amount: number;
+  status: string;
+  created_at: string;
+  method?: {
+    type?: string;
+    name?: string;
+    logo_url?: string;
+  };
+}
+
+const methodNames: Record<string, string> = {
+  cbe: 'Commercial Bank of Ethiopia',
   boa: 'Bank of Abyssinia',
   telebirr: 'Telebirr',
   mpesa: 'M-Pesa',
@@ -37,43 +68,68 @@ const typeLabels: Record<string, string> = {
   hibret: 'Hibret Bank',
 };
 
-const typeBadge: Record<string, string> = {
-    cbe: 'bg-yellow-100 text-yellow-700',
-  boa: 'bg-blue-100 text-blue-700',
-  telebirr: 'bg-purple-100 text-purple-700',
-  mpesa: 'bg-green-100 text-green-700',
-  cbebirr: 'bg-yellow-200 text-yellow-800',
-  ebirr: 'bg-orange-100 text-orange-700',
-  awash: 'bg-slate-100 text-slate-700',
-  dashen: 'bg-blue-200 text-blue-800',
-  amhara: 'bg-teal-100 text-teal-700',
-  coop: 'bg-indigo-100 text-indigo-700',
-  amole: 'bg-red-100 text-red-700',
-  hello_cash: 'bg-green-200 text-green-800',
-  nib: 'bg-purple-200 text-purple-800',
-  wegagen: 'bg-slate-200 text-slate-800',
-  zemen: 'bg-orange-200 text-orange-800',
-  oromia: 'bg-teal-200 text-teal-800',
-  hibret: 'bg-yellow-100 text-yellow-800',
+const methodAccents: Record<string, { bg: string; text: string; glow: string; border: string }> = {
+  cbe: { bg: 'from-amber-500/10 to-yellow-500/5', text: 'text-amber-600 dark:text-amber-400', glow: 'rgba(245,158,11,0.15)', border: 'border-amber-200 dark:border-amber-900/40' },
+  boa: { bg: 'from-blue-500/10 to-indigo-500/5', text: 'text-blue-600 dark:text-blue-400', glow: 'rgba(59,130,246,0.15)', border: 'border-blue-200 dark:border-blue-900/40' },
+  telebirr: { bg: 'from-purple-500/10 to-pink-500/5', text: 'text-purple-600 dark:text-purple-400', glow: 'rgba(168,85,247,0.15)', border: 'border-purple-200 dark:border-purple-900/40' },
+  mpesa: { bg: 'from-emerald-500/10 to-teal-500/5', text: 'text-emerald-600 dark:text-emerald-400', glow: 'rgba(16,185,129,0.15)', border: 'border-emerald-200 dark:border-emerald-900/40' },
+  cbebirr: { bg: 'from-yellow-500/10 to-amber-500/5', text: 'text-yellow-700 dark:text-yellow-400', glow: 'rgba(234,179,8,0.15)', border: 'border-yellow-200 dark:border-yellow-900/40' },
+  ebirr: { bg: 'from-orange-500/10 to-red-500/5', text: 'text-orange-600 dark:text-orange-400', glow: 'rgba(249,115,22,0.15)', border: 'border-orange-200 dark:border-orange-900/40' },
+  awash: { bg: 'from-blue-600/10 to-orange-500/5', text: 'text-blue-700 dark:text-blue-400', glow: 'rgba(37,99,235,0.15)', border: 'border-blue-200 dark:border-blue-900/40' },
+  dashen: { bg: 'from-blue-700/10 to-sky-500/5', text: 'text-blue-800 dark:text-blue-400', glow: 'rgba(29,78,216,0.15)', border: 'border-blue-200 dark:border-blue-900/40' },
+  amhara: { bg: 'from-teal-500/10 to-emerald-500/5', text: 'text-teal-600 dark:text-teal-400', glow: 'rgba(20,184,166,0.15)', border: 'border-teal-200 dark:border-teal-900/40' },
+  coop: { bg: 'from-indigo-500/10 to-violet-500/5', text: 'text-indigo-600 dark:text-indigo-400', glow: 'rgba(99,102,241,0.15)', border: 'border-indigo-200 dark:border-indigo-900/40' },
+  amole: { bg: 'from-rose-500/10 to-pink-500/5', text: 'text-rose-600 dark:text-rose-400', glow: 'rgba(244,63,94,0.15)', border: 'border-rose-200 dark:border-rose-900/40' },
+  hello_cash: { bg: 'from-emerald-600/10 to-green-500/5', text: 'text-emerald-700 dark:text-emerald-400', glow: 'rgba(5,150,105,0.15)', border: 'border-emerald-200 dark:border-emerald-900/40' },
+  nib: { bg: 'from-purple-600/10 to-indigo-500/5', text: 'text-purple-700 dark:text-purple-400', glow: 'rgba(147,51,234,0.15)', border: 'border-purple-200 dark:border-purple-900/40' },
+  wegagen: { bg: 'from-orange-600/10 to-amber-500/5', text: 'text-orange-700 dark:text-orange-400', glow: 'rgba(234,88,12,0.15)', border: 'border-orange-200 dark:border-orange-900/40' },
+  zemen: { bg: 'from-amber-600/10 to-yellow-600/5', text: 'text-amber-700 dark:text-amber-400', glow: 'rgba(217,119,6,0.15)', border: 'border-amber-200 dark:border-amber-900/40' },
+  oromia: { bg: 'from-teal-600/10 to-cyan-500/5', text: 'text-teal-700 dark:text-teal-400', glow: 'rgba(13,148,136,0.15)', border: 'border-teal-200 dark:border-teal-900/40' },
+  hibret: { bg: 'from-yellow-600/10 to-amber-600/5', text: 'text-yellow-800 dark:text-yellow-400', glow: 'rgba(202,138,4,0.15)', border: 'border-yellow-200 dark:border-yellow-900/40' },
 };
 
-type Step = 'list' | 'form' | 'success' | 'pending_status';
+type Step = 'list' | 'form';
+type ProofType = 'screenshot' | 'sms';
 
 export default function Deposit() {
-  const { language } = useGameStore();
+  const { language, user, fetchUser } = useGameStore();
   const [methods, setMethods] = useState<DepositMethod[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<DepositMethod | null>(null);
   const [step, setStep] = useState<Step>('list');
-  const [pendingAmount, setPendingAmount] = useState<number | null>(null);
   const [supportUsername, setSupportUsername] = useState<string | null>(null);
+  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
 
-  // Form state
+  // Pending Deposit State
+  const [pendingDeposit, setPendingDeposit] = useState<PendingDeposit | null>(null);
+
+  // Form State
   const [amount, setAmount] = useState('');
+  const [proofType, setProofType] = useState<ProofType>('screenshot');
   const [file, setFile] = useState<File | null>(null);
+  const [smsText, setSmsText] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
+
+  // 3D Auto-Disappearing Notification Toasts
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastType, setToastType] = useState<'warning' | 'info' | 'success'>('info');
+  const toastTimeoutRef = useRef<any>(null);
+
+  // 3D Auto-Disappearing Success Submission Modal
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successAmount, setSuccessAmount] = useState<number>(0);
+  const [successCountdown, setSuccessCountdown] = useState(4);
+
+  const showToast = (msg: string, type: 'warning' | 'info' | 'success' = 'info', duration = 3500) => {
+    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    setToastMessage(msg);
+    setToastType(type);
+    toastTimeoutRef.current = setTimeout(() => {
+      setToastMessage(null);
+    }, duration);
+  };
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text).then(() => {
@@ -82,331 +138,837 @@ export default function Deposit() {
     });
   };
 
-  useEffect(() => { fetchMethods(); }, []);
+  const pasteFromClipboard = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text) {
+        setSmsText(text);
+        showToast(language === 'am' ? 'መልእክቱ ተለጥፏል!' : 'Pasted from clipboard!', 'success', 2000);
+      }
+    } catch {
+      showToast(language === 'am' ? 'እባክዎ ጽሑፉን በእጅ ይለጥፉ' : 'Please paste text manually into the box', 'info', 2500);
+    }
+  };
 
-  const fetchMethods = async () => {
+  useEffect(() => {
+    fetchInitialData();
+
+    // Subscribe to realtime deposit changes for instant auto-approval notifications
+    const tgId = user?.telegram_id || WebApp?.initDataUnsafe?.user?.id?.toString();
+    if (tgId) {
+      const channel = supabase
+        .channel(`user-deposits-${tgId}`)
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'deposits', filter: `telegram_id=eq.${tgId}` },
+          (payload: any) => {
+            if (payload.eventType === 'UPDATE') {
+              if (payload.new.status === 'approved') {
+                setPendingDeposit(null);
+                fetchUser();
+                showToast(
+                  language === 'am'
+                    ? `🎉 ተቀማጭዎ ፀድቋል! ${payload.new.amount} ETB ወደ ሂሳብዎ ገብቷል::`
+                    : `🎉 Deposit Approved! ${payload.new.amount} ETB added to balance!`,
+                  'success',
+                  5000
+                );
+              } else if (payload.new.status === 'rejected') {
+                setPendingDeposit(null);
+                showToast(
+                  language === 'am'
+                    ? `⚠️ ተቀማጭዎ ተቀባይነት አላገኘም:: እባክዎ እንደገና ይሞክሩ::`
+                    : `⚠️ Your deposit was rejected. Please verify and try again.`,
+                  'warning',
+                  5000
+                );
+              }
+            } else if (payload.eventType === 'INSERT') {
+              setPendingDeposit({
+                id: payload.new.id,
+                amount: payload.new.amount,
+                status: payload.new.status,
+                created_at: payload.new.created_at,
+              });
+            }
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [user?.telegram_id]);
+
+  // Countdown timer for success submission modal
+  useEffect(() => {
+    if (showSuccessModal && successCountdown > 0) {
+      const timer = setTimeout(() => setSuccessCountdown(prev => prev - 1), 1000);
+      return () => clearTimeout(timer);
+    } else if (showSuccessModal && successCountdown === 0) {
+      setShowSuccessModal(false);
+      setStep('list');
+    }
+  }, [showSuccessModal, successCountdown]);
+
+  const fetchInitialData = async () => {
     try {
       const initData = typeof WebApp !== 'undefined' ? WebApp.initData : '';
       const [methodsRes, historyRes, supportRes] = await Promise.all([
-        fetch(`${API_URL}/deposit/methods`, { headers: { 'x-telegram-init-data': initData } }),
-        fetch(`${API_URL}/deposit/history`, { headers: { 'x-telegram-init-data': initData } }),
-        fetch(`${API_URL}/player/support-contact`, { headers: { 'x-telegram-init-data': initData } })
+        fetch(`${API_URL}/deposit/methods`, { headers: { 'x-telegram-init-data': initData } }).catch(() => null),
+        fetch(`${API_URL}/deposit/history`, { headers: { 'x-telegram-init-data': initData } }).catch(() => null),
+        fetch(`${API_URL}/player/support-contact`, { headers: { 'x-telegram-init-data': initData } }).catch(() => null)
       ]);
 
-      if (methodsRes.ok) setMethods(await methodsRes.json());
-      
-      if (historyRes.ok) {
+      if (methodsRes && methodsRes.ok) {
+        setMethods(await methodsRes.json());
+      } else {
+        // Direct DB fallback
+        const { data: dbMethods } = await supabase
+          .from('deposit_methods')
+          .select('*')
+          .eq('is_active', true)
+          .order('created_at', { ascending: true });
+        if (dbMethods) setMethods(dbMethods);
+      }
+
+      if (historyRes && historyRes.ok) {
         const history = await historyRes.json();
         const pending = history.find((d: any) => d.status === 'pending');
         if (pending) {
-          setPendingAmount(pending.amount);
-          setStep('pending_status');
+          setPendingDeposit(pending);
+        }
+      } else {
+        const tgId = user?.telegram_id || WebApp?.initDataUnsafe?.user?.id?.toString();
+        if (tgId) {
+          const { data: pending } = await supabase
+            .from('deposits')
+            .select('*, deposit_methods(type, name, logo_url)')
+            .eq('telegram_id', tgId)
+            .eq('status', 'pending')
+            .maybeSingle();
+          if (pending) setPendingDeposit(pending);
         }
       }
 
-      if (supportRes.ok) {
+      if (supportRes && supportRes.ok) {
         const support = await supportRes.json();
         if (support.username) setSupportUsername(support.username);
       }
     } catch (err) {
-      console.error(err);
+      console.error('Error loading deposit data:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const selectMethod = (method: DepositMethod) => {
+  const handleSelectMethod = (method: DepositMethod) => {
+    // If user already has a pending deposit, show auto-dismissing toast notification
+    if (pendingDeposit) {
+      showToast(
+        language === 'am'
+          ? `⚠️ የቀደመው የ ${pendingDeposit.amount} ETB ተቀማጭ ጥያቄዎ እስኪረጋገጥ ድረስ እባክዎ ይጠብቁ::`
+          : `⚠️ Please wait for your pending deposit of ${pendingDeposit.amount} ETB to be reviewed.`,
+        'warning',
+        3500
+      );
+      return;
+    }
+
     setSelected(method);
     setAmount('');
+    setProofType('screenshot');
     setFile(null);
+    setSmsText('');
     setError('');
     setStep('form');
   };
 
-  const uploadScreenshot = async (file: File): Promise<string> => {
-    return await uploadImage(file);
-  };
-
   const handleSubmit = async () => {
     if (!selected) return;
+
+    // Check if another deposit is pending
+    if (pendingDeposit) {
+      showToast(
+        language === 'am'
+          ? `⚠️ የቀደመው የ ${pendingDeposit.amount} ETB ተቀማጭ ጥያቄዎ እስኪረጋገጥ ድረስ እባክዎ ይጠብቁ::`
+          : `⚠️ Please wait for your pending deposit of ${pendingDeposit.amount} ETB to be reviewed.`,
+        'warning',
+        3500
+      );
+      return;
+    }
+
     const numAmount = parseFloat(amount);
     if (!amount || isNaN(numAmount) || numAmount <= 0) {
-      setError('Please enter a valid amount.'); return;
+      setError(language === 'am' ? 'እባክዎ ትክክለኛ የገንዘብ መጠን ያስገቡ::' : 'Please enter a valid amount.');
+      return;
     }
-    if (!file) {
-      setError('Please upload your payment screenshot.'); return;
+
+    if (selected.min_deposit && numAmount < selected.min_deposit) {
+      setError(
+        language === 'am'
+          ? `ዝቅተኛው ተቀማጭ መጠን ${selected.min_deposit} ETB ነው::`
+          : `Minimum deposit for this method is ${selected.min_deposit} ETB.`
+      );
+      return;
     }
+
+    // Validate Proof (Screenshot or SMS)
+    if (proofType === 'screenshot' && !file) {
+      setError(language === 'am' ? 'እባክዎ የክፍያ ማረጋገጫ ስክሪንሾት ይጫኑ::' : 'Please upload your payment screenshot.');
+      return;
+    }
+
+    if (proofType === 'sms' && !smsText.trim()) {
+      setError(
+        language === 'am'
+          ? 'እባክዎ የቴሌብር/ባንክ ማረጋገጫ መልእክት ወይም የግብይት ቁጥር (Txn ID) ያስገቡ::'
+          : 'Please enter transaction confirmation SMS or reference ID.'
+      );
+      return;
+    }
+
     setError('');
     setSubmitting(true);
+
     try {
-      const screenshotUrl = await uploadScreenshot(file);
+      let finalScreenshotUrl = '';
+
+      if (proofType === 'screenshot' && file) {
+        finalScreenshotUrl = await uploadImage(file);
+      }
+
+      const payload = {
+        method_id: selected.id,
+        amount: numAmount,
+        screenshot_url: finalScreenshotUrl,
+        sms_message: proofType === 'sms' ? smsText.trim() : undefined,
+      };
+
       const initData = typeof WebApp !== 'undefined' ? WebApp.initData : '';
-      const res = await fetch(`${API_URL}/deposit/request`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-telegram-init-data': initData },
-        body: JSON.stringify({ method_id: selected.id, amount: numAmount, screenshot_url: screenshotUrl })
-      });
-      if (res.ok) {
-        setStep('success');
-      } else {
-        const err = await res.json();
-        setError(err.error || 'Failed to submit.');
+      let success = false;
+
+      try {
+        const res = await fetch(`${API_URL}/deposit/request`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-telegram-init-data': initData },
+          body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+          success = true;
+        } else {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error || 'Failed to submit request');
+        }
+      } catch (apiErr: any) {
+        console.warn('API submission failed, attempting direct Supabase fallback:', apiErr);
+        const tgId = user?.telegram_id || WebApp?.initDataUnsafe?.user?.id?.toString();
+        if (tgId) {
+          const finalProof = finalScreenshotUrl || (smsText ? `SMS: ${smsText.trim()}` : '');
+          const { error: insertErr } = await supabase.from('deposits').insert([{
+            telegram_id: tgId,
+            method_id: selected.id,
+            amount: numAmount,
+            screenshot_url: finalProof,
+            status: 'pending'
+          }]);
+          if (!insertErr) success = true;
+          else throw insertErr;
+        } else {
+          throw apiErr;
+        }
+      }
+
+      if (success) {
+        setPendingDeposit({
+          id: 'temp-' + Date.now(),
+          amount: numAmount,
+          status: 'pending',
+          created_at: new Date().toISOString(),
+          method: {
+            type: selected.type,
+            name: selected.name,
+            logo_url: selected.logo_url
+          }
+        });
+
+        // Trigger Auto-Disappearing 3D Success Modal
+        setSuccessAmount(numAmount);
+        setSuccessCountdown(4);
+        setShowSuccessModal(true);
+        setStep('list');
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to submit. Please try again.');
+      setError(err.message || (language === 'am' ? 'ማስገባት አልተሳካም:: እባክዎ እንደገና ይሞክሩ::' : 'Failed to submit. Please try again.'));
     } finally {
       setSubmitting(false);
     }
   };
 
-  // ── STEP: SUCCESS ────────────────────────────────────────────────────────────
-  if (step === 'success') {
-    return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col items-center justify-center p-6">
-        <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-3xl shadow-sm border border-gray-100 dark:border-slate-800 p-8 text-center">
-          <div className="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-5 border-4 border-emerald-100">
-            <CheckCircle2 size={40} className="text-emerald-500" />
-          </div>
-          <h2 className="text-2xl font-black text-slate-800 dark:text-slate-100">{t[language].deposit.submitted}</h2>
-          <p className="text-slate-500 dark:text-slate-400 font-medium mt-2 leading-relaxed">
-            {t[language].deposit.pendingReview.split('{amount}')[0]}<span className="font-black text-slate-700 dark:text-slate-200">{parseFloat(amount).toLocaleString('en-US')} ETB</span>{t[language].deposit.pendingReview.split('{amount}')[1]}
-          </p>
-          <div className="mt-5 bg-yellow-50 border border-yellow-100 rounded-xl p-4 flex items-start space-x-3">
-            <Clock size={18} className="text-yellow-600 mt-0.5 flex-shrink-0" />
-            <p className="text-xs text-yellow-700 font-semibold text-left">{t[language].deposit.willBeCredited}</p>
-          </div>
-          <Link to="/" className="mt-3 block w-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 font-black py-4 rounded-xl text-center transition-all active:scale-95">
-            {t[language].deposit.backHome}
-          </Link>
-          
-          {supportUsername && (
-            <a 
-              href={`https://t.me/${supportUsername.replace('@', '')}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-4 flex items-center justify-center space-x-2 text-blue-600 font-black text-sm bg-blue-50 hover:bg-blue-100 transition-colors py-3.5 rounded-xl w-full border border-blue-100"
+  return (
+    <div className="min-h-screen bg-[#f8fafc] dark:bg-[#070b14] text-slate-800 dark:text-slate-100 transition-colors duration-200 pb-28">
+      {/* ── 3D AUTO-DISAPPEARING TOAST NOTIFICATION ── */}
+      {toastMessage && (
+        <div className="fixed top-4 left-4 right-4 z-50 flex justify-center animate-slide-down">
+          <div
+            className={`w-full max-w-sm px-4 py-3.5 rounded-2xl shadow-[0_12px_30px_rgba(0,0,0,0.18)] dark:shadow-[0_12px_35px_rgba(0,0,0,0.6)] border backdrop-blur-md flex items-center gap-3 transition-all ${
+              toastType === 'warning'
+                ? 'bg-amber-500/95 text-white border-amber-300 ring-2 ring-amber-400/40'
+                : toastType === 'success'
+                ? 'bg-emerald-600/95 text-white border-emerald-400 ring-2 ring-emerald-400/40'
+                : 'bg-slate-900/95 text-white border-slate-700 ring-2 ring-slate-600/40'
+            }`}
+          >
+            {toastType === 'warning' && <AlertCircle size={20} className="shrink-0 animate-bounce" />}
+            {toastType === 'success' && <CheckCircle2 size={20} className="shrink-0 animate-pulse" />}
+            {toastType === 'info' && <Info size={20} className="shrink-0 text-amber-400" />}
+            <p className="text-xs font-black flex-1 leading-snug">{toastMessage}</p>
+            <button
+              onClick={() => setToastMessage(null)}
+              className="p-1 hover:bg-white/20 rounded-full transition-colors shrink-0"
             >
-              <MessageCircle size={18} />
-              <span>Need Help? {t[language].deposit.contactSupport}</span>
-            </a>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  // ── STEP: PENDING STATUS ─────────────────────────────────────────────────────
-  if (step === 'pending_status') {
-    return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col items-center justify-center p-6">
-        <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-3xl shadow-sm border border-gray-100 dark:border-slate-800 p-8 text-center">
-          <div className="w-20 h-20 bg-yellow-50 rounded-full flex items-center justify-center mx-auto mb-5 border-4 border-yellow-100">
-            <Clock size={40} className="text-yellow-500" />
+              <X size={16} />
+            </button>
           </div>
-          <h2 className="text-2xl font-black text-slate-800 dark:text-slate-100">{t[language].deposit.alreadyPendingTitle}</h2>
-          <p className="text-slate-500 dark:text-slate-400 font-medium mt-2 leading-relaxed">
-            {t[language].deposit.alreadyPendingDesc.split('{amount}')[0]}<span className="font-black text-slate-700 dark:text-slate-200">{pendingAmount?.toLocaleString('en-US')} ETB</span> {t[language].deposit.alreadyPendingDesc.split('{amount}')[1]}
-          </p>
-          <div className="mt-5 bg-blue-50 border border-blue-100 rounded-xl p-4">
-            <p className="text-xs text-blue-700 font-semibold text-center">{t[language].deposit.waitAdmin}</p>
-          </div>
-          
-          {supportUsername && (
-            <a 
-              href={`https://t.me/${supportUsername.replace('@', '')}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-4 flex items-center justify-center space-x-2 text-blue-600 font-black text-sm bg-blue-50 hover:bg-blue-100 transition-colors py-3.5 rounded-xl w-full border border-blue-100"
-            >
-              <MessageCircle size={18} />
-              <span>Need Help? {t[language].deposit.contactSupport}</span>
-            </a>
-          )}
-
-          <Link to="/" className="mt-3 block w-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 font-black py-4 rounded-xl text-center transition-all active:scale-95">
-            {t[language].deposit.backHome}
-          </Link>
         </div>
-      </div>
-    );
-  }
+      )}
 
-  // ── STEP: FORM ───────────────────────────────────────────────────────────────
-  if (step === 'form' && selected) {
-    return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 pb-20">
-        {/* Header */}
-        <div className="bg-white dark:bg-slate-900 px-4 py-4 rounded-b-2xl shadow-sm border-b border-gray-100 dark:border-slate-800 flex items-center space-x-3 sticky top-0 z-10">
-          <button onClick={() => setStep('list')} className="p-2 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-600 dark:text-slate-300 hover:bg-slate-200 transition-colors">
-            <ArrowLeft size={18} />
-          </button>
-          <h1 className="font-black text-slate-800 dark:text-slate-100 text-lg">{t[language].deposit.depositVia} {typeLabels[selected.type]}</h1>
-        </div>
+      {/* ── 3D AUTO-DISAPPEARING SUCCESS MODAL (COUNTDOWN) ── */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 bg-slate-950/75 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[32px] p-6 shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-slate-200/80 dark:border-slate-800 text-center relative overflow-hidden animate-scale-up">
+            {/* Top Auto-dismiss progress bar */}
+            <div className="absolute top-0 left-0 right-0 h-1.5 bg-slate-100 dark:bg-slate-800">
+              <div
+                className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-1000 ease-linear"
+                style={{ width: `${(successCountdown / 4) * 100}%` }}
+              />
+            </div>
 
-        <div className="p-4 space-y-4">
-          {/* Method Card */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 p-5">
-            <p className="text-[10px] font-black text-slate-400 tracking-widest mb-3">{t[language].deposit.sendMoneyTo}</p>
-            <div className="flex items-center space-x-4">
-              {selected.logo_url ? (
-                <img src={selected.logo_url} alt="logo" className="w-16 h-16 rounded-2xl object-contain bg-slate-50 dark:bg-slate-900 border border-slate-100 p-1.5" />
-              ) : (
-                <div className="w-16 h-16 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 font-bold text-xs">NO IMG</div>
-              )}
-              <div className="flex-1">
-                <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${typeBadge[selected.type]}`}>
-                  {selected.type.toUpperCase()}
-                </span>
-                <h3 className="font-black text-slate-800 dark:text-slate-100 text-base mt-1 leading-tight">{selected.name}</h3>
-                <div className="mt-2 flex items-center space-x-3">
-                  <span className="font-black text-xl text-slate-700 dark:text-slate-200 tracking-wider">{selected.account_number}</span>
-                  <button
-                    onClick={() => copyToClipboard(selected.account_number)}
-                    className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                      copied
-                        ? 'bg-emerald-100 text-emerald-600 border border-emerald-200'
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:bg-slate-200'
-                    }`}
-                  >
-                    {copied ? <><Check size={13} strokeWidth={3} /><span>{t[language].deposit.copySuccess}</span></> : <><Copy size={13} /><span>{t[language].deposit.copy}</span></>}
-                  </button>
-                </div>
+            {/* Glowing 3D Badge */}
+            <div className="relative w-20 h-20 mx-auto mt-2 mb-4">
+              <div className="absolute inset-0 bg-emerald-500/20 rounded-full blur-xl animate-pulse" />
+              <div className="relative w-20 h-20 rounded-full bg-gradient-to-b from-emerald-400 to-emerald-600 flex items-center justify-center text-white shadow-lg shadow-emerald-500/30">
+                <CheckCircle2 size={44} strokeWidth={2.5} className="animate-scale-up" />
               </div>
             </div>
-          </div>
 
-          {/* Instructions */}
-          <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4">
-            <p className="text-xs font-black text-blue-700 mb-2">{t[language].deposit.howToDeposit}</p>
-            <ol className="space-y-1.5">
-              {[t[language].deposit.step1, t[language].deposit.step2, t[language].deposit.step3, t[language].deposit.step4].map((step, i) => (
-                <li key={i} className="flex items-start space-x-2 text-xs text-blue-600 font-semibold">
-                  <span className="w-4 h-4 bg-blue-500 text-white rounded-full flex items-center justify-center text-[9px] font-black flex-shrink-0 mt-0.5">{i + 1}</span>
-                  <span>{step}</span>
-                </li>
-              ))}
-            </ol>
-          </div>
+            <h2 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight">
+              {language === 'am' ? 'ተልኳል!' : 'Submitted!'}
+            </h2>
 
-          {/* Amount Input */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 p-5">
-            <label className="block text-[10px] font-black text-slate-400 tracking-widest mb-3">{t[language].deposit.amountSent}</label>
-            <div className="relative">
-              <input
-                type="number"
-                min={1}
-                placeholder={`Min ${selected.min_deposit.toLocaleString()} ETB`}
-                className="w-full bg-slate-50 dark:bg-slate-900 border-2 border-gray-200 rounded-xl px-4 py-4 text-xl font-black outline-none focus:border-yellow-400 focus:bg-white dark:bg-slate-900 transition-all"
-                value={amount}
-                onChange={(e) => { setAmount(e.target.value); setError(''); }}
-              />
-              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-black text-sm">ETB</span>
+            <div className="my-3 px-3 py-2 bg-emerald-50 dark:bg-emerald-950/40 rounded-2xl border border-emerald-200 dark:border-emerald-800/60 inline-block">
+              <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300">
+                {language === 'am' ? 'የተጠየቀ መጠን:' : 'Requested Amount:'}{' '}
+                <span className="text-sm font-black">{successAmount.toLocaleString('en-US')} ETB</span>
+              </span>
             </div>
+
+            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed max-w-[280px] mx-auto">
+              {language === 'am'
+                ? 'የማስገቢያ ጥያቄዎ በተሳካ ሁኔታ ደርሷል:: አድሚን ክፍያውን ሲያረጋግጥ በራስ-ሰር ሂሳብዎ ላይ ገቢ ይደረጋል::'
+                : 'Your deposit request has been sent for review. Your balance will be credited as soon as admin approves it.'}
+            </p>
+
+            <div className="mt-4 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-2xl p-3 flex items-center justify-center gap-2 text-amber-700 dark:text-amber-300 text-xs font-bold">
+              <Clock size={16} className="text-amber-500 shrink-0 animate-spin" />
+              <span>{language === 'am' ? `ይህ መልእክት በ ${successCountdown} ሰከንድ ውስጥ ይጠፋል...` : `Auto-closing in ${successCountdown}s...`}</span>
+            </div>
+
+            <button
+              onClick={() => {
+                setShowSuccessModal(false);
+                setStep('list');
+              }}
+              className="mt-4 w-full py-3.5 bg-slate-900 dark:bg-white text-white dark:text-slate-950 rounded-2xl font-black text-xs shadow-md active:scale-95 transition-all"
+            >
+              {language === 'am' ? 'እሺ (ገጹን ተመልከት)' : 'OK (View Deposit Page)'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── VIDEO GUIDE MODAL ── */}
+      {isVideoModalOpen && (
+        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[32px] p-6 shadow-2xl border border-slate-200 dark:border-slate-800 text-center relative animate-scale-up">
+            <button
+              onClick={() => setIsVideoModalOpen(false)}
+              className="absolute top-4 right-4 p-2 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-400 hover:text-slate-600 transition-colors"
+            >
+              <X size={16} />
+            </button>
+            <div className="w-14 h-14 rounded-2xl bg-amber-50 dark:bg-amber-950/50 text-amber-500 mx-auto flex items-center justify-center mb-3">
+              <Play size={28} className="fill-amber-500" />
+            </div>
+            <h3 className="font-black text-slate-800 dark:text-white text-lg">
+              {language === 'am' ? 'የገንዘብ ማስገቢያ ቪዲዮ መመሪያ' : 'Deposit Video Guide'}
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 mb-4 leading-relaxed">
+              {language === 'am'
+                ? 'በቴሌብር ወይም በባንክ እንዴት በቀላሉ ገንዘብ እንደሚያስገቡ የሚያሳይ ፈጣን ቪዲዮ::'
+                : 'Watch the quick step-by-step video guide on how to deposit via Telebirr and mobile banking.'}
+            </p>
+            <div className="space-y-2.5 text-left mb-5">
+              <div className="bg-slate-50 dark:bg-slate-800/60 p-3 rounded-2xl border border-slate-100 dark:border-slate-800 flex items-center gap-3">
+                <span className="w-6 h-6 rounded-full bg-amber-500 text-white flex items-center justify-center text-xs font-black shrink-0">1</span>
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                  {language === 'am' ? 'የባንክ ወይም የቴሌብር አካውንት ቁጥሩን ይቅዱ' : 'Copy the bank or Telebirr account number'}
+                </span>
+              </div>
+              <div className="bg-slate-50 dark:bg-slate-800/60 p-3 rounded-2xl border border-slate-100 dark:border-slate-800 flex items-center gap-3">
+                <span className="w-6 h-6 rounded-full bg-amber-500 text-white flex items-center justify-center text-xs font-black shrink-0">2</span>
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                  {language === 'am' ? 'በሞባይል ባንኪንግ ገንዘቡን ያስተላልፉ' : 'Transfer funds via your mobile banking app'}
+                </span>
+              </div>
+              <div className="bg-slate-50 dark:bg-slate-800/60 p-3 rounded-2xl border border-slate-100 dark:border-slate-800 flex items-center gap-3">
+                <span className="w-6 h-6 rounded-full bg-amber-500 text-white flex items-center justify-center text-xs font-black shrink-0">3</span>
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                  {language === 'am' ? 'ስክሪንሾት ያያይዙ ወይም የግብይቱን SMS ጽሑፍ ይለጥፉ' : 'Upload receipt screenshot OR paste transaction SMS'}
+                </span>
+              </div>
+            </div>
+            <button
+              onClick={() => setIsVideoModalOpen(false)}
+              className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-2xl font-black text-xs shadow-md shadow-amber-500/20 active:scale-95 transition-all"
+            >
+              {language === 'am' ? 'ተረድቻለሁ' : 'Got it!'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── STEP 1: FORM VIEW (IF A METHOD IS SELECTED) ── */}
+      {step === 'form' && selected ? (
+        <div className="animate-fade-in">
+          {/* Header */}
+          <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md px-4 py-3.5 rounded-b-3xl shadow-sm border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between sticky top-0 z-30 transition-colors">
+            <button
+              onClick={() => setStep('list')}
+              className="p-2.5 bg-slate-100 dark:bg-slate-800 rounded-2xl text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 active:scale-95 transition-all"
+            >
+              <ArrowLeft size={18} />
+            </button>
+            <div className="text-center px-2">
+              <h1 className="font-black text-slate-800 dark:text-white text-base tracking-tight">
+                {language === 'am' ? 'ገንዘብ አስገባ' : 'Deposit Funds'}
+              </h1>
+              <p className="text-[10px] text-amber-600 dark:text-amber-400 font-bold uppercase tracking-wider">
+                {methodNames[selected.type] || selected.type.toUpperCase()}
+              </p>
+            </div>
+            <div className="w-9" />
           </div>
 
-          {/* Screenshot Upload */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 p-5">
-            <label className="block text-[10px] font-black text-slate-400 tracking-widest mb-3">{t[language].deposit.paymentScreenshot}</label>
-            {file ? (
-              <div className="relative">
-                <img src={URL.createObjectURL(file)} alt="Receipt" className="w-full max-h-52 object-cover rounded-xl border border-gray-100 dark:border-slate-800" />
+          <div className="p-4 space-y-4 max-w-md mx-auto">
+            {/* 3D Banking Account Card */}
+            <div className="relative rounded-3xl p-5 bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-950 border border-slate-200/90 dark:border-slate-800 shadow-[0_10px_30px_rgba(0,0,0,0.04)] dark:shadow-[0_12px_35px_rgba(0,0,0,0.4)] overflow-hidden">
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                  {language === 'am' ? 'ገንዘብ የሚላክበት አካውንት' : 'OFFICIAL RECEIVING ACCOUNT'}
+                </span>
+                <span className="text-[10px] font-black px-2.5 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60 flex items-center gap-1">
+                  <ShieldCheck size={12} />
+                  <span>Verified</span>
+                </span>
+              </div>
+
+              <div className="flex items-center gap-3.5 mb-4">
+                <div className="w-16 h-16 min-w-[64px] max-w-[64px] h-[64px] max-h-[64px] rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 p-1.5 flex items-center justify-center shrink-0 overflow-hidden shadow-sm">
+                  {selected.logo_url ? (
+                    <img src={selected.logo_url} alt="Logo" className="w-full h-full object-contain rounded-xl" />
+                  ) : (
+                    <span className="text-2xl">🏦</span>
+                  )}
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-black text-slate-400 uppercase tracking-wider">{methodNames[selected.type] || selected.type.toUpperCase()}</p>
+                  <h3 className="font-black text-slate-800 dark:text-white text-base leading-tight truncate">{selected.name}</h3>
+                  <p className="text-[11px] font-bold text-amber-600 dark:text-amber-400 mt-0.5">
+                    {language === 'am' ? 'ዝቅተኛ:' : 'Min Deposit:'} <span className="font-black">{selected.min_deposit} ETB</span>
+                  </p>
+                </div>
+              </div>
+
+              {/* Monospace Copy Pill */}
+              <div className="bg-slate-100/90 dark:bg-slate-800/90 rounded-2xl p-3 flex items-center justify-between border border-slate-200/80 dark:border-slate-700/80">
+                <div className="min-w-0 flex-1 pr-2">
+                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+                    {language === 'am' ? 'የአካውንት / ስልክ ቁጥር' : 'ACCOUNT / PHONE NUMBER'}
+                  </p>
+                  <p className="font-mono font-black text-slate-800 dark:text-white text-base tracking-wider truncate">
+                    {selected.account_number}
+                  </p>
+                </div>
                 <button
-                  onClick={() => setFile(null)}
-                  className="absolute top-2 right-2 bg-rose-500 text-white p-1.5 rounded-full shadow-md"
+                  type="button"
+                  onClick={() => copyToClipboard(selected.account_number)}
+                  className={`px-3 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all active:scale-95 shadow-sm ${
+                    copied
+                      ? 'bg-emerald-500 text-white shadow-emerald-500/25'
+                      : 'bg-amber-500 hover:bg-amber-600 text-white shadow-amber-500/25'
+                  }`}
                 >
-                  <X size={14} strokeWidth={3} />
+                  {copied ? (
+                    <>
+                      <Check size={14} strokeWidth={3} />
+                      <span>{language === 'am' ? 'ተቀድቷል!' : 'Copied!'}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy size={14} />
+                      <span>{language === 'am' ? 'ቅዳ' : 'Copy'}</span>
+                    </>
+                  )}
                 </button>
               </div>
-            ) : (
-              <label className="w-full border-2 border-dashed border-gray-200 rounded-xl p-8 flex flex-col items-center cursor-pointer hover:border-blue-300 hover:bg-blue-50/30 transition-all">
-                <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center mb-3">
-                  <UploadCloud size={24} className="text-blue-500" />
-                </div>
-                <p className="font-bold text-slate-600 dark:text-slate-300">{t[language].deposit.tapToUpload}</p>
-                <p className="text-xs text-slate-400 mt-1">{t[language].deposit.jpgPng}</p>
-                <input type="file" accept="image/*,image/heic,image/heif" capture="environment" className="hidden" onChange={(e) => { setFile(e.target.files?.[0] || null); setError(''); }} />
+            </div>
+
+            {/* Amount Input with Quick Pills */}
+            <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3">
+              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                {language === 'am' ? 'የላኩት የገንዘብ መጠን (ETB)' : 'AMOUNT YOU TRANSFERRED (ETB)'}
               </label>
+
+              <div className="relative">
+                <input
+                  type="number"
+                  min={selected.min_deposit || 1}
+                  placeholder={`Min ${selected.min_deposit || 10} ETB`}
+                  value={amount}
+                  onChange={(e) => { setAmount(e.target.value); setError(''); }}
+                  className="w-full bg-slate-50 dark:bg-slate-800/80 border-2 border-slate-200 dark:border-slate-700 rounded-2xl px-4 py-3.5 text-xl font-black text-slate-800 dark:text-white outline-none focus:border-amber-400 transition-all font-mono"
+                />
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-black text-slate-400">
+                  ETB
+                </span>
+              </div>
+
+              {/* Quick Amount Pills */}
+              <div className="grid grid-cols-4 gap-2 pt-1">
+                {[50, 100, 500, 1000].map((val) => (
+                  <button
+                    key={val}
+                    type="button"
+                    onClick={() => { setAmount(val.toString()); setError(''); }}
+                    className="py-2 rounded-xl text-xs font-black bg-slate-100 dark:bg-slate-800 hover:bg-amber-50 dark:hover:bg-amber-950/40 hover:text-amber-600 text-slate-700 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700/60 transition-all active:scale-95"
+                  >
+                    +{val}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* ── DUAL PAYMENT PROOF SECTION (SCREENSHOT OR SMS MESSAGE) ── */}
+            <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3.5">
+              <div className="flex items-center justify-between">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                  {language === 'am' ? 'የክፍያ ማረጋገጫ (አማራጭ ይምረጡ)' : 'PAYMENT PROOF (CHOOSE OPTION)'}
+                </label>
+                <span className="text-[9px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 px-2 py-0.5 rounded-md">
+                  Required
+                </span>
+              </div>
+
+              {/* 3D Segmented Switch */}
+              <div className="grid grid-cols-2 p-1 bg-slate-100 dark:bg-slate-800 rounded-2xl gap-1">
+                <button
+                  type="button"
+                  onClick={() => { setProofType('screenshot'); setError(''); }}
+                  className={`py-2.5 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-all ${
+                    proofType === 'screenshot'
+                      ? 'bg-white dark:bg-slate-900 text-amber-600 dark:text-amber-400 shadow-sm'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'
+                  }`}
+                >
+                  <Camera size={14} />
+                  <span>{language === 'am' ? 'ስክሪንሾት' : 'Screenshot'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => { setProofType('sms'); setError(''); }}
+                  className={`py-2.5 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-all ${
+                    proofType === 'sms'
+                      ? 'bg-white dark:bg-slate-900 text-amber-600 dark:text-amber-400 shadow-sm'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'
+                  }`}
+                >
+                  <FileText size={14} />
+                  <span>{language === 'am' ? 'SMS / መልእክት' : 'SMS / Text'}</span>
+                </button>
+              </div>
+
+              {/* OPTION 1: SCREENSHOT UPLOAD */}
+              {proofType === 'screenshot' && (
+                <div className="space-y-2">
+                  {file ? (
+                    <div className="relative rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-2">
+                      <img
+                        src={URL.createObjectURL(file)}
+                        alt="Receipt"
+                        className="w-full max-h-52 object-contain rounded-xl"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setFile(null)}
+                        className="absolute top-3 right-3 bg-rose-500 text-white p-1.5 rounded-full shadow-md hover:bg-rose-600 active:scale-95 transition-all"
+                        title="Remove image"
+                      >
+                        <X size={14} strokeWidth={3} />
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-amber-400 rounded-2xl p-6 flex flex-col items-center justify-center cursor-pointer transition-all bg-slate-50/50 dark:bg-slate-800/40 hover:bg-amber-50/30">
+                      <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center mb-2 shadow-inner">
+                        <UploadCloud size={24} />
+                      </div>
+                      <p className="text-xs font-black text-slate-700 dark:text-slate-200 text-center">
+                        {language === 'am' ? 'ስክሪንሾቱን እዚህ ይጫኑ' : 'Tap to upload screenshot'}
+                      </p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">JPG, PNG, HEIC (Max 10MB)</p>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          setFile(e.target.files?.[0] || null);
+                          setError('');
+                        }}
+                      />
+                    </label>
+                  )}
+                </div>
+              )}
+
+              {/* OPTION 2: SMS / TRANSACTION TEXT */}
+              {proofType === 'sms' && (
+                <div className="space-y-2">
+                  <div className="relative">
+                    <textarea
+                      rows={3}
+                      value={smsText}
+                      onChange={(e) => { setSmsText(e.target.value); setError(''); }}
+                      placeholder={
+                        language === 'am'
+                          ? 'የቴሌብር ወይም የባንክ ማረጋገጫ የደረሰዎትን መልእክት (SMS) ወይም የግብይት ቁጥር (Txn Ref) እዚህ ይለጥፉ...'
+                          : 'Paste the bank or Telebirr confirmation SMS or transaction ID here (e.g. Txn ID: 123456789)...'
+                      }
+                      className="w-full bg-slate-50 dark:bg-slate-800/80 border-2 border-slate-200 dark:border-slate-700 rounded-2xl p-3.5 text-xs font-mono font-medium text-slate-800 dark:text-white outline-none focus:border-amber-400 resize-none transition-all placeholder:font-sans placeholder:text-slate-400"
+                    />
+                    <button
+                      type="button"
+                      onClick={pasteFromClipboard}
+                      className="absolute right-3 bottom-3 px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-[10px] font-black shadow-sm active:scale-95 transition-all flex items-center gap-1"
+                    >
+                      <Copy size={11} />
+                      <span>{language === 'am' ? 'ለጥፍ' : 'Paste'}</span>
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-slate-400 leading-tight">
+                    {language === 'am'
+                      ? '💡 ሙሉውን የቴሌብር ወይም የባንክ SMS መልእክት እዚህ በቀላሉ መለጠፍ ይችላሉ::'
+                      : '💡 You can paste the complete SMS text sent by Telebirr or your bank.'}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Error Message Display */}
+            {error && (
+              <div className="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 rounded-2xl p-3.5 flex items-center gap-2.5 text-rose-600 dark:text-rose-400 text-xs font-bold animate-shake">
+                <AlertCircle size={18} className="shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            {/* 3D Submit Button */}
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={submitting}
+              className="w-full py-4 rounded-2xl font-black text-white text-sm bg-gradient-to-r from-amber-500 via-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 shadow-[0_8px_20px_rgba(245,158,11,0.3)] active:translate-y-0.5 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {submitting ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>{language === 'am' ? 'በመላክ ላይ...' : 'Submitting...'}</span>
+                </>
+              ) : (
+                <>
+                  <Zap size={18} />
+                  <span>{language === 'am' ? 'ማስገቢያ ጥያቄውን ላክ' : 'Submit Deposit Request'}</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      ) : (
+        /* ── STEP 2: AVAILABLE METHODS LIST VIEW (FANTASTIC 3D GRID) ── */
+        <div>
+          {/* Mobile Sticky Header */}
+          <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md px-4 py-3.5 rounded-b-3xl shadow-sm border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between sticky top-0 z-30 transition-colors">
+            <Link
+              to="/"
+              className="p-2.5 bg-slate-100 dark:bg-slate-800 rounded-2xl text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 active:scale-95 transition-all"
+            >
+              <ArrowLeft size={18} />
+            </Link>
+
+            <div className="text-center px-2 min-w-0">
+              <h1 className="font-black text-slate-800 dark:text-white text-base tracking-tight truncate">
+                {language === 'am' ? 'ገንዘብ አስገባ' : 'Deposit Funds'}
+              </h1>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                {language === 'am' ? 'የመክፈያ መንገድ ይምረጡ' : 'Select a Deposit Method'}
+              </p>
+            </div>
+
+            {/* Video Guide Pill Button */}
+            <button
+              onClick={() => setIsVideoModalOpen(true)}
+              className="bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white text-[11px] font-black px-3 py-1.5 rounded-full shadow-md shadow-amber-500/20 flex items-center gap-1 active:scale-95 transition-all shrink-0"
+            >
+              <Play size={11} className="fill-white" />
+              <span>Video Guide</span>
+            </button>
+          </div>
+
+          <div className="p-4 space-y-4 max-w-lg mx-auto">
+            {/* ── 3D PENDING DEPOSIT BANNER (SHOWN IF USER HAS AN ACTIVE PENDING REQUEST) ── */}
+            {pendingDeposit && (
+              <div className="relative rounded-3xl p-5 bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-transparent border border-amber-300/80 dark:border-amber-500/30 shadow-[0_8px_25px_rgba(245,158,11,0.12)] overflow-hidden animate-slide-down">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
+                    <span className="text-[10px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                      {language === 'am' ? 'በመጠባበቅ ላይ ያለ ተቀማጭ' : 'PENDING REVIEW'}
+                    </span>
+                  </div>
+                  <span className="text-xs font-black text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/60 px-2.5 py-0.5 rounded-lg border border-amber-200 dark:border-amber-800/60">
+                    {pendingDeposit.amount.toLocaleString('en-US')} ETB
+                  </span>
+                </div>
+
+                <p className="text-xs text-slate-700 dark:text-slate-300 font-semibold leading-relaxed">
+                  {language === 'am'
+                    ? `የ ${pendingDeposit.amount.toLocaleString('en-US')} ETB ማስገቢያ ጥያቄዎ በአድሚን እየታየ ነው:: ክፍያው እንደተረጋገጠ በራስ-ሰር ሂሳብዎ ላይ ገቢ ይደረጋል::`
+                    : `Your deposit request of ${pendingDeposit.amount.toLocaleString('en-US')} ETB is currently under review by admin.`}
+                </p>
+
+                <div className="mt-3.5 pt-3 border-t border-amber-200/60 dark:border-amber-900/40 flex items-center justify-between text-xs">
+                  <span className="text-[11px] text-slate-400 font-medium flex items-center gap-1">
+                    <Clock size={13} className="text-amber-500 animate-spin" />
+                    <span>{language === 'am' ? 'እየተረጋገጠ ነው...' : 'Verifying...'}</span>
+                  </span>
+
+                  {supportUsername && (
+                    <a
+                      href={`https://t.me/${supportUsername.replace('@', '')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[11px] font-black text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                    >
+                      <MessageCircle size={13} />
+                      <span>{language === 'am' ? 'ድጋፍ ሰጪ ያግኙ' : 'Contact Support'}</span>
+                    </a>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Section Header: Available Methods Count Badge */}
+            <div className="flex items-center justify-between px-1">
+              <span className="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                {language === 'am' ? 'ያሉ የክፍያ መንገዶች' : 'AVAILABLE METHODS'}
+              </span>
+              <span className="text-[10px] font-black text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800/60 px-2.5 py-0.5 rounded-full">
+                {methods.length} {language === 'am' ? 'መንገዶች' : 'Methods'}
+              </span>
+            </div>
+
+            {/* ── 3D GRID OF DEPOSIT METHODS ── */}
+            {loading ? (
+              <div className="grid grid-cols-2 gap-3.5">
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <div
+                    key={i}
+                    className="h-36 rounded-3xl bg-white dark:bg-slate-900 animate-pulse border border-slate-100 dark:border-slate-800 shadow-sm"
+                  />
+                ))}
+              </div>
+            ) : methods.length === 0 ? (
+              <div className="text-center py-16 bg-white dark:bg-slate-900/90 rounded-3xl border border-dashed border-slate-200 dark:border-slate-800 p-8 shadow-sm">
+                <span className="text-3xl mb-2 block">🏦</span>
+                <h3 className="font-black text-slate-700 dark:text-slate-200 text-sm">
+                  {language === 'am' ? 'ምንም አይነት የማስገቢያ መንገዶች አልተገኙም' : 'No Deposit Methods Available'}
+                </h3>
+                <p className="text-slate-400 text-xs mt-1">
+                  {language === 'am' ? 'እባክዎ ጥቂት ቆይተው እንደገና ይመልከቱ::' : 'Please check back shortly.'}
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3.5">
+                {methods.map((method) => {
+                  const style = methodAccents[method.type] || {
+                    bg: 'from-slate-500/10 to-slate-500/5',
+                    text: 'text-slate-700 dark:text-slate-300',
+                    glow: 'rgba(100,116,139,0.1)',
+                    border: 'border-slate-200 dark:border-slate-800',
+                  };
+
+                  return (
+                    <button
+                      key={method.id}
+                      type="button"
+                      onClick={() => handleSelectMethod(method)}
+                      className="group relative rounded-3xl p-4 bg-white dark:bg-slate-900/95 border border-slate-200/80 dark:border-slate-800/80 hover:border-amber-400/80 dark:hover:border-amber-500/50 shadow-[0_6px_20px_rgba(0,0,0,0.03)] dark:shadow-[0_8px_25px_rgba(0,0,0,0.4)] flex flex-col items-center justify-between text-center transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_12px_28px_rgba(0,0,0,0.08)] active:translate-y-0.5 active:scale-[0.96] overflow-hidden min-h-[148px]"
+                    >
+                      {/* Subtle ambient gradient highlight */}
+                      <div className={`absolute inset-0 bg-gradient-to-b ${style.bg} opacity-50 group-hover:opacity-100 transition-opacity pointer-events-none`} />
+
+                      {/* Top Row: Method Category Pill */}
+                      <div className="w-full flex items-center justify-between relative z-10 mb-2">
+                        <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 truncate max-w-[80px]">
+                          {method.type}
+                        </span>
+                        <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded-md border border-emerald-200/60 dark:border-emerald-800/40">
+                          {method.min_deposit} ETB
+                        </span>
+                      </div>
+
+                      {/* 3D Squircle Logo Box */}
+                      <div className="relative z-10 w-16 h-16 min-w-[64px] max-w-[64px] h-[64px] max-h-[64px] rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 p-2 flex items-center justify-center shrink-0 overflow-hidden shadow-sm group-hover:scale-105 transition-transform duration-200">
+                        {method.logo_url ? (
+                          <img
+                            src={method.logo_url}
+                            alt={method.name}
+                            className="w-full h-full object-contain rounded-xl"
+                          />
+                        ) : (
+                          <span className="text-2xl">💳</span>
+                        )}
+                      </div>
+
+                      {/* Method Name */}
+                      <div className="relative z-10 w-full mt-2.5">
+                        <p className="font-black text-xs text-slate-800 dark:text-white truncate group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
+                          {methodNames[method.type] || method.name}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
             )}
           </div>
-
-          {/* Error */}
-          {error && (
-            <div className="bg-rose-50 border border-rose-100 rounded-xl p-4 flex items-center space-x-3">
-              <AlertCircle size={18} className="text-rose-500 flex-shrink-0" />
-              <p className="text-sm font-bold text-rose-600">{error}</p>
-            </div>
-          )}
-
-          {/* Submit */}
-          <button
-            onClick={handleSubmit}
-            disabled={submitting}
-            className="w-full bg-yellow-400 hover:bg-yellow-500 text-yellow-950 font-black py-4 rounded-2xl shadow-sm text-lg transition-all active:scale-95 disabled:opacity-50"
-          >
-            {submitting ? t[language].deposit.submitting : t[language].deposit.submitBtn}
-          </button>
         </div>
-      </div>
-    );
-  }
-
-  // ── STEP: LIST ───────────────────────────────────────────────────────────────
-  return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 pb-20">
-      {/* Header */}
-      <div className="bg-white dark:bg-slate-900 px-4 py-4 rounded-b-2xl shadow-sm border-b border-gray-100 dark:border-slate-800 flex items-center space-x-3 sticky top-0 z-10">
-        <Link to="/" className="p-2 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-600 dark:text-slate-300 hover:bg-slate-200 transition-colors">
-          <ArrowLeft size={18} />
-        </Link>
-        <div>
-          <h1 className="font-black text-slate-800 dark:text-slate-100 text-lg leading-tight">{t[language].deposit.title}</h1>
-          <p className="text-xs text-slate-400 font-semibold">{t[language].deposit.selectMethod}</p>
-        </div>
-      </div>
-
-      <div className="p-4 space-y-3">
-        {loading ? (
-          <div className="space-y-3 mt-2">
-            {[1, 2, 3].map(i => (
-              <div key={i} className="bg-white dark:bg-slate-900 rounded-2xl h-24 animate-pulse border border-gray-100 dark:border-slate-800" />
-            ))}
-          </div>
-        ) : methods.length === 0 ? (
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 p-10 text-center mt-4">
-            <p className="text-slate-500 dark:text-slate-400 font-medium">{language === 'am' ? 'ምንም አይነት የማስገቢያ መንገዶች አልተገኙም።' : 'No deposit methods available.'}</p>
-            <p className="text-xs text-slate-400 mt-1">{language === 'am' ? 'እባክዎ ጥቂት ቆይተው እንደገና ይመልከቱ።' : 'Please check back later.'}</p>
-          </div>
-        ) : (
-          <>
-            <p className="text-[11px] font-black text-slate-400 tracking-widest px-1 pt-1">{t[language].deposit.availableMethods}</p>
-            {methods.map((method) => (
-              <button
-                key={method.id}
-                onClick={() => selectMethod(method)}
-                className="w-full bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 p-4 flex items-center justify-between transition-all hover:shadow-md active:scale-[0.98]"
-              >
-                <div className="flex items-center space-x-4">
-                  {method.logo_url ? (
-                    <img src={method.logo_url} alt="logo" className="w-14 h-14 rounded-2xl object-contain bg-slate-50 dark:bg-slate-900 border border-slate-100 p-1.5" />
-                  ) : (
-                    <div className="w-14 h-14 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 text-[10px] font-bold">NO IMG</div>
-                  )}
-                  <div className="text-left">
-                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${typeBadge[method.type]}`}>
-                      {method.type.toUpperCase()}
-                    </span>
-                    <h3 className="font-black text-slate-800 dark:text-slate-100 mt-1 leading-tight">{typeLabels[method.type]}</h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold mt-0.5">
-                      Min: <span className="text-emerald-600 font-black">{method.min_deposit.toLocaleString('en-US')} ETB</span>
-                    </p>
-                  </div>
-                </div>
-                <ChevronRight size={20} className="text-slate-300 flex-shrink-0" />
-              </button>
-            ))}
-          </>
-        )}
-      </div>
+      )}
     </div>
   );
 }

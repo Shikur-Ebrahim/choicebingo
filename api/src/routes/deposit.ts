@@ -21,10 +21,16 @@ router.get('/methods', async (_req, res) => {
 // POST /api/deposit/request — submit a deposit request
 router.post('/request', async (req: AuthRequest, res) => {
   const telegramId = req.telegramUser!.id.toString();
-  const { method_id, amount, screenshot_url } = req.body;
+  const { method_id, amount, screenshot_url, sms_message } = req.body;
 
   if (!method_id || !amount) {
     res.status(400).json({ error: 'method_id and amount are required' });
+    return;
+  }
+
+  const finalProof = screenshot_url || (sms_message ? (sms_message.startsWith('SMS:') ? sms_message : `SMS: ${sms_message}`) : '');
+  if (!finalProof) {
+    res.status(400).json({ error: 'Please provide either a screenshot or transaction SMS message' });
     return;
   }
 
@@ -55,7 +61,7 @@ router.post('/request', async (req: AuthRequest, res) => {
 
   const { data, error } = await supabase
     .from('deposits')
-    .insert([{ telegram_id: telegramId, method_id, amount, screenshot_url, status: 'pending' }])
+    .insert([{ telegram_id: telegramId, method_id, amount, screenshot_url: finalProof, status: 'pending' }])
     .select().single();
 
   if (error) { res.status(500).json({ error: error.message }); return; }
