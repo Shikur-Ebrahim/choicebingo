@@ -433,9 +433,8 @@ export default function BingoGame() {
 
   // ── CELEBRATION ──────────────────────────────────────────────────────────────────────────
   // Plays stop.mp3 upon BINGO / game finish.
-  // Plays at full volume, always on.
+  // Plays at full volume with guaranteed dual playback on mobile.
   const playSpecial = useCallback((name: string = 'stop') => {
-    if (!soundEnabled) return;
     const src = `/audio/bingo/${name}.mp3?v=${AUDIO_VERSION}`;
     unlockAudio();
 
@@ -458,7 +457,14 @@ export default function BingoGame() {
     }
 
     playAudioExclusive(src, 1.0);
-  }, [soundEnabled, unlockAudio, playAudioExclusive]);
+
+    // Guaranteed native audio fallback so stop sound plays on all mobile devices
+    try {
+      const direct = new Audio(src);
+      direct.volume = 1.0;
+      direct.play().catch(() => {});
+    } catch {}
+  }, [unlockAudio, playAudioExclusive]);
 
   // ── GAME START INTRO ─────────────────────────────────────────────────────────────────────
   // Plays /audio/bingo/game_start.mp3 once when the game begins.
@@ -593,9 +599,7 @@ export default function BingoGame() {
           gameIdRef.current = d.game.id;
           prevCalledLenRef.current = d.game.called_numbers?.length || 0;
           setManuallyMarked(new Set()); // Reset manual marks on new game
-          if (d.game.status === 'finished') {
-            hasCelebratedRef.current = d.game.id;
-          } else {
+          if (d.game.status !== 'finished') {
             hasCelebratedRef.current = null;
           }
         } else if (d.game) {

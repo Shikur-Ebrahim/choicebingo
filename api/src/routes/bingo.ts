@@ -56,41 +56,51 @@ router.get('/current', validateTelegramAuth, async (req: AuthRequest, res) => {
   const telegramId = req.telegramUser!.id.toString();
   const stake = Number(req.query.stake) || 10;
 
-  // 1. Prioritize active game (waiting or calling)
-  let { data: game } = await supabase
+  // 1. Check if a game finished very recently (< 6.5s)
+  // Guarantees all active players and any user opening the game see the celebration card & stop sound before next game!
+  const { data: latestFinished } = await supabase
     .from('bingo_games')
     .select('*')
     .eq('stake', stake)
-    .in('status', ['waiting', 'calling'])
-    .order('created_at', { ascending: false })
+    .eq('status', 'finished')
+    .order('finished_at', { ascending: false })
     .limit(1)
     .maybeSingle();
 
-  // 2. If no active game, check if a game finished very recently (< 4s) for live celebration
-  if (!game) {
-    const { data: latest } = await supabase
+  let game: any = null;
+  const finishElapsed = latestFinished && latestFinished.finished_at
+    ? Date.now() - new Date(latestFinished.finished_at).getTime()
+    : Infinity;
+
+  if (latestFinished && finishElapsed >= 0 && finishElapsed < 6500) {
+    game = latestFinished;
+  } else {
+    // 2. Otherwise serve active game (calling or waiting)
+    const { data: activeGame } = await supabase
       .from('bingo_games')
       .select('*')
       .eq('stake', stake)
+      .in('status', ['waiting', 'calling'])
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
 
-    if (latest && latest.finished_at && Date.now() - new Date(latest.finished_at).getTime() < 4000) {
-      game = latest;
-    } else {
-      const id = randomUUID();
-      const start_at = new Date(Date.now() + 86400000 * 365).toISOString();
-      const { data: newGame } = await supabase.from('bingo_games').insert({
-        id,
-        stake,
-        prize_pool: 0,
-        status: 'waiting',
-        called_numbers: [],
-        start_at,
-      }).select().single();
-      game = newGame;
-    }
+    game = activeGame;
+  }
+
+  // 3. Fallback: create fresh waiting game if none exists
+  if (!game) {
+    const id = randomUUID();
+    const start_at = new Date(Date.now() + 86400000 * 365).toISOString();
+    const { data: newGame } = await supabase.from('bingo_games').insert({
+      id,
+      stake,
+      prize_pool: 0,
+      status: 'waiting',
+      called_numbers: [],
+      start_at,
+    }).select().single();
+    game = newGame;
   }
 
   if (!game) { res.json({ game: null, taken_cartelas: [], my_card: null, my_cartelas: [], max_players: 150, max_cartelas_per_user: 4 }); return; }
