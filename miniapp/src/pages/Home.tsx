@@ -160,7 +160,7 @@ export default function Home() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen pb-24 space-y-4 select-none bg-slate-50 dark:bg-[#070b14] transition-colors">
+    <div className="flex flex-col min-h-screen pb-24 space-y-3 select-none bg-slate-50 dark:bg-[#070b14] transition-colors">
       {/* ANNOUNCEMENT POPUP */}
       {showAnnouncement && announcement && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/60 backdrop-blur-sm" onClick={() => setShowAnnouncement(false)}>
@@ -279,7 +279,7 @@ export default function Home() {
 
       {/* ACTIVE GAMES SECTION */}
       <div className="px-4">
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center justify-between mb-1.5">
           <h2 className="font-bold text-slate-500 dark:text-slate-400 tracking-wider text-xs uppercase">{t[language].home.activeGames}</h2>
           <button onClick={handleHelp} className="text-blue-500 flex items-center space-x-1 text-xs font-semibold hover:underline">
             <Info size={14} />
@@ -287,34 +287,34 @@ export default function Home() {
           </button>
         </div>
         
-        {/* Live Games Marquee Banner */}
+        {/* Live Games Marquee Banner — Compact Sleek Height */}
         <Link
           to="/bingo/live"
-          className="block relative rounded-2xl overflow-hidden shadow-lg h-52 bg-gradient-to-br from-[#1a1a3e] to-[#0d0d1f] flex flex-col items-center justify-center border border-indigo-900/50 select-none cursor-pointer"
+          className="block relative rounded-2xl overflow-hidden shadow-md h-36 bg-gradient-to-br from-[#1a1a3e] to-[#0d0d1f] flex flex-col items-center justify-center border border-indigo-900/50 select-none cursor-pointer"
         >
           <div className="absolute inset-0 opacity-20 pointer-events-none">
-            <div className="grid grid-cols-10 gap-2 p-3 h-full">
+            <div className="grid grid-cols-10 gap-2 p-2 h-full">
               {Array.from({length: 40}).map((_, i) => <div key={i} className="bg-white rounded-sm opacity-50" />)}
             </div>
           </div>
           
           <div className="relative z-10 flex flex-col items-center text-center px-4">
-            <span className="text-yellow-400 font-black text-3xl mb-5 drop-shadow-[0_2px_8px_rgba(250,204,21,0.4)]">
+            <span className="text-yellow-400 font-black text-2xl mb-2.5 drop-shadow-[0_2px_8px_rgba(250,204,21,0.4)]">
               {t[language].home.joinNextGame}
             </span>
             
             {/* 3D Pencil Color (Graphite) CTA Button with "ካርቴላዎን አሁን ይምረጡ!" */}
             <div
-              className="px-8 py-2.5 rounded-full font-black text-sm active:translate-y-1 transition-all flex items-center gap-2 select-none"
+              className="px-6 py-2 rounded-full font-black text-xs active:translate-y-1 transition-all flex items-center gap-1.5 select-none"
               style={{
                 background: 'linear-gradient(180deg, #94a3b8 0%, #64748b 45%, #475569 100%)',
-                boxShadow: '0 4px 0 #1e293b, 0 6px 15px rgba(0,0,0,0.35), inset 0 1px 1px rgba(255,255,255,0.4)',
+                boxShadow: '0 3.5px 0 #1e293b, 0 4px 10px rgba(0,0,0,0.35), inset 0 1px 1px rgba(255,255,255,0.4)',
                 border: '1px solid #94a3b8',
                 color: '#ffffff',
               }}
             >
               <span>{t[language].home.pickCartela}</span>
-              <span className="text-base leading-none">➔</span>
+              <span className="text-sm leading-none">➔</span>
             </div>
           </div>
         </Link>
