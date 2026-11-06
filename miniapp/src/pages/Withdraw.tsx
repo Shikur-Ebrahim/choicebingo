@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, ChevronRight, CheckCircle2, Clock, AlertCircle, User, Phone, MessageCircle } from 'lucide-react';
+import { ArrowLeft, ChevronRight, CheckCircle2, Clock, AlertCircle, User, Phone, MessageCircle, Wallet, ShieldCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import WebApp from '@twa-dev/sdk';
 import { useGameStore } from '../store/gameStore';
@@ -15,7 +15,7 @@ interface WithdrawalMethod {
 }
 
 const typeLabels: Record<string, string> = {
-    cbe: 'Commercial Bank of Ethiopia',
+  cbe: 'Commercial Bank of Ethiopia',
   boa: 'Bank of Abyssinia',
   telebirr: 'Telebirr',
   mpesa: 'M-Pesa',
@@ -35,30 +35,34 @@ const typeLabels: Record<string, string> = {
 };
 
 const typeColors: Record<string, string> = {
-    cbe: 'from-yellow-400 to-yellow-600',
-  boa: 'from-blue-500 to-blue-700',
-  telebirr: 'from-purple-500 to-purple-700',
-  mpesa: 'from-green-500 to-green-700',
-  cbebirr: 'from-yellow-500 to-yellow-700',
-  ebirr: 'from-orange-500 to-orange-700',
-  awash: 'from-slate-500 to-slate-700',
-  dashen: 'from-blue-600 to-blue-800',
-  amhara: 'from-teal-500 to-teal-700',
-  coop: 'from-indigo-500 to-indigo-700',
-  amole: 'from-red-500 to-red-700',
-  hello_cash: 'from-green-400 to-green-600',
-  nib: 'from-purple-400 to-purple-600',
-  wegagen: 'from-slate-600 to-slate-800',
-  zemen: 'from-orange-400 to-orange-600',
-  oromia: 'from-teal-400 to-teal-600',
-  hibret: 'from-yellow-500 to-yellow-600',
+  cbe: 'from-amber-500 to-yellow-600',
+  boa: 'from-blue-600 to-cyan-700',
+  telebirr: 'from-purple-600 to-indigo-700',
+  mpesa: 'from-emerald-500 to-green-700',
+  cbebirr: 'from-yellow-500 to-amber-700',
+  ebirr: 'from-orange-500 to-amber-700',
+  awash: 'from-slate-600 to-slate-800',
+  dashen: 'from-blue-600 to-blue-900',
+  amhara: 'from-teal-500 to-teal-800',
+  coop: 'from-indigo-600 to-indigo-900',
+  amole: 'from-rose-500 to-red-700',
+  hello_cash: 'from-emerald-400 to-green-600',
+  nib: 'from-purple-500 to-indigo-700',
+  wegagen: 'from-slate-700 to-slate-900',
+  zemen: 'from-amber-500 to-orange-700',
+  oromia: 'from-teal-500 to-cyan-700',
+  hibret: 'from-yellow-500 to-amber-700',
 };
 
 const typeEmoji: Record<string, string> = {
-  cbe: 'ðŸ¦',
-  boa: 'ðŸ›ï¸',
-  telebirr: 'ðŸ“±',
-  mpesa: 'ðŸ’š',
+  cbe: '🏦',
+  boa: '🏛️',
+  telebirr: '📱',
+  mpesa: '💚',
+  cbebirr: '💳',
+  ebirr: '⚡',
+  awash: '🏦',
+  dashen: '🏛️',
 };
 
 type Step = 'list' | 'form' | 'success' | 'pending_status';
@@ -125,7 +129,6 @@ export default function Withdraw() {
     setError('');
 
     const amtNum = parseFloat(amount);
-    // Check for empty / invalid number first
     if (!amount || amount.trim() === '' || isNaN(amtNum) || amtNum <= 0) {
       setError('Please enter a valid withdrawal amount.');
       return;
@@ -167,43 +170,45 @@ export default function Withdraw() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 dark:bg-[#070b14] flex items-center justify-center">
         <div className="flex flex-col items-center space-y-3">
-          <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-          <p className="text-slate-500 dark:text-slate-400 font-medium">Loading...</p>
+          <div className="w-12 h-12 border-4 border-amber-400 border-t-transparent rounded-full animate-spin shadow-[0_0_15px_rgba(245,158,11,0.3)]" />
+          <p className="text-slate-400 font-bold text-sm">Loading...</p>
         </div>
       </div>
     );
   }
 
-  // â”€â”€ STEP: PENDING STATUS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── STEP: PENDING STATUS ──
   if (step === 'pending_status') {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col items-center justify-center p-6">
-        <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-3xl shadow-sm border border-gray-100 dark:border-slate-800 p-8 text-center">
-          <div className="w-20 h-20 bg-yellow-50 rounded-full flex items-center justify-center mx-auto mb-5 border-4 border-yellow-100">
-            <Clock size={40} className="text-yellow-500" />
+      <div className="min-h-screen bg-slate-50 dark:bg-[#070b14] flex flex-col items-center justify-center p-6">
+        <div className="bg-white dark:bg-slate-900/95 w-full max-w-sm rounded-3xl shadow-[0_10px_35px_rgba(0,0,0,0.1)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.6)] border border-slate-200/80 dark:border-slate-800 p-8 text-center backdrop-blur-md">
+          <div className="w-20 h-20 bg-amber-50 dark:bg-amber-950/40 rounded-3xl flex items-center justify-center mx-auto mb-5 border-2 border-amber-200 dark:border-amber-700/60 shadow-lg shadow-amber-500/10">
+            <Clock size={40} className="text-amber-500 animate-pulse" />
           </div>
-          <h2 className="text-2xl font-black text-slate-800 dark:text-slate-100">{t[language].withdraw.alreadyPendingTitle}</h2>
-          <p className="text-slate-500 dark:text-slate-400 font-medium mt-2 leading-relaxed">
-            {t[language].withdraw.alreadyPendingDesc.split('{amount}')[0]}<span className="font-black text-slate-700 dark:text-slate-200">{pendingAmount?.toLocaleString('en-US')} ETB</span>{t[language].withdraw.alreadyPendingDesc.split('{amount}')[1]}
+          <h2 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight">{t[language].withdraw.alreadyPendingTitle}</h2>
+          <p className="text-slate-500 dark:text-slate-400 font-medium mt-2 leading-relaxed text-sm">
+            {t[language].withdraw.alreadyPendingDesc.split('{amount}')[0]}
+            <span className="font-black text-amber-600 dark:text-amber-400">{pendingAmount?.toLocaleString('en-US')} ETB</span>
+            {t[language].withdraw.alreadyPendingDesc.split('{amount}')[1]}
           </p>
-          <div className="mt-5 bg-blue-50 border border-blue-100 rounded-xl p-4">
-            <p className="text-xs text-blue-700 font-semibold text-center">{t[language].withdraw.waitAdmin}</p>
+          <div className="mt-5 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 rounded-2xl p-4">
+            <p className="text-xs text-blue-700 dark:text-blue-300 font-bold text-center">{t[language].withdraw.waitAdmin}</p>
           </div>
           {supportContact && (
             <a 
               href={`https://t.me/${supportContact.replace('@', '')}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-4 flex items-center justify-center space-x-2 text-blue-600 font-black text-sm bg-blue-50 hover:bg-blue-100 transition-colors py-3.5 rounded-xl w-full border border-blue-100"
+              className="mt-4 flex items-center justify-center space-x-2 text-blue-600 dark:text-blue-400 font-black text-sm bg-blue-50 dark:bg-blue-950/50 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors py-3.5 rounded-2xl w-full border border-blue-200 dark:border-blue-800/60 shadow-sm"
             >
               <MessageCircle size={18} />
               <span>Need Help? {t[language].withdraw.contactSupport}</span>
             </a>
           )}
 
-          <Link to="/" className="mt-3 block w-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 font-black py-4 rounded-xl text-center transition-all active:scale-95">
+          <Link to="/" className="mt-3 block w-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-black py-4 rounded-2xl text-center transition-all active:scale-95 border border-slate-200/80 dark:border-slate-700 shadow-sm">
             {t[language].withdraw.backHome}
           </Link>
         </div>
@@ -211,34 +216,36 @@ export default function Withdraw() {
     );
   }
 
-  // â”€â”€ STEP: SUCCESS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── STEP: SUCCESS ──
   if (step === 'success') {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col items-center justify-center p-6">
-        <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-3xl shadow-sm border border-gray-100 dark:border-slate-800 p-8 text-center">
-          <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-5 border-4 border-green-100">
-            <CheckCircle2 size={40} className="text-green-500" />
+      <div className="min-h-screen bg-slate-50 dark:bg-[#070b14] flex flex-col items-center justify-center p-6">
+        <div className="bg-white dark:bg-slate-900/95 w-full max-w-sm rounded-3xl shadow-[0_10px_35px_rgba(0,0,0,0.1)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.6)] border border-slate-200/80 dark:border-slate-800 p-8 text-center backdrop-blur-md">
+          <div className="w-20 h-20 bg-emerald-50 dark:bg-emerald-950/40 rounded-3xl flex items-center justify-center mx-auto mb-5 border-2 border-emerald-200 dark:border-emerald-700/60 shadow-lg shadow-emerald-500/10">
+            <CheckCircle2 size={40} className="text-emerald-500 drop-shadow-sm" />
           </div>
-          <h2 className="text-2xl font-black text-slate-800 dark:text-slate-100">{t[language].withdraw.submitted}</h2>
-          <p className="text-slate-500 dark:text-slate-400 font-medium mt-2 leading-relaxed">
-            {t[language].withdraw.pendingReview.split('{amount}')[0]}<span className="font-black text-slate-700 dark:text-slate-200">{parseFloat(amount).toLocaleString('en-US')} ETB</span>{t[language].withdraw.pendingReview.split('{amount}')[1]}
+          <h2 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight">{t[language].withdraw.submitted}</h2>
+          <p className="text-slate-500 dark:text-slate-400 font-medium mt-2 leading-relaxed text-sm">
+            {t[language].withdraw.pendingReview.split('{amount}')[0]}
+            <span className="font-black text-emerald-600 dark:text-emerald-400">{parseFloat(amount).toLocaleString('en-US')} ETB</span>
+            {t[language].withdraw.pendingReview.split('{amount}')[1]}
           </p>
-          <div className="mt-5 bg-green-50 border border-green-100 rounded-xl p-4">
-            <p className="text-xs text-green-700 font-semibold text-center">{t[language].withdraw.willBeProcessed}</p>
+          <div className="mt-5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 rounded-2xl p-4">
+            <p className="text-xs text-emerald-700 dark:text-emerald-300 font-bold text-center">{t[language].withdraw.willBeProcessed}</p>
           </div>
           {supportContact && (
             <a 
               href={`https://t.me/${supportContact.replace('@', '')}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-4 flex items-center justify-center space-x-2 text-blue-600 font-black text-sm bg-blue-50 hover:bg-blue-100 transition-colors py-3.5 rounded-xl w-full border border-blue-100"
+              className="mt-4 flex items-center justify-center space-x-2 text-blue-600 dark:text-blue-400 font-black text-sm bg-blue-50 dark:bg-blue-950/50 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors py-3.5 rounded-2xl w-full border border-blue-200 dark:border-blue-800/60 shadow-sm"
             >
               <MessageCircle size={18} />
               <span>Need Help? {t[language].withdraw.contactSupport}</span>
             </a>
           )}
 
-          <Link to="/" className="mt-3 block w-full bg-gradient-to-r from-green-500 to-emerald-500 text-white font-black py-4 rounded-xl text-center transition-all active:scale-95">
+          <Link to="/" className="mt-3 block w-full bg-gradient-to-r from-emerald-500 to-green-600 text-white font-black py-4 rounded-2xl text-center shadow-[0_6px_20px_rgba(16,185,129,0.35)] transition-all active:scale-95 border-t border-emerald-300">
             {t[language].withdraw.backHome}
           </Link>
         </div>
@@ -246,44 +253,59 @@ export default function Withdraw() {
     );
   }
 
-  // â”€â”€ STEP: FORM â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── STEP: FORM ──
   if (step === 'form' && selected) {
-    const gradient = typeColors[selected.type] || 'from-slate-500 to-slate-700';
+    const gradient = typeColors[selected.type] || 'from-slate-600 to-slate-800';
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
-        {/* Header */}
-        <div className={`bg-gradient-to-r ${gradient} px-4 pt-6 pb-8`}>
-          <div className="flex items-center space-x-3 mb-4">
-            <button onClick={() => setStep('list')} className="text-white/80 hover:text-white p-1">
-              <ArrowLeft size={22} />
+      <div className="min-h-screen bg-slate-50 dark:bg-[#070b14] text-slate-800 dark:text-slate-100 transition-colors duration-200 pb-12">
+        {/* 3D Method Header */}
+        <div className={`bg-gradient-to-r ${gradient} px-4 pt-6 pb-8 shadow-lg relative overflow-hidden border-b border-white/10`}>
+          <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+          <div className="flex items-center space-x-3 mb-4 relative z-10">
+            <button onClick={() => setStep('list')} className="w-10 h-10 rounded-xl bg-black/20 hover:bg-black/30 text-white flex items-center justify-center backdrop-blur-sm border border-white/20 active:scale-90 transition-all">
+              <ArrowLeft size={20} />
             </button>
-            <h1 className="text-lg font-black text-white">
-              {typeEmoji[selected.type]} {typeLabels[selected.type] || selected.type.toUpperCase()}
+            <h1 className="text-lg font-black text-white drop-shadow-sm flex items-center gap-2">
+              <span>{typeEmoji[selected.type] || '💳'}</span>
+              <span>{typeLabels[selected.type] || selected.type.toUpperCase()}</span>
             </h1>
           </div>
-          <div className="bg-white rounded-2xl p-4 shadow-md border border-white/10">
-            <p className="text-slate-500 text-sm font-medium">{t[language].withdraw.balance}</p>
-            <p className="text-3xl font-black text-slate-800">{userBalance.toLocaleString('en-US')} <span className="text-xl text-slate-600">ETB</span></p>
-            <p className="text-slate-400 text-xs mt-1">{t[language].withdraw.minWithdrawal} {selected.min_withdrawal.toLocaleString('en-US')} ETB</p>
+          {/* 3D Balance Inset Card */}
+          <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-3xl p-5 shadow-[0_10px_25px_rgba(0,0,0,0.1)] border border-white/20 relative z-10">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider">{t[language].withdraw.balance}</p>
+                <p className="text-3xl font-black text-slate-800 dark:text-white mt-0.5">
+                  {userBalance.toLocaleString('en-US')} <span className="text-lg text-emerald-600 dark:text-emerald-400">ETB</span>
+                </p>
+              </div>
+              <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 flex items-center justify-center text-amber-500 shadow-inner">
+                <Wallet size={24} />
+              </div>
+            </div>
+            <p className="text-slate-400 dark:text-slate-400 text-xs font-semibold mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center gap-1">
+              <ShieldCheck size={14} className="text-emerald-500" />
+              <span>{t[language].withdraw.minWithdrawal} {selected.min_withdrawal.toLocaleString('en-US')} ETB</span>
+            </p>
           </div>
         </div>
 
-        {/* Form */}
+        {/* Form Container */}
         <form onSubmit={handleSubmit} className="px-4 -mt-4">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-gray-100 dark:border-slate-800 p-5 space-y-4">
+          <div className="bg-white dark:bg-slate-900/95 rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.05)] dark:shadow-[0_10px_35px_rgba(0,0,0,0.5)] border border-slate-200/80 dark:border-slate-800 p-5 space-y-4 backdrop-blur-md">
 
             {error && (
-              <div className="flex items-start space-x-2 bg-red-50 border border-red-100 rounded-xl p-3">
-                <AlertCircle size={16} className="text-red-500 mt-0.5 flex-shrink-0" />
-                <p className="text-red-600 text-sm font-medium">{error}</p>
+              <div className="flex items-start space-x-2 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800/60 rounded-2xl p-3.5">
+                <AlertCircle size={18} className="text-red-500 mt-0.5 flex-shrink-0" />
+                <p className="text-red-600 dark:text-red-400 text-sm font-semibold">{error}</p>
               </div>
             )}
 
             {/* Amount */}
             <div>
-              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">{t[language].withdraw.amountLabel}</label>
+              <label className="block text-xs font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider mb-2">{t[language].withdraw.amountLabel}</label>
               <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">ETB</span>
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-black text-sm">ETB</span>
                 <input
                   type="number"
                   value={amount}
@@ -291,36 +313,36 @@ export default function Withdraw() {
                   placeholder="0.00"
                   min={selected.min_withdrawal}
                   max={userBalance}
-                  className="w-full pl-14 pr-4 py-3.5 border-2 border-gray-100 dark:border-slate-800 rounded-xl focus:border-blue-400 focus:outline-none text-slate-800 dark:text-slate-100 font-bold text-lg bg-slate-50 dark:bg-slate-900"
+                  className="w-full pl-14 pr-4 py-3.5 border-2 border-slate-200/80 dark:border-slate-700/80 rounded-2xl focus:border-amber-400 focus:outline-none text-slate-800 dark:text-slate-100 font-black text-xl bg-slate-50 dark:bg-slate-950/80 shadow-inner"
                   required
                 />
               </div>
-              <div className="flex justify-between mt-1">
-                <p className={`text-xs font-bold ${amount && parseFloat(amount) > 0 && parseFloat(amount) < selected.min_withdrawal ? 'text-red-500' : 'text-slate-400'}`}>
+              <div className="flex justify-between items-center mt-1.5 px-1">
+                <p className={`text-xs font-bold ${amount && parseFloat(amount) > 0 && parseFloat(amount) < selected.min_withdrawal ? 'text-red-500' : 'text-slate-400 dark:text-slate-400'}`}>
                   {t[language].withdraw.minWithdrawal} {selected.min_withdrawal.toLocaleString('en-US')} ETB
-                  {amount && parseFloat(amount) > 0 && parseFloat(amount) < selected.min_withdrawal && ' âš ï¸ Too low'}
+                  {amount && parseFloat(amount) > 0 && parseFloat(amount) < selected.min_withdrawal && ' ⚠️ Too low'}
                 </p>
                 <button
                   type="button"
                   onClick={() => setAmount(String(userBalance))}
-                  className="text-xs text-blue-500 font-bold"
+                  className="text-xs font-black text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 px-2.5 py-1 rounded-lg active:scale-95 transition-all shadow-sm"
                 >
-                  Max
+                  MAX
                 </button>
               </div>
             </div>
 
             {/* Full Name */}
             <div>
-              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">{t[language].withdraw.fullNameLabel}</label>
+              <label className="block text-xs font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider mb-2">{t[language].withdraw.fullNameLabel}</label>
               <div className="relative">
-                <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                <User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
                   value={accountName}
                   onChange={e => setAccountName(e.target.value)}
                   placeholder={t[language].withdraw.fullNamePlaceholder}
-                  className="w-full pl-10 pr-4 py-3.5 border-2 border-gray-100 dark:border-slate-800 rounded-xl focus:border-blue-400 focus:outline-none text-slate-800 dark:text-slate-100 font-medium bg-slate-50 dark:bg-slate-900"
+                  className="w-full pl-11 pr-4 py-3.5 border-2 border-slate-200/80 dark:border-slate-700/80 rounded-2xl focus:border-amber-400 focus:outline-none text-slate-800 dark:text-slate-100 font-bold text-sm bg-slate-50 dark:bg-slate-950/80 shadow-inner"
                   required
                 />
               </div>
@@ -328,35 +350,36 @@ export default function Withdraw() {
 
             {/* Account / Phone Number */}
             <div>
-              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider mb-2">
                 {selected.type === 'telebirr' || selected.type === 'mpesa' ? t[language].withdraw.phoneLabel : t[language].withdraw.accNumberLabel}
               </label>
               <div className="relative">
-                <Phone size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Phone size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
                   value={accountNumber}
                   onChange={e => setAccountNumber(e.target.value)}
                   placeholder={selected.type === 'telebirr' || selected.type === 'mpesa' ? '09XXXXXXXX' : 'Account number'}
-                  className="w-full pl-10 pr-4 py-3.5 border-2 border-gray-100 dark:border-slate-800 rounded-xl focus:border-blue-400 focus:outline-none text-slate-800 dark:text-slate-100 font-medium bg-slate-50 dark:bg-slate-900"
+                  className="w-full pl-11 pr-4 py-3.5 border-2 border-slate-200/80 dark:border-slate-700/80 rounded-2xl focus:border-amber-400 focus:outline-none text-slate-800 dark:text-slate-100 font-bold text-sm bg-slate-50 dark:bg-slate-950/80 shadow-inner"
                   required
                 />
               </div>
             </div>
 
-            {/* Info box */}
-            <div className="bg-blue-50 border border-blue-100 rounded-xl p-3">
-              <p className="text-xs text-blue-700 font-medium leading-relaxed">
-                âš ï¸ {t[language].withdraw.infoBox}
+            {/* Info notice */}
+            <div className="bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 rounded-2xl p-3.5 flex items-start gap-2.5">
+              <ShieldCheck size={18} className="text-blue-500 shrink-0 mt-0.5" />
+              <p className="text-xs text-blue-700 dark:text-blue-300 font-semibold leading-relaxed">
+                {t[language].withdraw.infoBox}
               </p>
             </div>
 
             <button
               type="submit"
               disabled={submitting}
-              className={`w-full py-4 rounded-xl font-black text-white text-base transition-all active:scale-95 ${
+              className={`w-full py-4 rounded-2xl font-black text-white text-base shadow-[0_8px_25px_rgba(0,0,0,0.2)] border-t border-white/30 active:translate-y-0.5 transition-all ${
                 submitting
-                  ? 'bg-slate-300 cursor-not-allowed'
+                  ? 'bg-slate-400 cursor-not-allowed'
                   : `bg-gradient-to-r ${gradient}`
               }`}
             >
@@ -368,62 +391,81 @@ export default function Withdraw() {
     );
   }
 
-  // â”€â”€ STEP: LIST â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── STEP: LIST ──
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-slate-800 to-slate-900 px-4 pt-6 pb-8">
-        <div className="flex items-center space-x-3 mb-4">
-          <Link to="/" className="text-white/80 hover:text-white p-1">
-            <ArrowLeft size={22} />
+    <div className="min-h-screen bg-slate-50 dark:bg-[#070b14] text-slate-800 dark:text-slate-100 transition-colors duration-200 pb-12">
+      {/* 3D Realistic Header */}
+      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 px-4 pt-6 pb-8 border-b border-slate-800 shadow-lg relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="flex items-center space-x-3 mb-4 relative z-10">
+          <Link to="/" className="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center backdrop-blur-sm border border-white/20 active:scale-90 transition-all">
+            <ArrowLeft size={20} />
           </Link>
-          <h1 className="text-xl font-black text-white">{t[language].withdraw.title}</h1>
+          <h1 className="text-xl font-black text-white tracking-tight drop-shadow-sm">{t[language].withdraw.title}</h1>
         </div>
-        <div className="bg-white rounded-2xl p-4 shadow-md border border-white/10">
-          <p className="text-slate-500 text-sm font-medium">{t[language].withdraw.balance}</p>
-          <p className="text-3xl font-black text-slate-800">{userBalance.toLocaleString('en-US')} <span className="text-xl text-slate-600">ETB</span></p>
-          <p className="text-slate-400 text-xs mt-1">{language === 'am' ? 'ዋናው ሂሳብ ብቻ ነው ሊወጣ የሚችለው' : 'Only main balance can be withdrawn'}</p>
+
+        {/* 3D Vault Balance Card */}
+        <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-3xl p-5 shadow-[0_10px_25px_rgba(0,0,0,0.1)] border border-white/20 relative z-10">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider">{t[language].withdraw.balance}</p>
+              <p className="text-3xl font-black text-slate-800 dark:text-white mt-0.5">
+                {userBalance.toLocaleString('en-US')} <span className="text-lg text-emerald-600 dark:text-emerald-400">ETB</span>
+              </p>
+            </div>
+            <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 flex items-center justify-center text-amber-500 shadow-inner">
+              <Wallet size={24} />
+            </div>
+          </div>
+          <p className="text-slate-400 dark:text-slate-400 text-xs font-semibold mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center gap-1.5">
+            <ShieldCheck size={14} className="text-emerald-500" />
+            <span>{language === 'am' ? 'ዋናው ሂሳብ ብቻ ነው ሊወጣ የሚችለው' : 'Only main balance can be withdrawn'}</span>
+          </p>
         </div>
       </div>
 
-      {/* Methods */}
+      {/* Methods Card */}
       <div className="px-4 -mt-4 pb-8">
-        <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-gray-100 dark:border-slate-800 overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-50">
-            <h2 className="font-black text-slate-700 dark:text-slate-200 text-sm uppercase tracking-wider">{t[language].withdraw.methodTitle}</h2>
+        <div className="bg-white dark:bg-slate-900/90 rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.04)] dark:shadow-[0_10px_35px_rgba(0,0,0,0.4)] border border-slate-200/80 dark:border-slate-800 overflow-hidden backdrop-blur-sm">
+          <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40">
+            <h2 className="font-black text-slate-800 dark:text-slate-100 text-xs uppercase tracking-wider">{t[language].withdraw.methodTitle}</h2>
           </div>
 
           {methods.length === 0 ? (
-            <div className="flex flex-col items-center py-12 text-slate-400">
-              <AlertCircle size={40} className="mb-3 opacity-50" />
-              <p className="font-semibold">{language === 'am' ? 'ምንም አይነት የማውጫ መንገዶች አልተገኙም' : 'No withdrawal methods available'}</p>
-              <p className="text-xs mt-1">{language === 'am' ? 'እባክዎ ጥቂት ቆይተው እንደገና ይመልከቱ' : 'Please check back later'}</p>
+            <div className="flex flex-col items-center py-14 px-6 text-slate-400 text-center">
+              <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center mb-3 text-slate-300 dark:text-slate-600 shadow-inner">
+                <AlertCircle size={32} />
+              </div>
+              <p className="font-black text-slate-700 dark:text-slate-200 text-sm">{language === 'am' ? 'ምንም አይነት የማውጫ መንገዶች አልተገኙም' : 'No withdrawal methods available'}</p>
+              <p className="text-xs text-slate-400 mt-1">{language === 'am' ? 'እባክዎ ጥቂት ቆይተው እንደገና ይመልከቱ' : 'Please check back later'}</p>
             </div>
           ) : (
-            <div className="divide-y divide-gray-50">
+            <div className="divide-y divide-slate-100 dark:divide-slate-800">
               {methods.map(method => {
-                const gradient = typeColors[method.type] || 'from-slate-500 to-slate-700';
-                const emoji = typeEmoji[method.type] || 'ðŸ’³';
+                const gradient = typeColors[method.type] || 'from-slate-600 to-slate-800';
+                const emoji = typeEmoji[method.type] || '💳';
                 const label = typeLabels[method.type] || method.type.toUpperCase();
 
                 return (
                   <button
                     key={method.id}
                     onClick={() => { setSelected(method); setError(''); setStep('form'); }}
-                    className="w-full flex items-center px-5 py-4 space-x-4 hover:bg-slate-50 dark:bg-slate-900 active:bg-slate-100 dark:bg-slate-800 transition-colors"
+                    className="w-full flex items-center px-5 py-4 space-x-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 active:bg-slate-100 dark:active:bg-slate-800 transition-all text-left group"
                   >
-                    <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${gradient} flex items-center justify-center text-2xl shadow-sm`}>
+                    <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${gradient} flex items-center justify-center text-xl shadow-md border-t border-white/30 shrink-0 group-hover:scale-105 transition-transform`}>
                       {method.logo_url ? (
                         <img src={method.logo_url} alt={label} className="w-8 h-8 object-contain rounded-xl" />
                       ) : (
                         <span>{emoji}</span>
                       )}
                     </div>
-                    <div className="flex-1 text-left">
-                      <p className="font-black text-slate-800 dark:text-slate-100">{label}</p>
-                      <p className="text-xs text-slate-400 font-medium mt-0.5">Min: {method.min_withdrawal.toLocaleString('en-US')} ETB</p>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-black text-slate-800 dark:text-slate-100 text-sm truncate">{label}</p>
+                      <p className="text-xs text-slate-400 dark:text-slate-400 font-semibold mt-0.5">Min: {method.min_withdrawal.toLocaleString('en-US')} ETB</p>
                     </div>
-                    <ChevronRight size={18} className="text-slate-300" />
+                    <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 dark:text-slate-500 shadow-inner group-hover:text-amber-500 transition-colors">
+                      <ChevronRight size={18} />
+                    </div>
                   </button>
                 );
               })}

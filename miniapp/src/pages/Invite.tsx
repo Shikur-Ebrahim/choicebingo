@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, Share2, Copy, Check, Users, Gift, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Share2, Copy, Check, Users, Gift, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useGameStore } from '../store/gameStore';
 import { t } from '../lib/translations';
@@ -10,7 +10,6 @@ export default function Invite() {
   const [copied, setCopied] = useState(false);
   const navigate = useNavigate();
 
-  // The bot username should ideally come from env, but we can hardcode for ChoiceBingo
   const botUsername = import.meta.env.VITE_BOT_USERNAME || 'ChoiceBingo_bot';
   const inviteLink = `https://t.me/${botUsername}?start=ref_${user?.telegram_id || 'player'}`;
 
@@ -28,16 +27,14 @@ export default function Invite() {
   };
 
   const handleShare = () => {
-    const text = `ðŸŽ® Play ADWA Bingo with me! Join using my link and let's win together!\n\n${inviteLink}`;
+    const shareText = `🎮 Play Choice Bingo with me! Join using my link and let's win together!`;
     if (typeof WebApp !== 'undefined') {
-      // Use Telegram's native share feature if available
-      WebApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent('ðŸŽ® Play ADWA Bingo with me! Join using my link and let\'s win together!')}`);
+      WebApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent(shareText)}`);
     } else {
-      // Fallback
       if (navigator.share) {
         navigator.share({
-          title: 'ADWA Bingo',
-          text: 'Play ADWA Bingo with me!',
+          title: 'Choice Bingo',
+          text: shareText,
           url: inviteLink,
         }).catch(console.error);
       } else {
@@ -47,84 +44,114 @@ export default function Invite() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col pb-24">
-      {/* HEADER */}
-      <div className="bg-white dark:bg-slate-900 px-4 pt-6 pb-4 shadow-sm border-b border-gray-100 dark:border-slate-800 flex items-center sticky top-0 z-10">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#070b14] text-slate-800 dark:text-slate-100 transition-colors duration-200 flex flex-col pb-24">
+      {/* ── 3D HEADER ── */}
+      <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-4 pt-6 pb-4 shadow-[0_4px_20px_rgba(0,0,0,0.03)] dark:shadow-[0_4px_25px_rgba(0,0,0,0.4)] border-b border-slate-200/80 dark:border-slate-800 flex items-center sticky top-0 z-20 transition-colors">
         <button
           onClick={handleBack}
-          className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-700 dark:text-slate-200 active:bg-slate-200 transition-colors"
+          className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 active:scale-90 transition-all border border-slate-200/60 dark:border-slate-700 shadow-sm flex items-center justify-center shrink-0"
         >
-          <ArrowLeft size={20} />
+          <ArrowLeft size={18} />
         </button>
-        <div className="ml-4 flex-1">
-          <h1 className="text-xl font-black text-slate-800 dark:text-slate-100 tracking-tight">{t[language].invite.title}</h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">{t[language].invite.subtitle}</p>
+        <div className="ml-3.5 flex-1 min-w-0">
+          <h1 className="text-xl font-black text-slate-800 dark:text-white tracking-tight truncate">{t[language].invite.title}</h1>
+          <p className="text-xs text-slate-400 dark:text-slate-400 font-medium truncate">{t[language].invite.subtitle}</p>
         </div>
       </div>
 
-      <div className="px-4 py-3 flex flex-col space-y-3 flex-1 overflow-hidden">
+      <div className="px-4 py-3.5 flex flex-col space-y-3.5 flex-1 overflow-hidden">
 
-        {/* COMPACT HERO BANNER */}
-        <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl p-4 text-white shadow-sm relative overflow-hidden flex items-center space-x-4 shrink-0">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-white dark:bg-slate-900/10 rounded-full -mr-8 -mt-8 blur-xl"></div>
-          <div className="w-12 h-12 bg-white dark:bg-slate-900/20 rounded-full flex items-center justify-center shrink-0 backdrop-blur-sm z-10">
-            <Gift size={24} className="text-white" />
+        {/* ── 3D HERO VIP BANNER ── */}
+        <div className="relative overflow-hidden bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 dark:from-indigo-900 dark:via-purple-950 dark:to-pink-950 rounded-3xl p-5 shadow-[0_12px_30px_rgba(124,58,237,0.35)] dark:shadow-[0_12px_35px_rgba(124,58,237,0.25)] border-t border-white/30 text-white flex items-center space-x-4 shrink-0">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-xl -translate-y-8 translate-x-8 pointer-events-none" />
+          <div className="w-14 h-14 bg-white/20 dark:bg-black/20 backdrop-blur-md rounded-2xl flex items-center justify-center shrink-0 border border-white/30 shadow-inner">
+            <Gift size={28} className="text-yellow-300 drop-shadow-md animate-bounce" style={{ animationDuration: '3s' }} />
           </div>
-          <div className="z-10">
-            <h2 className="text-lg font-black leading-tight mb-0.5">{t[language].invite.heroTitle}</h2>
-            <p className="text-white/90 text-[11px] font-medium leading-snug">
+          <div className="relative z-10 flex-1">
+            <div className="flex items-center gap-1.5 mb-0.5">
+              <Sparkles size={14} className="text-yellow-300 drop-shadow" />
+              <h2 className="text-lg font-black leading-tight drop-shadow-sm">{t[language].invite.heroTitle}</h2>
+            </div>
+            <p className="text-white/90 text-xs font-medium leading-snug">
               {t[language].invite.heroDesc}
             </p>
           </div>
         </div>
 
-        {/* LINK SECTION (MOVED UP) */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-slate-800 shrink-0">
-          <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-2">{t[language].invite.linkTitle}</label>
-          <div className="flex bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden p-1 mb-3">
-            <div className="flex-1 px-2 py-2 overflow-x-auto whitespace-nowrap hide-scrollbar flex items-center">
-              <span className="text-[11px] font-medium text-slate-600 dark:text-slate-300">{inviteLink}</span>
+        {/* ── 3D LINK & SHARE SECTION ── */}
+        <div className="bg-white dark:bg-slate-900/90 rounded-3xl p-5 shadow-[0_8px_25px_rgba(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.4)] border border-slate-200/80 dark:border-slate-800 shrink-0 backdrop-blur-sm space-y-3.5">
+          <div>
+            <label className="block text-xs font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider mb-2">{t[language].invite.linkTitle}</label>
+            <div className="flex bg-slate-100/90 dark:bg-slate-950/80 border border-slate-200/90 dark:border-slate-800 rounded-2xl overflow-hidden p-1.5 shadow-inner">
+              <div className="flex-1 px-3 py-2 overflow-x-auto whitespace-nowrap hide-scrollbar flex items-center">
+                <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 font-mono">{inviteLink}</span>
+              </div>
+              <button
+                onClick={handleCopy}
+                className={`shrink-0 px-3.5 h-10 rounded-xl flex items-center justify-center gap-1.5 font-black text-xs transition-all shadow-sm active:scale-95 ${
+                  copied
+                    ? 'bg-emerald-500 text-white shadow-[0_4px_12px_rgba(16,185,129,0.4)]'
+                    : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-slate-700 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-700'
+                }`}
+              >
+                {copied ? (
+                  <>
+                    <Check size={14} />
+                    <span>Copied!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy size={14} />
+                    <span>Copy</span>
+                  </>
+                )}
+              </button>
             </div>
-            <button
-              onClick={handleCopy}
-              className={`shrink-0 w-10 h-8 rounded-lg flex items-center justify-center transition-colors ${copied ? 'bg-emerald-500 text-white' : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:bg-slate-800'}`}
-            >
-              {copied ? <Check size={14} /> : <Copy size={14} />}
-            </button>
           </div>
 
           <button
             onClick={handleShare}
-            className="w-full bg-slate-800 text-white hover:bg-slate-700 py-2.5 rounded-xl font-black text-sm shadow-sm transition-transform active:scale-95 flex items-center justify-center space-x-2"
+            className="w-full bg-gradient-to-b from-amber-400 via-amber-500 to-amber-600 hover:from-amber-500 hover:to-amber-700 text-slate-950 font-black text-sm py-3.5 rounded-2xl shadow-[0_6px_20px_rgba(245,158,11,0.35)] border-t border-yellow-200 active:translate-y-0.5 transition-all flex items-center justify-center space-x-2"
           >
-            <Share2 size={16} />
-            <span>{t[language].invite.shareBtn}</span>
+            <Share2 size={18} className="drop-shadow-sm text-slate-950" />
+            <span className="tracking-wide">{t[language].invite.shareBtn}</span>
           </button>
         </div>
 
-        {/* COMPACT HOW IT WORKS */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-slate-800 flex-1">
-          <h3 className="text-xs font-bold text-slate-800 dark:text-slate-100 mb-3">{t[language].invite.howItWorks}</h3>
-          <div className="space-y-3">
-            <div className="flex items-center">
-              <div className="w-7 h-7 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center font-black text-[10px] shrink-0 mr-3">1</div>
-              <div>
-                <p className="text-xs font-bold text-slate-700 dark:text-slate-200">{t[language].invite.step1Title}</p>
-                <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium mt-0.5">{t[language].invite.step1Desc}</p>
+        {/* ── 3D HOW IT WORKS PATHWAY ── */}
+        <div className="bg-white dark:bg-slate-900/90 rounded-3xl p-5 shadow-[0_8px_25px_rgba(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.4)] border border-slate-200/80 dark:border-slate-800 flex-1 backdrop-blur-sm">
+          <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-100 mb-4">{t[language].invite.howItWorks}</h3>
+          <div className="space-y-4">
+            {/* Step 1 */}
+            <div className="flex items-center gap-3.5">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-400 to-blue-600 text-white flex items-center justify-center font-black text-xs shrink-0 shadow-md shadow-blue-500/20 border-t border-white/30">
+                1
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-black text-slate-800 dark:text-slate-100 leading-tight">{t[language].invite.step1Title}</p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-0.5 leading-snug">{t[language].invite.step1Desc}</p>
               </div>
             </div>
-            <div className="flex items-center">
-              <div className="w-7 h-7 rounded-full bg-emerald-50 text-emerald-500 flex items-center justify-center font-black text-[10px] shrink-0 mr-3">2</div>
-              <div>
-                <p className="text-xs font-bold text-slate-700 dark:text-slate-200">{t[language].invite.step2Title}</p>
-                <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium mt-0.5">{t[language].invite.step2Desc}</p>
+
+            {/* Step 2 */}
+            <div className="flex items-center gap-3.5">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 text-white flex items-center justify-center font-black text-xs shrink-0 shadow-md shadow-emerald-500/20 border-t border-white/30">
+                2
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-black text-slate-800 dark:text-slate-100 leading-tight">{t[language].invite.step2Title}</p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-0.5 leading-snug">{t[language].invite.step2Desc}</p>
               </div>
             </div>
-            <div className="flex items-center">
-              <div className="w-7 h-7 rounded-full bg-purple-50 text-purple-500 flex items-center justify-center font-black text-[10px] shrink-0 mr-3">3</div>
-              <div>
-                <p className="text-xs font-bold text-slate-700 dark:text-slate-200">{t[language].invite.step3Title}</p>
-                <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium mt-0.5">{t[language].invite.step3Desc}</p>
+
+            {/* Step 3 */}
+            <div className="flex items-center gap-3.5">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-400 to-purple-600 text-white flex items-center justify-center font-black text-xs shrink-0 shadow-md shadow-purple-500/20 border-t border-white/30">
+                3
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-black text-slate-800 dark:text-slate-100 leading-tight">{t[language].invite.step3Title}</p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-0.5 leading-snug">{t[language].invite.step3Desc}</p>
               </div>
             </div>
           </div>
