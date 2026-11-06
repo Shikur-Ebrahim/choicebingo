@@ -1123,9 +1123,9 @@ export default function BingoGame() {
             </div>
           </div>
           
-          {/* Full-width Edge-to-Edge Logo Banner */}
-          <div className="w-full flex justify-center py-1 z-20 shrink-0 px-0">
-            <img src="/hero.png" alt="Choice Bingo" className="w-full max-h-[105px] object-contain drop-shadow-md px-0" />
+          {/* Full-width Edge-to-Edge Logo Banner (Zero Gaps Left & Right) */}
+          <div className="w-full bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 flex items-center justify-center p-0 z-20 shrink-0 shadow-sm transition-colors overflow-hidden">
+            <img src="/hero.png" alt="Choice Bingo" className="w-full h-24 object-cover" />
           </div>
 
           <p className="text-center text-slate-500 dark:text-slate-400 text-[10px] uppercase tracking-widest font-bold pt-1.5 pb-2">
