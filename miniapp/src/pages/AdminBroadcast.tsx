@@ -32,14 +32,14 @@ const STATUS_BADGE: Record<PostStatus, { label: string; cls: string }> = {
   draft:     { label: 'Draft',     cls: 'bg-slate-100 text-slate-600' },
   scheduled: { label: 'Scheduled', cls: 'bg-blue-100 text-blue-700' },
   sending:   { label: 'Sendingâ€¦',  cls: 'bg-yellow-100 text-yellow-700 animate-pulse' },
-  sent:      { label: 'Sent âœ“',    cls: 'bg-green-100 text-green-700' },
+  sent:      { label: 'Sent ✓',    cls: 'bg-green-100 text-green-700' },
   failed:    { label: 'Failed',    cls: 'bg-red-100 text-red-700' },
 };
 
 const SEND_TO_OPTIONS: { value: SendTo; label: string; desc: string; icon: string }[] = [
-  { value: 'bot',     label: 'Bot Only',      desc: 'All players via Telegram Bot',       icon: 'ðŸ¤–' },
-  { value: 'channel', label: 'Channel Only',  desc: 'ADWA Bingo Channel (@ChoiceBingo)',    icon: 'ðŸ“¢' },
-  { value: 'both',    label: 'Bot + Channel', desc: 'Both all players & @ChoiceBingo',      icon: 'ðŸ“¡' },
+  { value: 'bot',     label: 'Bot Only',      desc: 'All players via Telegram Bot',       icon: '🤖' },
+  { value: 'channel', label: 'Channel Only',  desc: 'Choice Bingo Channel (@ChoiceBingo)',    icon: '📢' },
+  { value: 'both',    label: 'Bot + Channel', desc: 'Both all players & @ChoiceBingo',      icon: '📡' },
 ];
 
 export default function AdminBroadcast() {

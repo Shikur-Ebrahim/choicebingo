@@ -12,8 +12,8 @@ export default function AdminQrCode() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   // Customization options
-  const [botUsername, setBotUsername] = useState('ChoiceBingo_bot');
-  const [roomTitle, setRoomTitle] = useState('OFFICIAL ADWA BINGO');
+  const [botUsername, setBotUsername] = useState('choicebingo_bot');
+  const [roomTitle, setRoomTitle] = useState('OFFICIAL CHOICE BINGO');
   const [startParam, setStartParam] = useState('qr');
   const [showOptions, setShowOptions] = useState(false);
   const [toast, setToast] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
@@ -144,12 +144,12 @@ export default function AdminQrCode() {
     ctx.strokeStyle = '#D4AF37';
     ctx.stroke();
 
-    // Crest Monogram (AB)
+    // Crest Monogram (CB)
     ctx.fillStyle = '#E5C578';
     ctx.font = '900 24px "Times New Roman", serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('AB', W / 2, crestY + 18);
+    ctx.fillText('CB', W / 2, crestY + 18);
 
     // Decorative Flourish Wings beside crest
     ctx.strokeStyle = lightGold;
@@ -164,18 +164,18 @@ export default function AdminQrCode() {
     ctx.bezierCurveTo(W / 2 + 90, crestY + 2, W / 2 + 120, crestY + 24, W / 2 + 140, crestY + 16);
     ctx.stroke();
 
-    // 4. Main Title: ADWA BINGO
+    // 4. Main Title: CHOICE BINGO
     ctx.fillStyle = '#0F172A';
     ctx.font = '900 68px "Times New Roman", Georgia, serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'alphabetic';
-    ctx.fillText('ADWA BINGO', W / 2, 245);
+    ctx.fillText('CHOICE BINGO', W / 2, 245);
 
-    // 5. Official Subtitle: OFFICIAL ADWA BINGO
+    // 5. Official Subtitle: OFFICIAL CHOICE BINGO
     ctx.fillStyle = '#8C6D3B';
     ctx.font = '700 17px sans-serif';
     ctx.letterSpacing = '2px';
-    const subText = (roomTitle || 'OFFICIAL ADWA BINGO').toUpperCase();
+    const subText = (roomTitle || 'OFFICIAL CHOICE BINGO').toUpperCase();
     const subWidth = ctx.measureText(subText).width;
 
     ctx.fillText(subText, W / 2, 285);
@@ -308,9 +308,9 @@ export default function AdminQrCode() {
     const qrY = qrCardY + (qrCardSize - 660) / 2;
     ctx.drawImage(qrCanvas, qrX, qrY, 660, 660);
 
-    // 10. Center Badge on QR Code: "ADWA BINGO"
-    const badgeW = 180;
-    const badgeH = 74;
+    // 10. Center Badge on QR Code: "CHOICE BINGO"
+    const badgeW = 200;
+    const badgeH = 76;
     const badgeX = W / 2 - badgeW / 2;
     const badgeY = qrCardY + qrCardSize / 2 - badgeH / 2;
     const badgeR = 18;
@@ -339,18 +339,18 @@ export default function AdminQrCode() {
     ctx.fillStyle = '#FFFFFF';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.font = '900 18px sans-serif';
-    ctx.fillText('ADWA', W / 2, badgeY + 23);
+    ctx.font = '900 19px sans-serif';
+    ctx.fillText('CHOICE', W / 2, badgeY + 24);
     ctx.font = '900 24px sans-serif';
-    ctx.fillText('BINGO', W / 2, badgeY + 50);
+    ctx.fillText('BINGO', W / 2, badgeY + 52);
 
     // 11. Features Row under QR code
     const featsY = 1285;
     const features = [
-      { icon: 'ðŸ†', title: 'JACKPOT' },
-      { icon: 'âš¡', title: 'INSTANT PAY' },
-      { icon: 'ðŸŽ±', title: '75 BINGO' },
-      { icon: 'ðŸ›¡ï¸', title: 'VERIFIED' },
+      { icon: '🏆', title: 'JACKPOT' },
+      { icon: '⚡', title: 'INSTANT PAY' },
+      { icon: '🎱', title: '75 BINGO' },
+      { icon: '🛡️', title: 'VERIFIED' },
     ];
 
     const colW = (W - 140) / 4;
@@ -385,7 +385,7 @@ export default function AdminQrCode() {
     ctx.font = 'italic 700 36px "Times New Roman", serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('Real Players   Â·   Good Luck   Â·   Big Wins', W / 2, mottoY);
+    ctx.fillText('Real Players   •   Good Luck   •   Big Wins', W / 2, mottoY);
 
     // 13. Bot Handle Pill
     const botPillW = 420;
@@ -410,7 +410,7 @@ export default function AdminQrCode() {
     const footerY = 1580;
     ctx.fillStyle = '#8C7853';
     ctx.font = '600 17px sans-serif';
-    ctx.fillText('Official Partner Network  â€¢  Powered by ADWA BINGO', W / 2, footerY);
+    ctx.fillText('Official Partner Network  •  Powered by CHOICE BINGO', W / 2, footerY);
 
     // 15. Bottom Elegant Decorative Corner Arcs
     ctx.strokeStyle = '#C5A059';
@@ -460,7 +460,7 @@ export default function AdminQrCode() {
       const data = await res.json().catch(() => ({}));
 
       if (res.ok) {
-        showNotification('Poster sent to your Telegram chat! Tap photo â†’ Save to Gallery ðŸ–¼ï¸');
+        showNotification('Poster sent to your Telegram chat! Tap photo → Save to Gallery 🖼️');
         if (typeof WebApp !== 'undefined') {
           WebApp.HapticFeedback.notificationOccurred('success');
         }
@@ -491,7 +491,7 @@ export default function AdminQrCode() {
 
         const blobUrl = URL.createObjectURL(blob);
         const link = document.createElement('a');
-        link.download = `ADWA_BINGO_QR_${botUsername.replace(/^@/, '')}.png`;
+        link.download = `CHOICE_BINGO_QR_${botUsername.replace(/^@/, '')}.png`;
         link.href = blobUrl;
         document.body.appendChild(link);
         link.click();
@@ -591,8 +591,8 @@ export default function AdminQrCode() {
               </span>
               <button
                 onClick={() => {
-                  setBotUsername('ChoiceBingo_bot');
-                  setRoomTitle('OFFICIAL ADWA BINGO');
+                  setBotUsername('choicebingo_bot');
+                  setRoomTitle('OFFICIAL CHOICE BINGO');
                   setStartParam('qr');
                 }}
                 className="text-[10px] text-slate-400 hover:text-white flex items-center gap-1"
@@ -611,7 +611,7 @@ export default function AdminQrCode() {
                     value={botUsername.replace(/^@/, '')}
                     onChange={(e) => setBotUsername(e.target.value)}
                     className="w-full bg-slate-900 border border-slate-700 rounded-lg pl-7 pr-3 py-1.5 text-xs font-bold text-white outline-none focus:border-amber-400"
-                    placeholder="ChoiceBingo_bot"
+                    placeholder="choicebingo_bot"
                   />
                 </div>
               </div>
@@ -623,7 +623,7 @@ export default function AdminQrCode() {
                   value={roomTitle}
                   onChange={(e) => setRoomTitle(e.target.value)}
                   className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-bold text-white outline-none focus:border-amber-400"
-                  placeholder="OFFICIAL ADWA BINGO"
+                  placeholder="OFFICIAL CHOICE BINGO"
                 />
               </div>
 
@@ -651,7 +651,7 @@ export default function AdminQrCode() {
             {posterUrl ? (
               <img
                 src={posterUrl}
-                alt="ADWA BINGO QR Poster"
+                alt="CHOICE BINGO QR Poster"
                 className="w-full h-auto block select-none pointer-events-auto"
                 style={{ aspectRatio: '2/3' }}
               />
@@ -680,7 +680,7 @@ export default function AdminQrCode() {
             ) : (
               <Send size={18} />
             )}
-            <span>{sendingTg ? 'Sending to Telegram...' : 'ðŸ“² Send to My Telegram (Save to Gallery)'}</span>
+            <span>{sendingTg ? 'Sending to Telegram...' : '📲 Send to My Telegram (Save to Gallery)'}</span>
           </button>
 
           {/* Method 2: Direct File Download */}
@@ -690,7 +690,7 @@ export default function AdminQrCode() {
             className="w-full py-3 px-4 bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-black text-sm rounded-xl shadow-md flex items-center justify-center space-x-2 active:scale-95 transition-all"
           >
             <Download size={17} />
-            <span>{downloading ? 'Preparing PNG...' : 'ðŸ“¥ Download Poster (PNG)'}</span>
+            <span>{downloading ? 'Preparing PNG...' : '📥 Download Poster (PNG)'}</span>
           </button>
 
           <div className="grid grid-cols-2 gap-2">
@@ -716,8 +716,8 @@ export default function AdminQrCode() {
         <div className="max-w-sm mx-auto bg-slate-800/60 rounded-xl p-3 border border-slate-800 flex items-start space-x-2.5">
           <Sparkles size={16} className="text-amber-400 shrink-0 mt-0.5" />
           <p className="text-[11px] text-slate-400 leading-relaxed font-medium">
-            This QR poster is generated in <strong className="text-slate-200">Ultra-HD print resolution (1200Ã—1800)</strong>.
-            Click <strong className="text-emerald-400">"Send to My Telegram"</strong> to receive the high-res photo directly in your chat with @ChoiceBingo_bot, then tap <strong>Save to Gallery</strong>!
+            This QR poster is generated in <strong className="text-slate-200">Ultra-HD print resolution (1200 &times; 1800)</strong>.
+            Click <strong className="text-emerald-400">"Send to My Telegram"</strong> to receive the high-res photo directly in your chat with @choicebingo_bot, then tap <strong>Save to Gallery</strong>!
           </p>
         </div>
       </div>
