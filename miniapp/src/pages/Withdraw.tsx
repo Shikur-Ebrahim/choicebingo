@@ -9,11 +9,9 @@ import {
   Phone, 
   MessageCircle, 
   Wallet, 
-  ShieldCheck, 
-  Zap, 
-  X, 
-  Info,
-  Sparkles
+  ShieldCheck,
+  Check,
+  Info
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import WebApp from '@twa-dev/sdk';
@@ -30,20 +28,7 @@ interface WithdrawalMethod {
   min_withdrawal: number;
 }
 
-interface PendingWithdrawal {
-  id: string;
-  amount: number;
-  status: string;
-  created_at: string;
-  account_name?: string;
-  account_number?: string;
-  method?: {
-    type?: string;
-    logo_url?: string;
-  };
-}
-
-const methodNames: Record<string, string> = {
+const typeLabels: Record<string, string> = {
   cbe: 'Commercial Bank of Ethiopia',
   boa: 'Bank of Abyssinia',
   telebirr: 'Telebirr',
@@ -63,27 +48,38 @@ const methodNames: Record<string, string> = {
   hibret: 'Hibret Bank',
 };
 
-const methodAccents: Record<string, { bg: string; text: string; border: string }> = {
-  cbe: { bg: 'from-amber-500/10 to-yellow-500/5', text: 'text-amber-600 dark:text-amber-400', border: 'border-amber-200 dark:border-amber-900/40' },
-  boa: { bg: 'from-blue-500/10 to-indigo-500/5', text: 'text-blue-600 dark:text-blue-400', border: 'border-blue-200 dark:border-blue-900/40' },
-  telebirr: { bg: 'from-purple-500/10 to-pink-500/5', text: 'text-purple-600 dark:text-purple-400', border: 'border-purple-200 dark:border-purple-900/40' },
-  mpesa: { bg: 'from-emerald-500/10 to-teal-500/5', text: 'text-emerald-600 dark:text-emerald-400', border: 'border-emerald-200 dark:border-emerald-900/40' },
-  cbebirr: { bg: 'from-yellow-500/10 to-amber-500/5', text: 'text-yellow-700 dark:text-yellow-400', border: 'border-yellow-200 dark:border-yellow-900/40' },
-  ebirr: { bg: 'from-orange-500/10 to-red-500/5', text: 'text-orange-600 dark:text-orange-400', border: 'border-orange-200 dark:border-orange-900/40' },
-  awash: { bg: 'from-blue-600/10 to-orange-500/5', text: 'text-blue-700 dark:text-blue-400', border: 'border-blue-200 dark:border-blue-900/40' },
-  dashen: { bg: 'from-blue-700/10 to-sky-500/5', text: 'text-blue-800 dark:text-blue-400', border: 'border-blue-200 dark:border-blue-900/40' },
-  amhara: { bg: 'from-teal-500/10 to-emerald-500/5', text: 'text-teal-600 dark:text-teal-400', border: 'border-teal-200 dark:border-teal-900/40' },
-  coop: { bg: 'from-indigo-500/10 to-violet-500/5', text: 'text-indigo-600 dark:text-indigo-400', border: 'border-indigo-200 dark:border-indigo-900/40' },
-  amole: { bg: 'from-rose-500/10 to-pink-500/5', text: 'text-rose-600 dark:text-rose-400', border: 'border-rose-200 dark:border-rose-900/40' },
-  hello_cash: { bg: 'from-emerald-600/10 to-green-500/5', text: 'text-emerald-700 dark:text-emerald-400', border: 'border-emerald-200 dark:border-emerald-900/40' },
-  nib: { bg: 'from-purple-600/10 to-indigo-500/5', text: 'text-purple-700 dark:text-purple-400', border: 'border-purple-200 dark:border-purple-900/40' },
-  wegagen: { bg: 'from-orange-600/10 to-amber-500/5', text: 'text-orange-700 dark:text-orange-400', border: 'border-orange-200 dark:border-orange-900/40' },
-  zemen: { bg: 'from-amber-600/10 to-yellow-600/5', text: 'text-amber-700 dark:text-amber-400', border: 'border-amber-200 dark:border-amber-900/40' },
-  oromia: { bg: 'from-teal-600/10 to-cyan-500/5', text: 'text-teal-700 dark:text-teal-400', border: 'border-teal-200 dark:border-teal-900/40' },
-  hibret: { bg: 'from-yellow-600/10 to-amber-600/5', text: 'text-yellow-800 dark:text-yellow-400', border: 'border-yellow-200 dark:border-yellow-900/40' },
+const typeColors: Record<string, string> = {
+  cbe: 'from-amber-500 to-yellow-600',
+  boa: 'from-blue-600 to-cyan-700',
+  telebirr: 'from-purple-600 to-indigo-700',
+  mpesa: 'from-emerald-500 to-green-700',
+  cbebirr: 'from-yellow-500 to-amber-700',
+  ebirr: 'from-orange-500 to-amber-700',
+  awash: 'from-slate-600 to-slate-800',
+  dashen: 'from-blue-600 to-blue-900',
+  amhara: 'from-teal-500 to-teal-800',
+  coop: 'from-indigo-600 to-indigo-900',
+  amole: 'from-rose-500 to-red-700',
+  hello_cash: 'from-emerald-400 to-green-600',
+  nib: 'from-purple-500 to-indigo-700',
+  wegagen: 'from-slate-700 to-slate-900',
+  zemen: 'from-amber-500 to-orange-700',
+  oromia: 'from-teal-500 to-cyan-700',
+  hibret: 'from-yellow-500 to-amber-700',
 };
 
-type Step = 'list' | 'form';
+const typeEmoji: Record<string, string> = {
+  cbe: '🏦',
+  boa: '🏛️',
+  telebirr: '📱',
+  mpesa: '💚',
+  cbebirr: '💳',
+  ebirr: '⚡',
+  awash: '🏦',
+  dashen: '🏛️',
+};
+
+type Step = 'list' | 'form' | 'pending_status';
 
 export default function Withdraw() {
   const { user, language, fetchUser } = useGameStore();
@@ -93,27 +89,28 @@ export default function Withdraw() {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<WithdrawalMethod | null>(null);
   const [step, setStep] = useState<Step>('list');
+  const [pendingAmount, setPendingAmount] = useState<number | null>(null);
   const [supportContact, setSupportContact] = useState<string>('');
 
-  // Pending Withdrawal State
-  const [pendingWithdrawal, setPendingWithdrawal] = useState<PendingWithdrawal | null>(null);
-
-  // Form State
+  // Form state
   const [amount, setAmount] = useState('');
   const [accountName, setAccountName] = useState('');
   const [accountNumber, setAccountNumber] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  // 3D Auto-Disappearing Toast Notifications
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [toastType, setToastType] = useState<'warning' | 'info' | 'success'>('info');
-  const toastTimeoutRef = useRef<any>(null);
-
-  // 3D Auto-Disappearing Success Modal
+  // 🌟 Auto-Disappearing Success Modal state
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successAmount, setSuccessAmount] = useState<number>(0);
   const [successCountdown, setSuccessCountdown] = useState(4);
+  const [successAccountName, setSuccessAccountName] = useState('');
+  const [successAccountNumber, setSuccessAccountNumber] = useState('');
+  const [successMethodName, setSuccessMethodName] = useState('');
+
+  // 🌟 Auto-Disappearing Toast notification state
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastType, setToastType] = useState<'warning' | 'info' | 'success'>('info');
+  const toastTimeoutRef = useRef<any>(null);
 
   const showToast = (msg: string, type: 'warning' | 'info' | 'success' = 'info', duration = 3500) => {
     if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
@@ -124,66 +121,7 @@ export default function Withdraw() {
     }, duration);
   };
 
-  const getHeaders = () => {
-    const initData = typeof WebApp !== 'undefined' ? WebApp.initData : '';
-    return { 'Content-Type': 'application/json', 'x-telegram-init-data': initData };
-  };
-
-  useEffect(() => {
-    fetchData();
-
-    // Subscribe to realtime changes on withdrawals for this user
-    const tgId = user?.telegram_id || WebApp?.initDataUnsafe?.user?.id?.toString();
-    if (tgId) {
-      const channel = supabase
-        .channel(`user-withdrawals-${tgId}`)
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'withdrawals', filter: `telegram_id=eq.${tgId}` },
-          (payload: any) => {
-            if (payload.eventType === 'UPDATE') {
-              if (payload.new.status === 'approved') {
-                setPendingWithdrawal(null);
-                fetchUser();
-                showToast(
-                  language === 'am'
-                    ? `🎉 የማውጫ ጥያቄዎ ፀድቋል! ${payload.new.amount} ETB ተልኳል::`
-                    : `🎉 Withdrawal Approved! ${payload.new.amount} ETB has been processed!`,
-                  'success',
-                  5000
-                );
-              } else if (payload.new.status === 'rejected') {
-                setPendingWithdrawal(null);
-                fetchUser(); // balance was refunded
-                showToast(
-                  language === 'am'
-                    ? `⚠️ የማውጫ ጥያቄዎ ተቀባይነት አላገኘም:: ገንዘቡ ወደ ሂሳብዎ ተመልሷል::`
-                    : `⚠️ Withdrawal was rejected. Your balance has been refunded.`,
-                  'warning',
-                  5000
-                );
-              }
-            } else if (payload.eventType === 'INSERT') {
-              setPendingWithdrawal({
-                id: payload.new.id,
-                amount: payload.new.amount,
-                status: payload.new.status,
-                created_at: payload.new.created_at,
-                account_name: payload.new.account_name,
-                account_number: payload.new.account_number,
-              });
-            }
-          }
-        )
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    }
-  }, [user?.telegram_id]);
-
-  // Countdown timer for success submission modal
+  // Countdown timer for auto-disappearing success modal
   useEffect(() => {
     if (showSuccessModal && successCountdown > 0) {
       const timer = setTimeout(() => setSuccessCountdown(prev => prev - 1), 1000);
@@ -194,76 +132,89 @@ export default function Withdraw() {
     }
   }, [showSuccessModal, successCountdown]);
 
+  const getHeaders = () => {
+    const initData = typeof WebApp !== 'undefined' ? WebApp.initData : '';
+    return { 'Content-Type': 'application/json', 'x-telegram-init-data': initData };
+  };
+
+  useEffect(() => { 
+    fetchData(); 
+  }, []);
+
+  // Real-time Supabase status sync
+  useEffect(() => {
+    if (!user?.telegram_id) return;
+
+    const channel = supabase
+      .channel('withdrawals_page_sync')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'withdrawals',
+        },
+        (payload) => {
+          if (payload.new && String(payload.new.telegram_id) === String(user.telegram_id)) {
+            if (payload.new.status === 'completed') {
+              setPendingAmount(null);
+              fetchUser();
+              showToast(
+                language === 'am' 
+                  ? `የ ${payload.new.amount} ETB ማውጫዎ በተሳካ ሁኔታ ተልኳል!` 
+                  : `Your withdrawal of ${payload.new.amount} ETB has been approved and sent!`,
+                'success',
+                5000
+              );
+            } else if (payload.new.status === 'rejected') {
+              setPendingAmount(null);
+              fetchUser();
+              showToast(
+                language === 'am' 
+                  ? `የ ${payload.new.amount} ETB ማውጫ ጥያቄዎ ውድቅ ተደርጓል፤ ገንዘቡ ተመልሷል።` 
+                  : `Withdrawal request of ${payload.new.amount} ETB was rejected and refunded.`,
+                'warning',
+                6000
+              );
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.telegram_id, language]);
+
   const fetchData = async () => {
     try {
       const headers = getHeaders();
       const [methodsRes, historyRes, contactRes] = await Promise.all([
-        fetch(`${API_URL}/withdraw/methods`, { headers }).catch(() => null),
-        fetch(`${API_URL}/withdraw/history`, { headers }).catch(() => null),
-        fetch(`${API_URL}/player/support-contact`, { headers }).catch(() => null),
+        fetch(`${API_URL}/withdraw/methods`, { headers }),
+        fetch(`${API_URL}/withdraw/history`, { headers }),
+        fetch(`${API_URL}/player/support-contact`, { headers }),
       ]);
 
-      if (methodsRes && methodsRes.ok) {
-        setMethods(await methodsRes.json());
-      } else {
-        // Direct DB fallback
-        const { data: dbMethods } = await supabase
-          .from('withdrawal_methods')
-          .select('*')
-          .eq('is_active', true)
-          .order('created_at', { ascending: false });
-        if (dbMethods) setMethods(dbMethods);
-      }
+      if (methodsRes.ok) setMethods(await methodsRes.json());
 
-      if (historyRes && historyRes.ok) {
+      if (historyRes.ok) {
         const history = await historyRes.json();
         const pending = history.find((w: any) => w.status === 'pending');
         if (pending) {
-          setPendingWithdrawal(pending);
-        }
-      } else {
-        const tgId = user?.telegram_id || WebApp?.initDataUnsafe?.user?.id?.toString();
-        if (tgId) {
-          const { data: pending } = await supabase
-            .from('withdrawals')
-            .select('*, withdrawal_methods(type, logo_url)')
-            .eq('telegram_id', tgId)
-            .eq('status', 'pending')
-            .maybeSingle();
-          if (pending) setPendingWithdrawal(pending);
+          setPendingAmount(pending.amount);
         }
       }
-
-      if (contactRes && contactRes.ok) {
+      
+      if (contactRes.ok) {
         const support = await contactRes.json();
         setSupportContact(support.username || 'ChoiceBingo_admin');
       }
     } catch (err) {
-      console.error('Error fetching withdrawal data:', err);
+      console.error(err);
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleSelectMethod = (method: WithdrawalMethod) => {
-    // If user already has a pending withdrawal, show auto-dismissing toast notification
-    if (pendingWithdrawal) {
-      showToast(
-        language === 'am'
-          ? `⚠️ የቀደመው የ ${pendingWithdrawal.amount.toLocaleString('en-US')} ETB ማውጫ ጥያቄዎ እስኪረጋገጥ ድረስ እባክዎ ይጠብቁ::`
-          : `⚠️ Please wait for your pending withdrawal of ${pendingWithdrawal.amount.toLocaleString('en-US')} ETB to be reviewed.`,
-        'warning',
-        3500
-      );
-      return;
-    }
-
-    setSelected(method);
-    setAmount('');
-    setAccountName('');
-    setAccountNumber('');
-    setError('');
-    setStep('form');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -271,45 +222,26 @@ export default function Withdraw() {
     if (!selected) return;
     setError('');
 
-    if (pendingWithdrawal) {
-      showToast(
-        language === 'am'
-          ? `⚠️ የቀደመው የ ${pendingWithdrawal.amount.toLocaleString('en-US')} ETB ማውጫ ጥያቄዎ እስኪረጋገጥ ድረስ እባክዎ ይጠብቁ::`
-          : `⚠️ Please wait for your pending withdrawal of ${pendingWithdrawal.amount.toLocaleString('en-US')} ETB to be reviewed.`,
-        'warning',
-        3500
-      );
-      return;
-    }
-
     const amtNum = parseFloat(amount);
     if (!amount || amount.trim() === '' || isNaN(amtNum) || amtNum <= 0) {
-      setError(language === 'am' ? 'እባክዎ ትክክለኛ የገንዘብ መጠን ያስገቡ::' : 'Please enter a valid withdrawal amount.');
+      setError(language === 'am' ? 'እባክዎ ትክክለኛ የማውጣት መጠን ያስገቡ።' : 'Please enter a valid withdrawal amount.');
       return;
     }
     if (amtNum < selected.min_withdrawal) {
-      setError(
-        language === 'am'
-          ? `ዝቅተኛው የማውጫ መጠን ${selected.min_withdrawal.toLocaleString('en-US')} ETB ነው::`
-          : `Minimum withdrawal for this method is ${selected.min_withdrawal.toLocaleString('en-US')} ETB.`
-      );
+      setError(`${language === 'am' ? 'ዝቅተኛው የማውጣት መጠን' : 'Minimum withdrawal is'} ${selected.min_withdrawal.toLocaleString('en-US')} ETB`);
       return;
     }
     if (amtNum > userBalance) {
-      setError(
-        language === 'am'
-          ? `በቂ ሂሳብ የሎትም:: ያሎት ሂሳብ ${userBalance.toLocaleString('en-US')} ETB ነው::`
-          : `Insufficient balance. Your balance is ${userBalance.toLocaleString('en-US')} ETB.`
-      );
+      setError(`${language === 'am' ? 'በቂ ያልሆነ ሂሳብ። ያለዎት ሂሳብ' : 'Insufficient balance. Your balance is'} ${userBalance.toLocaleString('en-US')} ETB`);
       return;
     }
-    if (!accountName.trim()) {
-      setError(language === 'am' ? 'እባክዎ በአካውንቱ ላይ ያለውን ሙሉ ስም ያስገቡ::' : 'Please enter your account full name.');
-      return;
+    if (!accountName.trim()) { 
+      setError(language === 'am' ? 'እባክዎ ሙሉ ስምዎን ያስገቡ።' : 'Please enter your full name.'); 
+      return; 
     }
-    if (!accountNumber.trim()) {
-      setError(language === 'am' ? 'እባክዎ የአካውንት ወይም ስልክ ቁጥር ያስገቡ::' : 'Please enter your account/phone number.');
-      return;
+    if (!accountNumber.trim()) { 
+      setError(language === 'am' ? 'እባክዎ የሂሳብ ወይም የስልክ ቁጥርዎን ያስገቡ።' : 'Please enter your account/phone number.'); 
+      return; 
     }
 
     setSubmitting(true);
@@ -326,66 +258,251 @@ export default function Withdraw() {
       });
 
       const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || (language === 'am' ? 'ማስገባት አልተሳካም::' : 'Failed to submit request.'));
-        return;
+      if (!res.ok) { 
+        setError(data.error || (language === 'am' ? 'ማስገባት አልተሳካም። እባክዎ እንደገና ይሞክሩ።' : 'Failed to submit. Please try again.')); 
+        return; 
       }
 
-      // Update local state & trigger auto-disappearing 3D modal
-      setPendingWithdrawal({
-        id: data.withdrawal?.id || 'temp-' + Date.now(),
-        amount: amtNum,
-        status: 'pending',
-        created_at: new Date().toISOString(),
-        account_name: accountName.trim(),
-        account_number: accountNumber.trim(),
-        method: {
-          type: selected.type,
-          logo_url: selected.logo_url
-        }
-      });
+      // Refresh user balance in store
+      fetchUser();
 
-      fetchUser(); // refresh balance immediately
+      // Set Success Info & Show Auto-Disappearing Modal
       setSuccessAmount(amtNum);
+      setSuccessAccountName(accountName.trim());
+      setSuccessAccountNumber(accountNumber.trim());
+      setSuccessMethodName(typeLabels[selected.type] || selected.type.toUpperCase());
       setSuccessCountdown(4);
       setShowSuccessModal(true);
+
+      // Record pending amount
+      setPendingAmount(amtNum);
+
+      // Reset form
+      setAmount('');
+      setAccountName('');
+      setAccountNumber('');
       setStep('list');
     } catch (err: any) {
-      setError(err.message || (language === 'am' ? 'የኔትወርክ ችግር አጋጥሟል:: እባክዎ እንደገና ይሞክሩ::' : 'Network error. Please try again.'));
+      setError(err.message || (language === 'am' ? 'የግንኙነት ችግር ተፈጥሯል። እባክዎ እንደገና ይሞክሩ።' : 'Network error. Please try again.'));
     } finally {
       setSubmitting(false);
     }
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-[#070b14] flex items-center justify-center">
+        <div className="flex flex-col items-center space-y-3">
+          <div className="w-12 h-12 border-4 border-amber-400 border-t-transparent rounded-full animate-spin shadow-[0_0_15px_rgba(245,158,11,0.3)]" />
+          <p className="text-slate-400 font-bold text-sm">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ── STEP: PENDING STATUS FULL DETAILS ──
+  if (step === 'pending_status') {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-[#070b14] flex flex-col items-center justify-center p-6">
+        <div className="bg-white dark:bg-slate-900/95 w-full max-w-sm rounded-3xl shadow-[0_10px_35px_rgba(0,0,0,0.1)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.6)] border border-slate-200/80 dark:border-slate-800 p-8 text-center backdrop-blur-md">
+          <div className="w-20 h-20 bg-amber-50 dark:bg-amber-950/40 rounded-3xl flex items-center justify-center mx-auto mb-5 border-2 border-amber-200 dark:border-amber-700/60 shadow-lg shadow-amber-500/10">
+            <Clock size={40} className="text-amber-500 animate-pulse" />
+          </div>
+          <h2 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight">{t[language].withdraw.alreadyPendingTitle}</h2>
+          <p className="text-slate-500 dark:text-slate-400 font-medium mt-2 leading-relaxed text-sm">
+            {t[language].withdraw.alreadyPendingDesc.split('{amount}')[0]}
+            <span className="font-black text-amber-600 dark:text-amber-400">{pendingAmount?.toLocaleString('en-US')} ETB</span>
+            {t[language].withdraw.alreadyPendingDesc.split('{amount}')[1]}
+          </p>
+          <div className="mt-5 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 rounded-2xl p-4">
+            <p className="text-xs text-blue-700 dark:text-blue-300 font-bold text-center">{t[language].withdraw.waitAdmin}</p>
+          </div>
+          {supportContact && (
+            <a 
+              href={`https://t.me/${supportContact.replace('@', '')}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-4 flex items-center justify-center space-x-2 text-blue-600 dark:text-blue-400 font-black text-sm bg-blue-50 dark:bg-blue-950/50 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors py-3.5 rounded-2xl w-full border border-blue-200 dark:border-blue-800/60 shadow-sm"
+            >
+              <MessageCircle size={18} />
+              <span>Need Help? {t[language].withdraw.contactSupport}</span>
+            </a>
+          )}
+
+          <button 
+            onClick={() => setStep('list')}
+            className="mt-3 block w-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-black py-4 rounded-2xl text-center transition-all active:scale-95 border border-slate-200/80 dark:border-slate-700 shadow-sm"
+          >
+            {language === 'am' ? 'ወደ ማውጫ መንገዶች ተመለስ' : 'Back to Withdrawal Methods'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── STEP: FORM ──
+  if (step === 'form' && selected) {
+    const gradient = typeColors[selected.type] || 'from-slate-600 to-slate-800';
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-[#070b14] text-slate-800 dark:text-slate-100 transition-colors duration-200 pb-12">
+        {/* 3D Method Header */}
+        <div className={`bg-gradient-to-r ${gradient} px-4 pt-6 pb-8 shadow-lg relative overflow-hidden border-b border-white/10`}>
+          <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+          <div className="flex items-center space-x-3 mb-4 relative z-10">
+            <button onClick={() => setStep('list')} className="w-10 h-10 rounded-xl bg-black/20 hover:bg-black/30 text-white flex items-center justify-center backdrop-blur-sm border border-white/20 active:scale-90 transition-all">
+              <ArrowLeft size={20} />
+            </button>
+            <h1 className="text-lg font-black text-white drop-shadow-sm flex items-center gap-2">
+              <span>{typeEmoji[selected.type] || '💳'}</span>
+              <span>{typeLabels[selected.type] || selected.type.toUpperCase()}</span>
+            </h1>
+          </div>
+          {/* 3D Balance Inset Card */}
+          <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-3xl p-5 shadow-[0_10px_25px_rgba(0,0,0,0.1)] border border-white/20 relative z-10">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider">{t[language].withdraw.balance}</p>
+                <p className="text-3xl font-black text-slate-800 dark:text-white mt-0.5">
+                  {userBalance.toLocaleString('en-US')} <span className="text-lg text-emerald-600 dark:text-emerald-400">ETB</span>
+                </p>
+              </div>
+              <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 flex items-center justify-center text-amber-500 shadow-inner">
+                <Wallet size={24} />
+              </div>
+            </div>
+            <p className="text-slate-400 dark:text-slate-400 text-xs font-semibold mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center gap-1">
+              <ShieldCheck size={14} className="text-emerald-500" />
+              <span>{t[language].withdraw.minWithdrawal} {selected.min_withdrawal.toLocaleString('en-US')} ETB</span>
+            </p>
+          </div>
+        </div>
+
+        {/* Form Container */}
+        <form onSubmit={handleSubmit} className="px-4 -mt-4">
+          <div className="bg-white dark:bg-slate-900/95 rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.05)] dark:shadow-[0_10px_35px_rgba(0,0,0,0.5)] border border-slate-200/80 dark:border-slate-800 p-5 space-y-4 backdrop-blur-md">
+
+            {error && (
+              <div className="flex items-start space-x-2 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800/60 rounded-2xl p-3.5">
+                <AlertCircle size={18} className="text-red-500 mt-0.5 flex-shrink-0" />
+                <p className="text-red-600 dark:text-red-400 text-sm font-semibold">{error}</p>
+              </div>
+            )}
+
+            {/* Amount */}
+            <div>
+              <label className="block text-xs font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider mb-2">{t[language].withdraw.amountLabel}</label>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-black text-sm">ETB</span>
+                <input
+                  type="number"
+                  value={amount}
+                  onChange={e => setAmount(e.target.value)}
+                  placeholder="0.00"
+                  min={selected.min_withdrawal}
+                  max={userBalance}
+                  className="w-full pl-14 pr-4 py-3.5 border-2 border-slate-200/80 dark:border-slate-700/80 rounded-2xl focus:border-amber-400 focus:outline-none text-slate-800 dark:text-slate-100 font-black text-xl bg-slate-50 dark:bg-slate-950/80 shadow-inner"
+                  required
+                />
+              </div>
+              <div className="flex justify-between items-center mt-1.5 px-1">
+                <p className={`text-xs font-bold ${amount && parseFloat(amount) > 0 && parseFloat(amount) < selected.min_withdrawal ? 'text-red-500' : 'text-slate-400 dark:text-slate-400'}`}>
+                  {t[language].withdraw.minWithdrawal} {selected.min_withdrawal.toLocaleString('en-US')} ETB
+                  {amount && parseFloat(amount) > 0 && parseFloat(amount) < selected.min_withdrawal && ' ⚠️ Too low'}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setAmount(String(userBalance))}
+                  className="text-xs font-black text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 px-2.5 py-1 rounded-lg active:scale-95 transition-all shadow-sm"
+                >
+                  MAX
+                </button>
+              </div>
+            </div>
+
+            {/* Full Name */}
+            <div>
+              <label className="block text-xs font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider mb-2">{t[language].withdraw.fullNameLabel}</label>
+              <div className="relative">
+                <User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  value={accountName}
+                  onChange={e => setAccountName(e.target.value)}
+                  placeholder={t[language].withdraw.fullNamePlaceholder}
+                  className="w-full pl-11 pr-4 py-3.5 border-2 border-slate-200/80 dark:border-slate-700/80 rounded-2xl focus:border-amber-400 focus:outline-none text-slate-800 dark:text-slate-100 font-bold text-sm bg-slate-50 dark:bg-slate-950/80 shadow-inner"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Account / Phone Number */}
+            <div>
+              <label className="block text-xs font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider mb-2">
+                {selected.type === 'telebirr' || selected.type === 'mpesa' ? t[language].withdraw.phoneLabel : t[language].withdraw.accNumberLabel}
+              </label>
+              <div className="relative">
+                <Phone size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  value={accountNumber}
+                  onChange={e => setAccountNumber(e.target.value)}
+                  placeholder={selected.type === 'telebirr' || selected.type === 'mpesa' ? '09XXXXXXXX' : 'Account number'}
+                  className="w-full pl-11 pr-4 py-3.5 border-2 border-slate-200/80 dark:border-slate-700/80 rounded-2xl focus:border-amber-400 focus:outline-none text-slate-800 dark:text-slate-100 font-bold text-sm bg-slate-50 dark:bg-slate-950/80 shadow-inner"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Info notice */}
+            <div className="bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 rounded-2xl p-3.5 flex items-start gap-2.5">
+              <ShieldCheck size={18} className="text-blue-500 shrink-0 mt-0.5" />
+              <p className="text-xs text-blue-700 dark:text-blue-300 font-semibold leading-relaxed">
+                {t[language].withdraw.infoBox}
+              </p>
+            </div>
+
+            <button
+              type="submit"
+              disabled={submitting}
+              className={`w-full py-4 rounded-2xl font-black text-white text-base shadow-[0_8px_25px_rgba(0,0,0,0.2)] border-t border-white/30 active:translate-y-0.5 transition-all ${
+                submitting
+                  ? 'bg-slate-400 cursor-not-allowed'
+                  : `bg-gradient-to-r ${gradient}`
+              }`}
+            >
+              {submitting ? t[language].withdraw.submitting : `${t[language].withdraw.title} ${(amount && !isNaN(parseFloat(amount))) ? parseFloat(amount).toLocaleString('en-US') : '0'} ETB`}
+            </button>
+          </div>
+        </form>
+      </div>
+    );
+  }
+
+  // ── STEP: LIST (MAIN LAYOUT) ──
   return (
-    <div className="min-h-screen bg-[#f8fafc] dark:bg-[#070b14] text-slate-800 dark:text-slate-100 transition-colors duration-200 pb-28">
-      {/* ── 3D AUTO-DISAPPEARING TOAST NOTIFICATION ── */}
+    <div className="min-h-screen bg-slate-50 dark:bg-[#070b14] text-slate-800 dark:text-slate-100 transition-colors duration-200 pb-12 relative">
+      
+      {/* 🌟 3D AUTO-DISAPPEARING TOAST NOTIFICATION 🌟 */}
       {toastMessage && (
         <div className="fixed top-4 left-4 right-4 z-50 flex justify-center animate-slide-down">
           <div
-            className={`w-full max-w-sm px-4 py-3.5 rounded-2xl shadow-[0_12px_30px_rgba(0,0,0,0.18)] dark:shadow-[0_12px_35px_rgba(0,0,0,0.6)] border backdrop-blur-md flex items-center gap-3 transition-all ${
+            className={`px-4 py-3 rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.2)] border flex items-center space-x-2.5 backdrop-blur-md text-xs font-bold max-w-sm ${
               toastType === 'warning'
-                ? 'bg-amber-500/95 text-white border-amber-300 ring-2 ring-amber-400/40'
+                ? 'bg-amber-500/95 text-white border-amber-400'
                 : toastType === 'success'
-                ? 'bg-emerald-600/95 text-white border-emerald-400 ring-2 ring-emerald-400/40'
-                : 'bg-slate-900/95 text-white border-slate-700 ring-2 ring-slate-600/40'
+                ? 'bg-emerald-500/95 text-white border-emerald-400'
+                : 'bg-slate-900/95 text-white border-slate-700'
             }`}
           >
-            {toastType === 'warning' && <AlertCircle size={20} className="shrink-0 animate-bounce" />}
-            {toastType === 'success' && <CheckCircle2 size={20} className="shrink-0 animate-pulse" />}
-            {toastType === 'info' && <Info size={20} className="shrink-0 text-amber-400" />}
-            <p className="text-xs font-black flex-1 leading-snug">{toastMessage}</p>
-            <button
-              onClick={() => setToastMessage(null)}
-              className="p-1 hover:bg-white/20 rounded-full transition-colors shrink-0"
-            >
-              <X size={16} />
-            </button>
+            {toastType === 'warning' && <AlertCircle size={18} className="shrink-0" />}
+            {toastType === 'success' && <Check size={18} className="shrink-0" />}
+            {toastType === 'info' && <Info size={18} className="shrink-0" />}
+            <span className="flex-1 leading-snug">{toastMessage}</span>
           </div>
         </div>
       )}
 
-      {/* ── 3D AUTO-DISAPPEARING SUCCESS MODAL (COUNTDOWN) ── */}
+      {/* 🌟 3D AUTO-DISAPPEARING SUCCESS MODAL (COUNTDOWN) 🌟 */}
       {showSuccessModal && (
         <div className="fixed inset-0 bg-slate-950/75 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in">
           <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[32px] p-6 shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-slate-200/80 dark:border-slate-800 text-center relative overflow-hidden animate-scale-up">
@@ -405,25 +522,47 @@ export default function Withdraw() {
               </div>
             </div>
 
-            <h2 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight">
-              {language === 'am' ? 'ተልኳል!' : 'Submitted!'}
-            </h2>
+            <h3 className="text-xl font-black text-slate-800 dark:text-white tracking-tight">
+              {t[language].withdraw.submitted || (language === 'am' ? 'ጥያቄዎ በተሳካ ሁኔታ ቀርቧል!' : 'Request Submitted!')}
+            </h3>
 
-            <div className="my-3 px-3 py-2 bg-emerald-50 dark:bg-emerald-950/40 rounded-2xl border border-emerald-200 dark:border-emerald-800/60 inline-block">
-              <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300">
-                {language === 'am' ? 'የተጠየቀ ማውጫ መጠን:' : 'Requested Amount:'}{' '}
-                <span className="text-sm font-black">{successAmount.toLocaleString('en-US')} ETB</span>
-              </span>
-            </div>
-
-            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed max-w-[280px] mx-auto">
-              {language === 'am'
-                ? 'የማውጫ ጥያቄዎ በተሳካ ሁኔታ ደርሷል:: አድሚን እንዳረጋገጠው ገንዘቡ በቀጥታ ወደ አካውንትዎ ይተላለፋል::'
-                : 'Your withdrawal request has been submitted for review. Funds will be sent as soon as admin approves it.'}
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-2 font-medium leading-relaxed">
+              {language === 'am' ? (
+                <>የ <span className="font-black text-emerald-600 dark:text-emerald-400">{successAmount.toLocaleString('en-US')} ETB</span> ማውጫ ጥያቄዎ በተሳካ ሁኔታ ቀርቧል::</>
+              ) : (
+                <>Your withdrawal request of <span className="font-black text-emerald-600 dark:text-emerald-400">{successAmount.toLocaleString('en-US')} ETB</span> has been submitted.</>
+              )}
             </p>
 
-            <div className="mt-4 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-2xl p-3 flex items-center justify-center gap-2 text-amber-700 dark:text-amber-300 text-xs font-bold">
-              <Clock size={16} className="text-amber-500 shrink-0 animate-spin" />
+            {/* Inset details card */}
+            <div className="mt-4 bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-3 border border-slate-200/60 dark:border-slate-700/60 text-xs space-y-1.5 text-left">
+              <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
+                <span>{language === 'am' ? 'መንገድ' : 'Method'}</span>
+                <span className="font-bold text-slate-800 dark:text-slate-200">{successMethodName}</span>
+              </div>
+              {successAccountNumber && (
+                <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
+                  <span>{language === 'am' ? 'አካውንት / ስልክ' : 'Account / Phone'}</span>
+                  <span className="font-bold text-slate-800 dark:text-slate-200">{successAccountNumber}</span>
+                </div>
+              )}
+              {successAccountName && (
+                <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
+                  <span>{language === 'am' ? 'ስም' : 'Name'}</span>
+                  <span className="font-bold text-slate-800 dark:text-slate-200">{successAccountName}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-4 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 rounded-2xl p-3">
+              <p className="text-xs text-emerald-700 dark:text-emerald-300 font-bold text-center">
+                {t[language].withdraw.willBeProcessed || (language === 'am' ? 'በጥቂት ደቂቃዎች ውስጥ አስተዳዳሪው መርምሮ ይልካል::' : 'Admin will review and process shortly.')}
+              </p>
+            </div>
+
+            {/* Countdown Badge */}
+            <div className="mt-4 inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-400 dark:text-slate-400">
+              <Clock size={12} className="text-emerald-500" />
               <span>{language === 'am' ? `ይህ መልእክት በ ${successCountdown} ሰከንድ ውስጥ ይጠፋል...` : `Auto-closing in ${successCountdown}s...`}</span>
             </div>
 
@@ -434,348 +573,129 @@ export default function Withdraw() {
               }}
               className="mt-4 w-full py-3.5 bg-slate-900 dark:bg-white text-white dark:text-slate-950 rounded-2xl font-black text-xs shadow-md active:scale-95 transition-all"
             >
-              {language === 'am' ? 'እሺ (ገጹን ተመልከት)' : 'OK (View Withdrawal Page)'}
+              {language === 'am' ? 'እሺ (ተመለስ)' : 'OK (Back to Methods)'}
             </button>
           </div>
         </div>
       )}
 
-      {/* ── STEP 1: FORM VIEW (IF A METHOD IS SELECTED) ── */}
-      {step === 'form' && selected ? (
-        <div className="animate-fade-in">
-          {/* Header */}
-          <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md px-4 py-3.5 rounded-b-3xl shadow-sm border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between sticky top-0 z-30 transition-colors">
-            <button
-              onClick={() => setStep('list')}
-              className="p-2.5 bg-slate-100 dark:bg-slate-800 rounded-2xl text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 active:scale-95 transition-all"
-            >
-              <ArrowLeft size={18} />
-            </button>
-            <div className="text-center px-2">
-              <h1 className="font-black text-slate-800 dark:text-white text-base tracking-tight">
-                {language === 'am' ? 'ገንዘብ ማውጫ' : 'Withdraw Funds'}
-              </h1>
-              <p className="text-[10px] text-amber-600 dark:text-amber-400 font-bold uppercase tracking-wider">
-                {methodNames[selected.type] || selected.type.toUpperCase()}
-              </p>
-            </div>
-            <div className="w-9" />
-          </div>
-
-          <form onSubmit={handleSubmit} className="px-3.5 py-2.5 space-y-2.5 max-w-md mx-auto">
-            {/* 3D Method & Balance Inset Card */}
-            <div className="relative rounded-2xl p-3 bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-950 border border-slate-200/90 dark:border-slate-800 shadow-[0_4px_16px_rgba(0,0,0,0.03)] dark:shadow-[0_6px_20px_rgba(0,0,0,0.3)] overflow-hidden">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                  {language === 'am' ? 'የማውጫ መንገድ' : 'WITHDRAWAL METHOD'}
-                </span>
-                <span className="text-[9px] font-black px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60 flex items-center gap-1">
-                  <ShieldCheck size={11} />
-                  <span>Secure</span>
-                </span>
-              </div>
-
-              <div className="flex items-center gap-2.5">
-                <div className="w-12 h-12 min-w-[48px] max-w-[48px] h-[48px] max-h-[48px] rounded-xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 p-1 flex items-center justify-center shrink-0 overflow-hidden shadow-sm">
-                  {selected.logo_url ? (
-                    <img src={selected.logo_url} alt="Logo" className="w-full h-full object-contain rounded-lg" />
-                  ) : (
-                    <span className="text-xl">💳</span>
-                  )}
-                </div>
-
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-black text-slate-800 dark:text-white text-xs leading-tight truncate">
-                    {methodNames[selected.type] || selected.type.toUpperCase()}
-                  </h3>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <p className="text-[10px] font-bold text-slate-400">
-                      {language === 'am' ? 'ዝቅተኛ:' : 'Min:'} <span className="font-black text-amber-600 dark:text-amber-400">{selected.min_withdrawal} ETB</span>
-                    </p>
-                    <span className="text-slate-300 dark:text-slate-700">•</span>
-                    <p className="text-[10px] font-bold text-slate-400">
-                      {language === 'am' ? 'ያሎት ሂሳብ:' : 'Balance:'} <span className="font-black text-emerald-600 dark:text-emerald-400">{userBalance.toLocaleString('en-US')} ETB</span>
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Error Banner */}
-            {error && (
-              <div className="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 rounded-xl p-2.5 flex items-center gap-2 text-rose-600 dark:text-rose-400 text-[11px] font-bold animate-shake">
-                <AlertCircle size={15} className="shrink-0" />
-                <span>{error}</span>
-              </div>
-            )}
-
-            {/* Compact Amount Input with MAX Button */}
-            <div className="bg-white dark:bg-slate-900 rounded-2xl p-3 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-1.5">
-              <div className="flex items-center justify-between">
-                <label className="block text-[9px] font-black text-slate-400 uppercase tracking-wider">
-                  {language === 'am' ? 'የሚያወጡት መጠን (ETB)' : 'AMOUNT TO WITHDRAW (ETB)'}
-                </label>
-                <button
-                  type="button"
-                  onClick={() => setAmount(String(userBalance))}
-                  className="text-[10px] font-black text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 px-2 py-0.5 rounded-md active:scale-95 transition-all shadow-sm"
-                >
-                  MAX
-                </button>
-              </div>
-
-              <div className="relative">
-                <input
-                  type="number"
-                  min={selected.min_withdrawal}
-                  max={userBalance}
-                  placeholder={`Min ${selected.min_withdrawal.toLocaleString('en-US')} ETB`}
-                  value={amount}
-                  onChange={(e) => { setAmount(e.target.value); setError(''); }}
-                  className="w-full bg-slate-50 dark:bg-slate-800/80 border-2 border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-base font-black text-slate-800 dark:text-white outline-none focus:border-amber-400 transition-all font-mono"
-                  required
-                />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-black text-slate-400">
-                  ETB
-                </span>
-              </div>
-            </div>
-
-            {/* Compact Account Holder Full Name Input */}
-            <div className="bg-white dark:bg-slate-900 rounded-2xl p-3 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-1.5">
-              <label className="block text-[9px] font-black text-slate-400 uppercase tracking-wider">
-                {language === 'am' ? 'የአካውንት ባለቤት ሙሉ ስም' : 'ACCOUNT HOLDER FULL NAME'}
-              </label>
-
-              <div className="relative">
-                <User size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder={language === 'am' ? 'በአካውንቱ ላይ ያለ ሙሉ ስም' : 'Full name registered on account'}
-                  value={accountName}
-                  onChange={(e) => { setAccountName(e.target.value); setError(''); }}
-                  className="w-full bg-slate-50 dark:bg-slate-800/80 border-2 border-slate-200 dark:border-slate-700 rounded-xl pl-9 pr-3 py-2 text-xs font-bold text-slate-800 dark:text-white outline-none focus:border-amber-400 transition-all"
-                  required
-                />
-              </div>
-            </div>
-
-            {/* Compact Account / Phone Number Input */}
-            <div className="bg-white dark:bg-slate-900 rounded-2xl p-3 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-1.5">
-              <label className="block text-[9px] font-black text-slate-400 uppercase tracking-wider">
-                {selected.type === 'telebirr' || selected.type === 'mpesa'
-                  ? (language === 'am' ? 'የስልክ ቁጥር (09...)' : 'PHONE NUMBER (09...)')
-                  : (language === 'am' ? 'የባንክ አካውንት ቁጥር' : 'BANK ACCOUNT NUMBER')}
-              </label>
-
-              <div className="relative">
-                <Phone size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder={selected.type === 'telebirr' || selected.type === 'mpesa' ? '09XXXXXXXX' : '1000XXXXXXXX'}
-                  value={accountNumber}
-                  onChange={(e) => { setAccountNumber(e.target.value); setError(''); }}
-                  className="w-full bg-slate-50 dark:bg-slate-800/80 border-2 border-slate-200 dark:border-slate-700 rounded-xl pl-9 pr-3 py-2 text-xs font-mono font-bold text-slate-800 dark:text-white outline-none focus:border-amber-400 transition-all"
-                  required
-                />
-              </div>
-            </div>
-
-            {/* Security Notice */}
-            <div className="bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 rounded-xl p-2.5 flex items-center gap-2">
-              <ShieldCheck size={16} className="text-blue-500 shrink-0" />
-              <p className="text-[10px] text-blue-700 dark:text-blue-300 font-semibold leading-tight">
-                {language === 'am'
-                  ? 'ዋና ሂሳብዎ ወዲያውኑ ተቀናሽ ይሆናል። ገንዘቡ በደቂቃዎች ውስጥ ወደ አካውንትዎ ይተላለፋል።'
-                  : 'Main balance is immediately debited. Funds are transferred upon admin approval.'}
-              </p>
-            </div>
-
-            {/* 3D Compact Submit Button */}
-            <button
-              type="submit"
-              disabled={submitting}
-              className="w-full py-3 rounded-2xl font-black text-white text-xs bg-gradient-to-r from-emerald-500 via-emerald-600 to-green-600 hover:from-emerald-600 hover:to-green-700 shadow-[0_6px_18px_rgba(16,185,129,0.3)] active:translate-y-0.5 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-1.5"
-            >
-              {submitting ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>{language === 'am' ? 'በመላክ ላይ...' : 'Submitting...'}</span>
-                </>
-              ) : (
-                <>
-                  <Zap size={16} />
-                  <span>
-                    {language === 'am'
-                      ? `ገንዘብ አውጣ ${(amount && !isNaN(parseFloat(amount))) ? parseFloat(amount).toLocaleString('en-US') : ''} ETB`
-                      : `Submit Withdrawal ${(amount && !isNaN(parseFloat(amount))) ? parseFloat(amount).toLocaleString('en-US') : ''} ETB`}
-                  </span>
-                </>
-              )}
-            </button>
-          </form>
+      {/* 3D Realistic Header */}
+      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 px-4 pt-6 pb-8 border-b border-slate-800 shadow-lg relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="flex items-center space-x-3 mb-4 relative z-10">
+          <Link to="/" className="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center backdrop-blur-sm border border-white/20 active:scale-90 transition-all">
+            <ArrowLeft size={20} />
+          </Link>
+          <h1 className="text-xl font-black text-white tracking-tight drop-shadow-sm">{t[language].withdraw.title}</h1>
         </div>
-      ) : (
-        /* ── STEP 2: AVAILABLE METHODS LIST VIEW (3D LOGO-ONLY GRID) ── */
-        <div>
-          {/* Mobile Sticky Header */}
-          <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md px-4 py-3.5 rounded-b-3xl shadow-sm border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between sticky top-0 z-30 transition-colors">
-            <Link
-              to="/"
-              className="p-2.5 bg-slate-100 dark:bg-slate-800 rounded-2xl text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 active:scale-95 transition-all"
-            >
-              <ArrowLeft size={18} />
-            </Link>
 
-            <div className="text-center px-2 min-w-0">
-              <h1 className="font-black text-slate-800 dark:text-white text-base tracking-tight truncate">
-                {language === 'am' ? 'ገንዘብ ማውጫ' : 'Withdraw Funds'}
-              </h1>
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                {language === 'am' ? 'የማውጫ መንገድ ይምረጡ' : 'Select a Withdrawal Method'}
+        {/* 3D Vault Balance Card */}
+        <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-3xl p-5 shadow-[0_10px_25px_rgba(0,0,0,0.1)] border border-white/20 relative z-10">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider">{t[language].withdraw.balance}</p>
+              <p className="text-3xl font-black text-slate-800 dark:text-white mt-0.5">
+                {userBalance.toLocaleString('en-US')} <span className="text-lg text-emerald-600 dark:text-emerald-400">ETB</span>
               </p>
             </div>
-
-            <div className="w-9" />
+            <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 flex items-center justify-center text-amber-500 shadow-inner">
+              <Wallet size={24} />
+            </div>
           </div>
+          <p className="text-slate-400 dark:text-slate-400 text-xs font-semibold mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center gap-1.5">
+            <ShieldCheck size={14} className="text-emerald-500" />
+            <span>{language === 'am' ? 'ዋናው ሂሳብ ብቻ ነው ሊወጣ የሚችለው' : 'Only main balance can be withdrawn'}</span>
+          </p>
+        </div>
+      </div>
 
-          <div className="p-4 space-y-4 max-w-lg mx-auto">
-            {/* 3D Vault Balance Card */}
-            <div className="relative rounded-3xl p-5 bg-gradient-to-br from-white via-slate-50 to-slate-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-950 border border-slate-200/90 dark:border-slate-800 shadow-[0_10px_25px_rgba(0,0,0,0.04)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.4)] overflow-hidden">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider">
-                    {language === 'am' ? 'ያሎት ዋና ሂሳብ' : 'AVAILABLE MAIN BALANCE'}
-                  </p>
-                  <p className="text-3xl font-black text-slate-800 dark:text-white mt-0.5">
-                    {userBalance.toLocaleString('en-US')}{' '}
-                    <span className="text-lg text-emerald-600 dark:text-emerald-400">ETB</span>
-                  </p>
-                </div>
-                <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 flex items-center justify-center text-amber-500 shadow-inner">
-                  <Wallet size={24} />
-                </div>
-              </div>
-              <p className="text-slate-400 dark:text-slate-500 text-xs font-semibold mt-2.5 pt-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center gap-1.5">
-                <ShieldCheck size={14} className="text-emerald-500" />
-                <span>{language === 'am' ? 'ከዋና ሂሳብ ብቻ ነው ማውጣት የሚቻለው' : 'Only main balance can be withdrawn'}</span>
+      {/* Pending Banner if user has a pending withdrawal */}
+      {pendingAmount !== null && (
+        <div className="mx-4 mt-3 -mb-1 bg-amber-500/10 dark:bg-amber-950/30 border border-amber-500/30 rounded-2xl p-3.5 flex items-center justify-between backdrop-blur-sm shadow-sm">
+          <div className="flex items-center space-x-3 min-w-0">
+            <div className="w-9 h-9 rounded-xl bg-amber-500/20 flex items-center justify-center shrink-0">
+              <Clock className="text-amber-500 animate-pulse" size={20} />
+            </div>
+            <div className="min-w-0">
+              <p className="font-black text-amber-700 dark:text-amber-400 text-xs truncate">
+                {t[language].withdraw.alreadyPendingTitle}
+              </p>
+              <p className="text-[11px] text-slate-600 dark:text-slate-400 font-semibold mt-0.5">
+                {pendingAmount.toLocaleString('en-US')} ETB {language === 'am' ? 'በግምገማ ላይ ነው' : 'pending review'}
               </p>
             </div>
-
-            {/* ── 3D PENDING WITHDRAWAL BANNER (SHOWN IF USER HAS AN ACTIVE PENDING REQUEST) ── */}
-            {pendingWithdrawal && (
-              <div className="relative rounded-3xl p-5 bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-transparent border border-amber-300/80 dark:border-amber-500/30 shadow-[0_8px_25px_rgba(245,158,11,0.12)] overflow-hidden animate-slide-down">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
-                    <span className="text-[10px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400">
-                      {language === 'am' ? 'በመጠባበቅ ላይ ያለ ማውጫ' : 'PENDING REVIEW'}
-                    </span>
-                  </div>
-                  <span className="text-xs font-black text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/60 px-2.5 py-0.5 rounded-lg border border-amber-200 dark:border-amber-800/60">
-                    {pendingWithdrawal.amount.toLocaleString('en-US')} ETB
-                  </span>
-                </div>
-
-                <p className="text-xs text-slate-700 dark:text-slate-300 font-semibold leading-relaxed">
-                  {language === 'am'
-                    ? `የ ${pendingWithdrawal.amount.toLocaleString('en-US')} ETB ማውጫ ጥያቄዎ በአድሚን እየታየ ነው:: እንደተረጋገጠ ገንዘቡ ወዲያውኑ ወደ አካውንትዎ ይላካል::`
-                    : `Your withdrawal request of ${pendingWithdrawal.amount.toLocaleString('en-US')} ETB is currently under review by admin.`}
-                </p>
-
-                <div className="mt-3.5 pt-3 border-t border-amber-200/60 dark:border-amber-900/40 flex items-center justify-between text-xs">
-                  <span className="text-[11px] text-slate-400 font-medium flex items-center gap-1">
-                    <Clock size={13} className="text-amber-500 animate-spin" />
-                    <span>{language === 'am' ? 'እየተረጋገጠ ነው...' : 'Verifying...'}</span>
-                  </span>
-
-                  {supportContact && (
-                    <a
-                      href={`https://t.me/${supportContact.replace('@', '')}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[11px] font-black text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
-                    >
-                      <MessageCircle size={13} />
-                      <span>{language === 'am' ? 'ድጋፍ ሰጪ ያግኙ' : 'Contact Support'}</span>
-                    </a>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Section Header: Available Methods Count Badge */}
-            <div className="flex items-center justify-between px-1">
-              <span className="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-                {language === 'am' ? 'ያሉ የማውጫ መንገዶች' : 'AVAILABLE METHODS'}
-              </span>
-              <span className="text-[10px] font-black text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800/60 px-2.5 py-0.5 rounded-full">
-                {methods.length} {language === 'am' ? 'መንገዶች' : 'Methods'}
-              </span>
-            </div>
-
-            {/* ── 3D GRID OF WITHDRAWAL METHODS (LOGO ONLY) ── */}
-            {loading ? (
-              <div className="grid grid-cols-2 gap-3.5">
-                {[1, 2, 3, 4, 5, 6].map((i) => (
-                  <div
-                    key={i}
-                    className="h-28 rounded-3xl bg-white dark:bg-slate-900 animate-pulse border border-slate-100 dark:border-slate-800 shadow-sm"
-                  />
-                ))}
-              </div>
-            ) : methods.length === 0 ? (
-              <div className="text-center py-16 bg-white dark:bg-slate-900/90 rounded-3xl border border-dashed border-slate-200 dark:border-slate-800 p-8 shadow-sm">
-                <span className="text-3xl mb-2 block">💳</span>
-                <h3 className="font-black text-slate-700 dark:text-slate-200 text-sm">
-                  {language === 'am' ? 'ምንም አይነት የማውጫ መንገዶች አልተገኙም' : 'No Withdrawal Methods Available'}
-                </h3>
-                <p className="text-slate-400 text-xs mt-1">
-                  {language === 'am' ? 'እባክዎ ጥቂት ቆይተው እንደገና ይመልከቱ::' : 'Please check back shortly.'}
-                </p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-3.5">
-                {methods.map((method) => {
-                  const style = methodAccents[method.type] || {
-                    bg: 'from-slate-500/10 to-slate-500/5',
-                    text: 'text-slate-700 dark:text-slate-300',
-                    border: 'border-slate-200 dark:border-slate-800',
-                  };
-
-                  return (
-                    <button
-                      key={method.id}
-                      type="button"
-                      onClick={() => handleSelectMethod(method)}
-                      className="group relative rounded-[28px] p-5 bg-white dark:bg-slate-900/95 border border-slate-200/90 dark:border-slate-800 hover:border-amber-400 dark:hover:border-amber-500 shadow-[0_8px_24px_rgba(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.4)] flex items-center justify-center text-center transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_14px_32px_rgba(0,0,0,0.08)] active:translate-y-1 active:scale-[0.95] overflow-hidden aspect-[4/3] h-28 sm:h-32"
-                    >
-                      {/* Subtle ambient brand gradient highlight */}
-                      <div className={`absolute inset-0 bg-gradient-to-br ${style.bg} opacity-40 group-hover:opacity-80 transition-opacity pointer-events-none`} />
-
-                      {/* 3D Glass / Gloss Reflection */}
-                      <div className="absolute -top-12 -right-12 w-28 h-28 bg-white/20 dark:bg-white/5 rounded-full blur-xl pointer-events-none" />
-
-                      {/* Pure Logo Only */}
-                      <div className="relative z-10 w-full h-full flex items-center justify-center p-2 group-hover:scale-105 transition-transform duration-200">
-                        {method.logo_url ? (
-                          <img
-                            src={method.logo_url}
-                            alt="Logo"
-                            className="max-h-16 max-w-[130px] w-auto h-auto object-contain drop-shadow-sm"
-                          />
-                        ) : (
-                          <span className="text-3xl">💳</span>
-                        )}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
           </div>
+          <button
+            onClick={() => setStep('pending_status')}
+            className="text-[11px] font-black text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/40 hover:bg-amber-200 px-2.5 py-1.5 rounded-xl transition-all shrink-0 ml-2"
+          >
+            {language === 'am' ? 'ዝርዝር' : 'Details'}
+          </button>
         </div>
       )}
+
+      {/* Methods Card */}
+      <div className="px-4 mt-4 pb-8">
+        <div className="bg-white dark:bg-slate-900/90 rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.04)] dark:shadow-[0_10px_35px_rgba(0,0,0,0.4)] border border-slate-200/80 dark:border-slate-800 overflow-hidden backdrop-blur-sm">
+          <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40">
+            <h2 className="font-black text-slate-800 dark:text-slate-100 text-xs uppercase tracking-wider">{t[language].withdraw.methodTitle}</h2>
+          </div>
+
+          {methods.length === 0 ? (
+            <div className="flex flex-col items-center py-14 px-6 text-slate-400 text-center">
+              <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center mb-3 text-slate-300 dark:text-slate-600 shadow-inner">
+                <AlertCircle size={32} />
+              </div>
+              <p className="font-black text-slate-700 dark:text-slate-200 text-sm">{language === 'am' ? 'ምንም አይነት የማውጫ መንገዶች አልተገኙም' : 'No withdrawal methods available'}</p>
+              <p className="text-xs text-slate-400 mt-1">{language === 'am' ? 'እባክዎ ጥቂት ቆይተው እንደገና ይመልከቱ' : 'Please check back later'}</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-100 dark:divide-slate-800">
+              {methods.map(method => {
+                const gradient = typeColors[method.type] || 'from-slate-600 to-slate-800';
+                const emoji = typeEmoji[method.type] || '💳';
+                const label = typeLabels[method.type] || method.type.toUpperCase();
+
+                return (
+                  <button
+                    key={method.id}
+                    onClick={() => {
+                      if (pendingAmount !== null) {
+                        showToast(
+                          language === 'am' 
+                            ? 'ቀደም ሲል ያቀረቡት የማውጣት ጥያቄ በመጠባበቅ ላይ ነው!' 
+                            : 'You already have a pending withdrawal request under review.',
+                          'warning'
+                        );
+                        return;
+                      }
+                      setSelected(method);
+                      setError('');
+                      setStep('form');
+                    }}
+                    className="w-full flex items-center px-5 py-4 space-x-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 active:bg-slate-100 dark:active:bg-slate-800 transition-all text-left group"
+                  >
+                    <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${gradient} flex items-center justify-center text-xl shadow-md border-t border-white/30 shrink-0 group-hover:scale-105 transition-transform`}>
+                      {method.logo_url ? (
+                        <img src={method.logo_url} alt={label} className="w-8 h-8 object-contain rounded-xl" />
+                      ) : (
+                        <span>{emoji}</span>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-black text-slate-800 dark:text-slate-100 text-sm truncate">{label}</p>
+                      <p className="text-xs text-slate-400 dark:text-slate-400 font-semibold mt-0.5">Min: {method.min_withdrawal.toLocaleString('en-US')} ETB</p>
+                    </div>
+                    <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 dark:text-slate-500 shadow-inner group-hover:text-amber-500 transition-colors">
+                      <ChevronRight size={18} />
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
