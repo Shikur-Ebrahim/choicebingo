@@ -629,7 +629,7 @@ export default function Deposit() {
               </div>
             </div>
 
-            {/* Amount Input with Quick Pills */}
+            {/* Amount Input */}
             <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3">
               <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider">
                 {language === 'am' ? 'የላኩት የገንዘብ መጠን (ETB)' : 'AMOUNT YOU TRANSFERRED (ETB)'}
@@ -642,25 +642,11 @@ export default function Deposit() {
                   placeholder={`Min ${selected.min_deposit || 10} ETB`}
                   value={amount}
                   onChange={(e) => { setAmount(e.target.value); setError(''); }}
-                  className="w-full bg-slate-50 dark:bg-slate-800/80 border-2 border-slate-200 dark:border-slate-700 rounded-2xl px-4 py-3.5 text-xl font-black text-slate-800 dark:text-white outline-none focus:border-amber-400 transition-all font-mono"
+                  className="w-full bg-slate-50 dark:bg-slate-800/80 border-2 border-slate-200 dark:border-slate-700 rounded-2xl px-4 py-4 text-2xl font-black text-slate-800 dark:text-white outline-none focus:border-amber-400 transition-all font-mono"
                 />
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-black text-slate-400">
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-black text-slate-400">
                   ETB
                 </span>
-              </div>
-
-              {/* Quick Amount Pills */}
-              <div className="grid grid-cols-4 gap-2 pt-1">
-                {[50, 100, 500, 1000].map((val) => (
-                  <button
-                    key={val}
-                    type="button"
-                    onClick={() => { setAmount(val.toString()); setError(''); }}
-                    className="py-2 rounded-xl text-xs font-black bg-slate-100 dark:bg-slate-800 hover:bg-amber-50 dark:hover:bg-amber-950/40 hover:text-amber-600 text-slate-700 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700/60 transition-all active:scale-95"
-                  >
-                    +{val}
-                  </button>
-                ))}
               </div>
             </div>
 
@@ -676,31 +662,31 @@ export default function Deposit() {
               </div>
 
               {/* 3D Segmented Switch */}
-              <div className="grid grid-cols-2 p-1 bg-slate-100 dark:bg-slate-800 rounded-2xl gap-1">
+              <div className="grid grid-cols-2 p-1.5 bg-slate-100 dark:bg-slate-800/90 rounded-2xl gap-1.5 border border-slate-200/60 dark:border-slate-700/60 shadow-inner">
                 <button
                   type="button"
                   onClick={() => { setProofType('screenshot'); setError(''); }}
-                  className={`py-2.5 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-all ${
+                  className={`py-3 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-all ${
                     proofType === 'screenshot'
-                      ? 'bg-white dark:bg-slate-900 text-amber-600 dark:text-amber-400 shadow-sm'
-                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'
+                      ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-md shadow-amber-500/25 active:scale-95'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 active:scale-95'
                   }`}
                 >
-                  <Camera size={14} />
-                  <span>{language === 'am' ? 'ስክሪንሾት' : 'Screenshot'}</span>
+                  <Camera size={15} />
+                  <span>{language === 'am' ? 'ስክሪንሾት ጫን' : 'Screenshot'}</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => { setProofType('sms'); setError(''); }}
-                  className={`py-2.5 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-all ${
+                  className={`py-3 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-all ${
                     proofType === 'sms'
-                      ? 'bg-white dark:bg-slate-900 text-amber-600 dark:text-amber-400 shadow-sm'
-                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'
+                      ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-md shadow-amber-500/25 active:scale-95'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 active:scale-95'
                   }`}
                 >
-                  <FileText size={14} />
-                  <span>{language === 'am' ? 'SMS / መልእክት' : 'SMS / Text'}</span>
+                  <FileText size={15} />
+                  <span>{language === 'am' ? 'SMS / የግብይት መልእክት' : 'SMS / Text'}</span>
                 </button>
               </div>
 
@@ -927,39 +913,25 @@ export default function Deposit() {
                       key={method.id}
                       type="button"
                       onClick={() => handleSelectMethod(method)}
-                      className="group relative rounded-3xl p-4 bg-white dark:bg-slate-900/95 border border-slate-200/80 dark:border-slate-800/80 hover:border-amber-400/80 dark:hover:border-amber-500/50 shadow-[0_6px_20px_rgba(0,0,0,0.03)] dark:shadow-[0_8px_25px_rgba(0,0,0,0.4)] flex flex-col items-center justify-between text-center transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_12px_28px_rgba(0,0,0,0.08)] active:translate-y-0.5 active:scale-[0.96] overflow-hidden min-h-[148px]"
+                      className="group relative rounded-[28px] p-5 bg-white dark:bg-slate-900/95 border border-slate-200/90 dark:border-slate-800 hover:border-amber-400 dark:hover:border-amber-500 shadow-[0_8px_24px_rgba(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.4)] flex items-center justify-center text-center transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_14px_32px_rgba(0,0,0,0.08)] active:translate-y-1 active:scale-[0.95] overflow-hidden aspect-[4/3] h-28 sm:h-32"
                     >
-                      {/* Subtle ambient gradient highlight */}
-                      <div className={`absolute inset-0 bg-gradient-to-b ${style.bg} opacity-50 group-hover:opacity-100 transition-opacity pointer-events-none`} />
+                      {/* Subtle ambient brand gradient highlight */}
+                      <div className={`absolute inset-0 bg-gradient-to-br ${style.bg} opacity-40 group-hover:opacity-80 transition-opacity pointer-events-none`} />
 
-                      {/* Top Row: Method Category Pill */}
-                      <div className="w-full flex items-center justify-between relative z-10 mb-2">
-                        <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 truncate max-w-[80px]">
-                          {method.type}
-                        </span>
-                        <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded-md border border-emerald-200/60 dark:border-emerald-800/40">
-                          {method.min_deposit} ETB
-                        </span>
-                      </div>
+                      {/* 3D Glass / Gloss Reflection */}
+                      <div className="absolute -top-12 -right-12 w-28 h-28 bg-white/20 dark:bg-white/5 rounded-full blur-xl pointer-events-none" />
 
-                      {/* 3D Squircle Logo Box */}
-                      <div className="relative z-10 w-16 h-16 min-w-[64px] max-w-[64px] h-[64px] max-h-[64px] rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 p-2 flex items-center justify-center shrink-0 overflow-hidden shadow-sm group-hover:scale-105 transition-transform duration-200">
+                      {/* Pure Logo Only */}
+                      <div className="relative z-10 w-full h-full flex items-center justify-center p-2 group-hover:scale-105 transition-transform duration-200">
                         {method.logo_url ? (
                           <img
                             src={method.logo_url}
-                            alt={method.name}
-                            className="w-full h-full object-contain rounded-xl"
+                            alt="Logo"
+                            className="max-h-16 max-w-[130px] w-auto h-auto object-contain drop-shadow-sm"
                           />
                         ) : (
-                          <span className="text-2xl">💳</span>
+                          <span className="text-3xl">💳</span>
                         )}
-                      </div>
-
-                      {/* Method Name */}
-                      <div className="relative z-10 w-full mt-2.5">
-                        <p className="font-black text-xs text-slate-800 dark:text-white truncate group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
-                          {methodNames[method.type] || method.name}
-                        </p>
                       </div>
                     </button>
                   );
