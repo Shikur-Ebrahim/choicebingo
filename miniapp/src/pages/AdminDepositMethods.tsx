@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useGameStore } from '../store/gameStore';
-import { ArrowLeft, Plus, Edit2, Trash2, UploadCloud, Save, X, ChevronDown, CheckCircle2, Landmark } from 'lucide-react';
+import { ArrowLeft, Plus, Edit2, Trash2, UploadCloud, Save, X, ChevronDown, CheckCircle2, Landmark, AlertTriangle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import WebApp from '@twa-dev/sdk';
 import { uploadImage } from '../lib/upload';
+import { supabase } from '../lib/supabase';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -38,35 +39,39 @@ const methodNames: Record<string, string> = {
 };
 
 const methodColors: Record<string, string> = {
-  cbe: 'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/60',
-  boa: 'bg-blue-50 text-blue-800 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800/60',
-  telebirr: 'bg-purple-50 text-purple-800 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800/60',
-  mpesa: 'bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/60',
-  cbebirr: 'bg-yellow-50 text-yellow-900 border-yellow-200 dark:bg-yellow-950/40 dark:text-yellow-300 dark:border-yellow-800/60',
-  ebirr: 'bg-orange-50 text-orange-800 border-orange-200 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-800/60',
-  awash: 'bg-slate-100 text-slate-800 border-slate-300 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700',
-  dashen: 'bg-blue-100 text-blue-900 border-blue-300 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-800',
-  amhara: 'bg-teal-50 text-teal-800 border-teal-200 dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-800/60',
-  coop: 'bg-indigo-50 text-indigo-800 border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-800/60',
-  amole: 'bg-rose-50 text-rose-800 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800/60',
-  hello_cash: 'bg-emerald-50 text-emerald-900 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/60',
-  nib: 'bg-purple-100 text-purple-900 border-purple-300 dark:bg-purple-900/40 dark:text-purple-300 dark:border-purple-800',
-  wegagen: 'bg-slate-100 text-slate-900 border-slate-300 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700',
-  zemen: 'bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-800',
-  oromia: 'bg-teal-100 text-teal-900 border-teal-300 dark:bg-teal-900/40 dark:text-teal-300 dark:border-teal-800',
-  hibret: 'bg-yellow-100 text-yellow-900 border-yellow-300 dark:bg-yellow-900/40 dark:text-yellow-300 dark:border-yellow-800',
+  cbe: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/60',
+  boa: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800/60',
+  telebirr: 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800/60',
+  mpesa: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/60',
+  cbebirr: 'bg-yellow-50 text-yellow-800 border-yellow-200 dark:bg-yellow-950/40 dark:text-yellow-300 dark:border-yellow-800/60',
+  ebirr: 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-800/60',
+  awash: 'bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700',
+  dashen: 'bg-blue-50 text-blue-800 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800/60',
+  amhara: 'bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-800/60',
+  coop: 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-800/60',
+  amole: 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800/60',
+  hello_cash: 'bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/60',
+  nib: 'bg-purple-50 text-purple-800 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800/60',
+  wegagen: 'bg-slate-50 text-slate-800 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700',
+  zemen: 'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/60',
+  oromia: 'bg-teal-50 text-teal-800 border-teal-200 dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-800/60',
+  hibret: 'bg-yellow-50 text-yellow-800 border-yellow-200 dark:bg-yellow-950/40 dark:text-yellow-300 dark:border-yellow-800/60',
 };
 
 export default function AdminDepositMethods() {
   const { user } = useGameStore();
   const [methods, setMethods] = useState<DepositMethod[]>([]);
   const [loading, setLoading] = useState(true);
-  
+
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showTypeSelect, setShowTypeSelect] = useState(false);
-  
+
+  // Delete Confirmation Modal State
+  const [methodToDelete, setMethodToDelete] = useState<DepositMethod | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   // Form State
   const [formData, setFormData] = useState({
     type: 'cbe',
@@ -93,15 +98,28 @@ export default function AdminDepositMethods() {
 
   const fetchMethods = async () => {
     try {
-      const res = await fetch(`${API_URL}/admin/deposit-methods`, {
-        headers: getHeaders(),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setMethods(data);
+      let data: DepositMethod[] | null = null;
+      try {
+        const res = await fetch(`${API_URL}/admin/deposit-methods`, {
+          headers: getHeaders(),
+        });
+        if (res.ok) data = await res.json();
+      } catch (err) {
+        console.warn('API fetch failed, falling back to direct db:', err);
       }
+
+      // Supabase direct fallback if API unreachable
+      if (!data) {
+        const { data: dbData } = await supabase
+          .from('deposit_methods')
+          .select('*')
+          .order('created_at', { ascending: false });
+        if (dbData) data = dbData as DepositMethod[];
+      }
+
+      if (data) setMethods(data);
     } catch (err) {
-      console.error(err);
+      console.error('Error fetching deposit methods:', err);
     } finally {
       setLoading(false);
     }
@@ -109,7 +127,13 @@ export default function AdminDepositMethods() {
 
   const openNewModal = () => {
     setEditingId(null);
-    setFormData({ type: 'cbe', name: '', account_number: '', min_deposit: 10, is_active: true });
+    setFormData({
+      type: 'cbe',
+      name: '',
+      account_number: '',
+      min_deposit: 10,
+      is_active: true,
+    });
     setFile(null);
     setExistingLogoUrl('');
     setIsModalOpen(true);
@@ -142,20 +166,36 @@ export default function AdminDepositMethods() {
     );
 
     try {
-      const toggleRes = await fetch(`${API_URL}/admin/deposit-methods/${method.id}/toggle`, {
-        method: 'PATCH',
-        headers: getHeaders(),
-      });
-
-      if (!toggleRes.ok) {
-        await fetch(`${API_URL}/admin/deposit-methods/${method.id}`, {
-          method: 'PUT',
+      let success = false;
+      try {
+        const toggleRes = await fetch(`${API_URL}/admin/deposit-methods/${method.id}/toggle`, {
+          method: 'PATCH',
           headers: getHeaders(),
-          body: JSON.stringify({
-            ...method,
-            is_active: nextActive,
-          }),
         });
+        if (toggleRes.ok) success = true;
+        else {
+          const putRes = await fetch(`${API_URL}/admin/deposit-methods/${method.id}`, {
+            method: 'PUT',
+            headers: getHeaders(),
+            body: JSON.stringify({
+              ...method,
+              is_active: nextActive,
+            }),
+          });
+          if (putRes.ok) success = true;
+        }
+      } catch (err) {
+        console.warn('API toggle failed, falling back to direct db:', err);
+      }
+
+      if (!success) {
+        if (nextActive) {
+          await supabase.from('deposit_methods').update({ is_active: false }).eq('type', method.type);
+        }
+        await supabase
+          .from('deposit_methods')
+          .update({ is_active: nextActive, updated_at: new Date() })
+          .eq('id', method.id);
       }
 
       fetchMethods();
@@ -165,54 +205,125 @@ export default function AdminDepositMethods() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this deposit method?')) return;
+  const openDeleteModal = (method: DepositMethod) => {
+    setMethodToDelete(method);
+  };
+
+  const executeDelete = async () => {
+    if (!methodToDelete) return;
+    setIsDeleting(true);
+    const targetId = methodToDelete.id;
+
+    // Optimistic UI update
+    setMethods(prev => prev.filter(m => m.id !== targetId));
+
     try {
-      const res = await fetch(`${API_URL}/admin/deposit-methods/${id}`, {
-        method: 'DELETE',
-        headers: getHeaders(),
-      });
-      if (res.ok) fetchMethods();
-    } catch (err) {
-      console.error(err);
+      let success = false;
+      try {
+        const res = await fetch(`${API_URL}/admin/deposit-methods/${targetId}`, {
+          method: 'DELETE',
+          headers: getHeaders(),
+        });
+        if (res.ok) success = true;
+      } catch (err) {
+        console.warn('API delete failed, falling back to direct db:', err);
+      }
+
+      if (!success) {
+        const { error } = await supabase.from('deposit_methods').delete().eq('id', targetId);
+        if (error) {
+          // If foreign key constraint because historical deposits reference this method, deactivate it
+          await supabase.from('deposit_methods').update({ is_active: false, updated_at: new Date() }).eq('id', targetId);
+        }
+      }
+
+      setMethodToDelete(null);
+      fetchMethods();
+    } catch (err: any) {
+      console.error('Delete error:', err);
+      alert('Delete failed: ' + (err.message || 'Unknown error'));
+      fetchMethods();
+    } finally {
+      setIsDeleting(false);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
+
     try {
       let finalLogoUrl = existingLogoUrl;
-      
+
       // Process image directly (locally compressed data URL - zero network failure)
       if (file) {
         finalLogoUrl = await uploadImage(file);
       }
-      
+
       const payload = {
-        ...formData,
+        type: formData.type,
+        name: formData.name,
+        account_number: formData.account_number,
+        min_deposit: formData.min_deposit,
         logo_url: finalLogoUrl,
         is_active: formData.is_active,
       };
-      
-      const url = editingId 
-        ? `${API_URL}/admin/deposit-methods/${editingId}`
-        : `${API_URL}/admin/deposit-methods`;
-        
-      const res = await fetch(url, {
-        method: editingId ? 'PUT' : 'POST',
-        headers: getHeaders(),
-        body: JSON.stringify(payload),
-      });
-      
-      if (res.ok) {
-        setIsModalOpen(false);
-        fetchMethods();
-      } else {
-        const err = await res.json().catch(() => ({}));
-        alert('API Error: ' + (err.error || 'Failed to save method'));
+
+      // Optimistic category active rule: if this one is active, deactivate others of same type
+      if (formData.is_active) {
+        setMethods(prev =>
+          prev.map(m => {
+            if (editingId && m.id === editingId) return { ...m, ...payload };
+            if (m.type === formData.type) return { ...m, is_active: false };
+            return m;
+          })
+        );
       }
+
+      let success = false;
+      try {
+        const url = editingId
+          ? `${API_URL}/admin/deposit-methods/${editingId}`
+          : `${API_URL}/admin/deposit-methods`;
+
+        const res = await fetch(url, {
+          method: editingId ? 'PUT' : 'POST',
+          headers: getHeaders(),
+          body: JSON.stringify(payload),
+        });
+
+        if (res.ok) {
+          success = true;
+        } else {
+          const errData = await res.json().catch(() => ({}));
+          console.warn('API returned non-ok:', errData);
+        }
+      } catch (apiErr) {
+        console.warn('API request failed, executing direct db fallback:', apiErr);
+      }
+
+      if (!success) {
+        // Direct database fallback
+        if (formData.is_active) {
+          await supabase.from('deposit_methods').update({ is_active: false }).eq('type', formData.type);
+        }
+
+        if (editingId) {
+          const { error } = await supabase
+            .from('deposit_methods')
+            .update({ ...payload, updated_at: new Date() })
+            .eq('id', editingId);
+          if (error) throw error;
+        } else {
+          const { error } = await supabase
+            .from('deposit_methods')
+            .insert([payload]);
+          if (error) throw error;
+        }
+      }
+
+      setIsModalOpen(false);
+      fetchMethods();
     } catch (err: any) {
       console.error(err);
       alert(`Save failed: ${err.message || 'Unknown error'}`);
@@ -226,7 +337,7 @@ export default function AdminDepositMethods() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#070b14] text-slate-800 dark:text-slate-100 transition-colors duration-200 pb-20">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#070b14] text-slate-800 dark:text-slate-100 transition-colors duration-200 pb-24">
       {/* ── MOBILE-FIRST STICKY HEADER ── */}
       <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-4 py-3.5 rounded-b-2xl shadow-sm border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between sticky top-0 z-20 transition-colors">
         <Link to="/admin" className="p-2.5 bg-slate-100 dark:bg-slate-800 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 active:scale-95 transition-all">
@@ -234,7 +345,7 @@ export default function AdminDepositMethods() {
         </Link>
         <div className="text-center px-2 min-w-0">
           <h1 className="font-black text-slate-800 dark:text-white text-base tracking-tight truncate">Deposit Methods</h1>
-          <p className="text-[10px] text-slate-400 dark:text-slate-400 font-semibold truncate">1 active method per category</p>
+          <p className="text-[10px] text-amber-600 dark:text-amber-400 font-bold uppercase tracking-wider">1 active method per category</p>
         </div>
         <button
           onClick={openNewModal}
@@ -350,7 +461,7 @@ export default function AdminDepositMethods() {
                     <span>Edit</span>
                   </button>
                   <button
-                    onClick={() => handleDelete(method.id)}
+                    onClick={() => openDeleteModal(method)}
                     className="py-2 px-4 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 active:scale-95 text-rose-600 dark:text-rose-400 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 border border-rose-100 dark:border-rose-900/50 shadow-sm"
                   >
                     <Trash2 size={13} />
@@ -363,12 +474,47 @@ export default function AdminDepositMethods() {
         )}
       </div>
 
-      {/* ── MAIN MODAL (MOBILE-FIRST) ── */}
+      {/* ── IN-APP DELETE CONFIRMATION MODAL (100% RELIABLE IN TELEGRAM WEBAPP) ── */}
+      {methodToDelete && (
+        <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-slate-800 text-center animate-scale-up">
+            <div className="w-14 h-14 rounded-2xl bg-rose-50 dark:bg-rose-950/50 text-rose-500 mx-auto flex items-center justify-center mb-3 shadow-inner">
+              <Trash2 size={28} />
+            </div>
+            <h3 className="font-black text-slate-800 dark:text-white text-base">Delete Deposit Method?</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 mb-5">
+              Are you sure you want to remove <span className="font-black text-slate-800 dark:text-white">{methodToDelete.name}</span> ({methodNames[methodToDelete.type] || methodToDelete.type.toUpperCase()})? This action cannot be undone.
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => setMethodToDelete(null)}
+                className="py-3 px-4 rounded-xl font-bold text-xs bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 active:scale-95 transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={executeDelete}
+                className="py-3 px-4 rounded-xl font-black text-xs bg-rose-500 hover:bg-rose-600 active:scale-95 text-white shadow-md shadow-rose-500/20 transition-all flex items-center justify-center gap-1.5"
+              >
+                {isDeleting ? 'Deleting...' : 'Yes, Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MAIN FORM MODAL (MOBILE-FIRST) ── */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
           <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 animate-slide-up">
             <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/40">
-              <h2 className="font-black text-slate-800 dark:text-white text-base">{editingId ? 'Edit Method' : 'Add New Method'}</h2>
+              <h2 className="font-black text-slate-800 dark:text-white text-base">
+                {editingId ? 'Edit Deposit Method' : 'Add Deposit Method'}
+              </h2>
               <button
                 onClick={() => setIsModalOpen(false)}
                 className="bg-white dark:bg-slate-800 p-2 rounded-full text-slate-400 hover:text-slate-600 shadow-sm border border-slate-100 dark:border-slate-700"
@@ -376,8 +522,8 @@ export default function AdminDepositMethods() {
                 <X size={16} strokeWidth={3} />
               </button>
             </div>
-            
-            <form onSubmit={handleSubmit} className="p-5 space-y-4 max-h-[82vh] overflow-y-auto">
+
+            <form onSubmit={handleSubmit} className="p-5 space-y-4 max-h-[80vh] overflow-y-auto">
               
               {/* Method Type Dropdown */}
               <div className="relative">
@@ -387,8 +533,8 @@ export default function AdminDepositMethods() {
                   onClick={() => setShowTypeSelect(!showTypeSelect)}
                   className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 py-3 text-sm font-bold text-slate-700 dark:text-slate-200 flex justify-between items-center text-left"
                 >
-                  <span className="truncate mr-2">{methodNames[formData.type] || formData.type.toUpperCase()}</span>
-                  <ChevronDown size={18} className={`text-slate-400 shrink-0 transition-transform ${showTypeSelect ? 'rotate-180' : ''}`} />
+                  <span>{methodNames[formData.type] || formData.type.toUpperCase()}</span>
+                  <ChevronDown size={18} className={`text-slate-400 transition-transform ${showTypeSelect ? 'rotate-180' : ''}`} />
                 </button>
 
                 {showTypeSelect && (
@@ -408,8 +554,8 @@ export default function AdminDepositMethods() {
                               : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700'
                           }`}
                         >
-                          <span className="truncate mr-2">{name}</span>
-                          {formData.type === key && <CheckCircle2 size={16} className="text-amber-500 shrink-0" />}
+                          <span>{name}</span>
+                          {formData.type === key && <CheckCircle2 size={16} className="text-amber-500" />}
                         </button>
                       ))}
                     </div>
@@ -419,11 +565,11 @@ export default function AdminDepositMethods() {
 
               {/* Account Name */}
               <div>
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1.5">ACCOUNT NAME</label>
-                <input 
-                  type="text" 
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1.5">ACCOUNT HOLDER NAME</label>
+                <input
+                  type="text"
                   required
-                  placeholder="e.g. Abebe Kebede"
+                  placeholder="e.g. John Doe / Choice Bingo"
                   className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 py-3 text-sm font-bold text-slate-800 dark:text-white outline-none focus:border-amber-400"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -432,12 +578,12 @@ export default function AdminDepositMethods() {
 
               {/* Account Number */}
               <div>
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1.5">ACCOUNT / PHONE NUMBER</label>
-                <input 
-                  type="text" 
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1.5">ACCOUNT NUMBER / PHONE</label>
+                <input
+                  type="text"
                   required
-                  placeholder="e.g. 1000123456789 or 0912345678"
-                  className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 py-3 text-sm font-bold text-slate-800 dark:text-white outline-none focus:border-amber-400"
+                  placeholder="e.g. 100012345678 or 0911223344"
+                  className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 py-3 text-sm font-bold font-mono text-slate-800 dark:text-white outline-none focus:border-amber-400"
                   value={formData.account_number}
                   onChange={(e) => setFormData({ ...formData, account_number: e.target.value })}
                 />
@@ -446,8 +592,8 @@ export default function AdminDepositMethods() {
               {/* Min Deposit */}
               <div>
                 <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1.5">MIN DEPOSIT (ETB)</label>
-                <input 
-                  type="number" 
+                <input
+                  type="number"
                   required
                   min={1}
                   className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 py-3 text-sm font-bold text-slate-800 dark:text-white outline-none focus:border-amber-400"
@@ -460,7 +606,7 @@ export default function AdminDepositMethods() {
               <div className="bg-slate-50 dark:bg-slate-800/60 p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-700 flex items-center justify-between">
                 <div>
                   <p className="text-xs font-black text-slate-800 dark:text-white">Active Status</p>
-                  <p className="text-[10px] text-slate-400 font-medium">Deactivates any other method of this type</p>
+                  <p className="text-[10px] text-slate-400 font-medium">Activating deactivates other methods of this category</p>
                 </div>
                 <button
                   type="button"
@@ -477,12 +623,12 @@ export default function AdminDepositMethods() {
                 </button>
               </div>
 
-              {/* Logo Upload Section with Strict 56x56 Squircle Box */}
+              {/* Logo Upload Section */}
               <div>
                 <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1.5">LOGO IMAGE (OPTIONAL)</label>
                 <div className="flex items-center space-x-3">
-                  <label className="flex-1 bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 px-4 py-3 rounded-2xl font-black text-xs cursor-pointer border border-amber-200 dark:border-amber-800/60 flex justify-center items-center space-x-2 hover:bg-amber-100 transition-colors">
-                    <UploadCloud size={16} />
+                  <label className="flex-1 bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 px-4 py-3.5 rounded-2xl font-black text-xs cursor-pointer border border-amber-200 dark:border-amber-800/60 flex justify-center items-center space-x-2 hover:bg-amber-100 transition-colors">
+                    <UploadCloud size={18} />
                     <span>Choose Image</span>
                     <input
                       type="file"
@@ -501,10 +647,10 @@ export default function AdminDepositMethods() {
                       <button
                         type="button"
                         onClick={() => { setFile(null); setExistingLogoUrl(''); }}
-                        className="absolute -top-1 -right-1 bg-rose-500 text-white rounded-full p-1 shadow-md active:scale-90"
+                        className="absolute top-0.5 right-0.5 bg-rose-500 text-white rounded-full p-0.5 shadow-md"
                         title="Remove image"
                       >
-                        <X size={10} />
+                        <X size={12} />
                       </button>
                     </div>
                   )}

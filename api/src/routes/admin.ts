@@ -177,9 +177,22 @@ router.patch('/deposit-methods/:id/toggle', async (req, res) => {
 
 // Delete a deposit method
 router.delete('/deposit-methods/:id', async (req, res) => {
-  const { error } = await supabase.from('deposit_methods').delete().eq('id', req.params.id);
-  if (error) { res.status(500).json({ error: error.message }); return; }
-  res.json({ success: true });
+  try {
+    const { error } = await supabase.from('deposit_methods').delete().eq('id', req.params.id);
+    if (error) {
+      if (error.code === '23503' || error.message.includes('foreign key') || error.message.includes('constraint')) {
+        // Method has linked transaction history; deactivate it safely instead of breaking data integrity
+        await supabase.from('deposit_methods').update({ is_active: false, updated_at: new Date() }).eq('id', req.params.id);
+        res.json({ success: true, deactivated: true, message: 'Method was deactivated because historical deposits reference it' });
+        return;
+      }
+      res.status(500).json({ error: error.message });
+      return;
+    }
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to delete deposit method' });
+  }
 });
 
 // ─── WITHDRAWAL METHODS ───────────────────────────────────────────────────────
@@ -292,9 +305,21 @@ router.patch('/withdrawal-methods/:id/toggle', async (req, res) => {
 
 // Delete a withdrawal method
 router.delete('/withdrawal-methods/:id', async (req, res) => {
-  const { error } = await supabase.from('withdrawal_methods').delete().eq('id', req.params.id);
-  if (error) { res.status(500).json({ error: error.message }); return; }
-  res.json({ success: true });
+  try {
+    const { error } = await supabase.from('withdrawal_methods').delete().eq('id', req.params.id);
+    if (error) {
+      if (error.code === '23503' || error.message.includes('foreign key') || error.message.includes('constraint')) {
+        await supabase.from('withdrawal_methods').update({ is_active: false, updated_at: new Date() }).eq('id', req.params.id);
+        res.json({ success: true, deactivated: true, message: 'Method was deactivated because historical withdrawals reference it' });
+        return;
+      }
+      res.status(500).json({ error: error.message });
+      return;
+    }
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to delete withdrawal method' });
+  }
 });
 
 // ─── PENDING COUNTS (for worker badge) ────────────────────────────────────────
