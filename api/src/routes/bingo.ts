@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { AuthRequest, validateTelegramAuth } from '../middleware/auth';
 import { supabase } from '../services/supabase';
-import { generateBingoCard, checkBingo } from '../services/BingoEngine';
+import { generateBingoCard, checkBingo, setPlayerMode } from '../services/BingoEngine';
 import { getSettings } from './adminSettings';
 import { randomUUID } from 'crypto';
 
@@ -396,6 +396,23 @@ router.post('/claim', validateTelegramAuth, async (req: AuthRequest, res) => {
   } catch (err: any) {
     console.error('[Claim Bingo Error]', err);
     res.status(500).json({ error: 'Internal server error while claiming bingo' });
+  }
+});
+
+// ── POST /api/bingo/mode ── player toggles Auto vs Manual mode ────────────────
+router.post('/mode', validateTelegramAuth, (req: AuthRequest, res) => {
+  try {
+    const telegramId = req.telegramUser!.id.toString();
+    const { game_id, is_auto } = req.body;
+    if (!game_id) {
+      res.status(400).json({ error: 'game_id required' });
+      return;
+    }
+    setPlayerMode(String(game_id), telegramId, is_auto !== false);
+    res.json({ success: true, is_auto: is_auto !== false });
+  } catch (err: any) {
+    console.error('[Set Mode Error]', err);
+    res.status(500).json({ error: 'Failed to update mode' });
   }
 });
 

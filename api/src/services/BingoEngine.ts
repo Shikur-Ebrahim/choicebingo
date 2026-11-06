@@ -37,6 +37,20 @@ export function checkBingo(card: number[][], called: number[]): boolean {
   return false;
 }
 
+// ── Player Play-Mode Registry (Auto vs Manual) ──────────────────────────────
+// If a player toggles to manual mode, their telegramId for the current game
+// is stored here. BingoEngine will NOT auto-claim for them — they MUST click BINGO!
+export const manualPlayers = new Set<string>();
+
+export function setPlayerMode(gameId: string, telegramId: string, isAuto: boolean) {
+  const key = `${gameId}:${telegramId}`;
+  if (isAuto) {
+    manualPlayers.delete(key);
+  } else {
+    manualPlayers.add(key);
+  }
+}
+
 class BingoEngine {
   private timer: ReturnType<typeof setInterval> | null = null;
   private busy = false;
@@ -301,8 +315,12 @@ class BingoEngine {
 
     if (!players || players.length === 0) return;
 
-    // ── Find ALL winning cartelas ──────────────────────────────────────────────
-    const winningRows = players.filter(p => checkBingo(p.card_matrix as number[][], called));
+    // ── Find ALL winning cartelas for AUTO players only ───────────────────────
+    // Manual players (is_auto === false) MUST press the BINGO button to claim!
+    const winningRows = players.filter(p => {
+      const isManual = manualPlayers.has(`${gameId}:${p.telegram_id}`);
+      return !isManual && checkBingo(p.card_matrix as number[][], called);
+    });
     if (winningRows.length === 0) return;
 
     // ── Deduplicate by telegram_id: if same user wins with 2 cartelas, pick ONE ─

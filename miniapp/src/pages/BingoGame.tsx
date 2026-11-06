@@ -520,6 +520,17 @@ export default function BingoGame() {
   const prevCalledLenRef = useRef(0);
   const hadCartelasRef = useRef(false);
 
+  // Sync Auto/Manual play mode with backend BingoEngine
+  useEffect(() => {
+    if (game?.id && game.status === 'calling') {
+      fetch(`${API}/bingo/mode`, {
+        method: 'POST',
+        headers: hdrs(),
+        body: JSON.stringify({ game_id: game.id, is_auto: autoMark }),
+      }).catch(() => {});
+    }
+  }, [game?.id, game?.status, autoMark]);
+
   // Clear any leftover state when changing stakes or unmounting so no old game data is stored
   useEffect(() => {
     setGame(null);
@@ -1172,95 +1183,107 @@ export default function BingoGame() {
         {/* Caller Row + Card — scrollable */}
         <div className="flex-1 min-h-0 overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
         <div className={`w-full ${myCartelas.length > 1 ? 'max-w-[420px]' : 'max-w-[290px]'} mx-auto flex flex-col gap-1.5 pb-2`}>
-          {/* Caller Row */}
-          <div className="shrink-0 bg-[#0a0f1e] rounded-xl border border-white/5 px-2 py-1.5 w-full max-w-[320px] mx-auto">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                {recent.length === 0 ? (
-                  <span className="text-slate-500 text-[10px] font-bold animate-pulse">Waiting...</span>
-                ) : recent.map((num, idx) => {
-                  const l = getLetter(num);
-                  const isFirst = idx === 0;
-                  if (isFirst) {
-                    return (
-                      <div key={`${num}-${idx}`} className="flex items-center gap-2">
-                        <div className="w-11 h-11 flex flex-col items-center justify-center rounded-full font-black border-2 border-yellow-400 bg-yellow-400/20 shadow-[0_0_12px_rgba(250,204,21,0.3)]">
-                          <span style={{ color: LETTER_COLOR[l] }} className="text-[10px] leading-none font-black">{l}</span>
-                          <span className="text-white text-lg leading-none font-black">{num}</span>
+          {/* Caller Row with 3D Glossy Bingo Ball & Vertical Controls */}
+          <div className="shrink-0 bg-[#0a0f1e] rounded-2xl border border-white/10 px-2.5 py-2 w-full max-w-[340px] mx-auto shadow-lg">
+            <div className="flex items-center justify-between gap-2">
+              
+              {/* Left / Center: 3D Glossy Bingo Ball + Spoken Amharic + Previous Balls */}
+              <div className="flex items-center gap-2.5 min-w-0">
+                {lastNum ? (
+                  <div
+                    className="w-13 h-13 rounded-full flex flex-col items-center justify-center shrink-0 relative select-none animate-bounce"
+                    style={{
+                      width: '52px',
+                      height: '52px',
+                      background: 'radial-gradient(circle at 35% 25%, #ffffff 0%, #f8fafc 25%, #e2e8f0 55%, #94a3b8 85%, #475569 100%)',
+                      boxShadow: 'inset -4px -5px 10px rgba(15, 23, 42, 0.45), inset 3px 4px 6px rgba(255, 255, 255, 0.95), 0 8px 16px rgba(0, 0, 0, 0.55), 0 0 10px rgba(255, 255, 255, 0.25)',
+                      border: '1.5px solid rgba(255, 255, 255, 0.85)',
+                      animationDuration: '2.5s',
+                    }}
+                  >
+                    <span className="text-[9px] font-black leading-none text-amber-500 font-mono -mt-0.5">
+                      {currentLetter}
+                    </span>
+                    <span className="text-slate-950 font-black text-2xl leading-none tracking-tight font-sans">
+                      {lastNum}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="rounded-full flex items-center justify-center bg-slate-800 border border-slate-700 text-slate-500 text-xs font-bold animate-pulse shrink-0" style={{ width: '52px', height: '52px' }}>
+                    ...
+                  </div>
+                )}
+
+                <div className="flex flex-col justify-center min-w-0">
+                  <span className="text-yellow-400 font-black text-sm tracking-wide truncate">
+                    {currentAmharic || (recent.length === 0 ? 'በመጠበቅ ላይ...' : '')}
+                  </span>
+                  
+                  {/* Previous Called Balls — mini 3D spheres */}
+                  <div className="flex items-center gap-1.5 mt-1">
+                    {recent.slice(1, 4).map((num, idx) => {
+                      const l = getLetter(num);
+                      return (
+                        <div
+                          key={`${num}-${idx}`}
+                          className="w-7 h-7 rounded-full flex flex-col items-center justify-center shadow-md select-none shrink-0"
+                          style={{
+                            background: 'radial-gradient(circle at 35% 25%, #ffffff 0%, #f1f5f9 35%, #cbd5e1 70%, #64748b 100%)',
+                            boxShadow: 'inset -2px -2px 4px rgba(15, 23, 42, 0.35), inset 1.5px 1.5px 3px rgba(255, 255, 255, 0.9)',
+                            border: '1px solid rgba(255, 255, 255, 0.6)',
+                          }}
+                        >
+                          <span className="text-[6px] font-black leading-none text-amber-500 font-mono">{l}</span>
+                          <span className="text-[10px] font-black leading-none text-slate-900">{num}</span>
                         </div>
-                        <span className="text-yellow-400 font-black text-sm">{AMHARIC_NUM[num]}</span>
-                      </div>
-                    );
-                  }
-                  return (
-                    <div key={`${num}-${idx}`} className="w-7 h-7 flex flex-col items-center justify-center rounded-full border border-slate-700 bg-slate-800/60 opacity-50">
-                      <span style={{ color: LETTER_COLOR[l] }} className="text-[7px] leading-none font-black">{l}</span>
-                      <span className="text-white text-[10px] leading-none font-black">{num}</span>
-                    </div>
-                  );
-                })}
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
-              <div className="flex items-center gap-1.5">
-                <button onClick={() => {
+
+              {/* Right Side: Sound Toggle + Auto/Manual Vertical Controls (matches user drawing!) */}
+              <div className="flex flex-col items-center gap-1.5 shrink-0 pl-1 border-l border-white/5">
+                <button
+                  type="button"
+                  onClick={() => {
                     const next = !soundEnabled;
                     setSoundEnabled(next);
                     localStorage.setItem('bingo_sound_enabled', String(next));
                     unlockAudio();
-                    if (next) {
-                      // Immediately play current number audio so user hears confirmation!
-                      playCallAudio(lastNum || 1);
+                    if (next) playCallAudio(lastNum || 1);
+                  }}
+                  className={`w-7 h-7 rounded-lg border flex items-center justify-center active:scale-90 transition-all ${
+                    soundEnabled ? 'bg-blue-500/20 border-blue-500/50 text-blue-400' : 'bg-slate-800 border-slate-700 text-red-400'
+                  }`}
+                >
+                  {soundEnabled ? <Volume2 size={13} /> : <VolumeX size={13} />}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = !autoMark;
+                    setAutoMark(next);
+                    if (WebApp?.HapticFeedback) WebApp.HapticFeedback.selectionChanged();
+                    if (game?.id) {
+                      fetch(`${API}/bingo/mode`, {
+                        method: 'POST',
+                        headers: hdrs(),
+                        body: JSON.stringify({ game_id: game.id, is_auto: next }),
+                      }).catch(() => {});
                     }
                   }}
-                  className={`w-8 h-8 rounded-lg border flex items-center justify-center active:scale-90 ${soundEnabled ? 'bg-blue-500/20 border-blue-500/50' : 'bg-slate-800 border-slate-700'}`}>
-                  {soundEnabled ? <Volume2 size={13} className="text-blue-400" /> : <VolumeX size={13} className="text-red-400" />}
+                  className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider border active:scale-90 transition-all flex items-center justify-center ${
+                    autoMark
+                      ? 'bg-emerald-500 text-white border-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.5)]'
+                      : 'bg-amber-500 text-white border-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.5)]'
+                  }`}
+                >
+                  {autoMark ? 'AUTO' : 'MANUAL'}
                 </button>
               </div>
-            </div>
-          </div>
 
-          {/* Mode Switcher Banner (Auto vs Manual) */}
-          <div className="shrink-0 bg-[#0a0f1e] rounded-xl border border-white/10 px-2 py-1.5 w-full max-w-[320px] mx-auto flex items-center justify-between shadow-md">
-            <div className="flex items-center bg-black/50 p-0.5 rounded-lg border border-white/10">
-              <button
-                type="button"
-                onClick={() => {
-                  setAutoMark(true);
-                  if (WebApp?.HapticFeedback) WebApp.HapticFeedback.selectionChanged();
-                }}
-                className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-[11px] font-black uppercase transition-all duration-200 ${
-                  autoMark
-                    ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-[0_0_12px_rgba(16,185,129,0.5)] scale-[1.02]'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                <Wand2 size={12} className={autoMark ? 'animate-pulse text-yellow-300' : ''} />
-                <span>{t[language].bingo.autoMode}</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setAutoMark(false);
-                  if (WebApp?.HapticFeedback) WebApp.HapticFeedback.selectionChanged();
-                }}
-                className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-[11px] font-black uppercase transition-all duration-200 ${
-                  !autoMark
-                    ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-[0_0_12px_rgba(245,158,11,0.5)] scale-[1.02]'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                <Hand size={12} className={!autoMark ? 'text-white' : ''} />
-                <span>{t[language].bingo.manualMode}</span>
-              </button>
-            </div>
-
-            <div className="pr-1">
-              <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border ${
-                autoMark
-                  ? 'text-emerald-300 bg-emerald-500/15 border-emerald-500/30'
-                  : 'text-amber-300 bg-amber-500/15 border-amber-500/30'
-              }`}>
-                {autoMark ? t[language].bingo.autoOnDesc : t[language].bingo.manualDesc}
-              </span>
             </div>
           </div>
 
@@ -1430,38 +1453,38 @@ export default function BingoGame() {
               </div>
             </div>
           )}
+        </div>
+        </div>
 
-          {/* Manual Mode: Big Attractive BINGO Button */}
-          {!autoMark && myCartelas.length > 0 && (
-            <div className="w-full max-w-[280px] mx-auto mt-2 px-1 pb-1 shrink-0">
-              {claimLockSeconds > 0 ? (
-                <div className="flex flex-col items-center gap-1.5 w-full">
-                  <div className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-red-950 via-red-900 to-slate-900 border-2 border-red-500/60 shadow-[0_0_20px_rgba(239,68,68,0.4)] flex items-center justify-center gap-2 select-none">
-                    <span className="text-red-400 text-lg animate-pulse">🔒</span>
-                    <span className="text-red-200 font-black text-xs tracking-widest uppercase">
-                      {t[language].bingo.locked} ({claimLockSeconds}s)
-                    </span>
-                  </div>
-                  <p className="text-red-400 text-[10px] font-bold text-center animate-pulse px-2">
-                    {claimErrMsg || t[language].bingo.falseBingoLocked.replace('{s}', String(claimLockSeconds))}
-                  </p>
+        {/* Manual Mode: Fixed Bottom BINGO Button (Always Visible!) */}
+        {!autoMark && myCartelas.length > 0 && (
+          <div className="shrink-0 w-full max-w-[340px] mx-auto pt-1 pb-1 px-2 z-20">
+            {claimLockSeconds > 0 ? (
+              <div className="flex flex-col items-center gap-1 w-full">
+                <div className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-red-950 via-red-900 to-slate-900 border border-red-500/60 shadow-[0_0_15px_rgba(239,68,68,0.4)] flex items-center justify-center gap-2 select-none">
+                  <span className="text-red-400 text-base animate-pulse">🔒</span>
+                  <span className="text-red-200 font-black text-xs tracking-widest uppercase">
+                    {t[language].bingo.locked} ({claimLockSeconds}s)
+                  </span>
                 </div>
-              ) : (
-                <button
-                  type="button"
-                  disabled={isClaiming}
-                  onClick={handleClaimBingo}
-                  className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 text-slate-950 font-black text-xl uppercase tracking-widest shadow-[0_0_25px_rgba(250,204,21,0.7)] active:scale-95 transition-all duration-150 border-2 border-yellow-200 flex items-center justify-center gap-2.5 animate-pulse hover:brightness-110 select-none cursor-pointer"
-                >
-                  <span className="text-2xl">🏆</span>
-                  <span>{t[language].bingo.claimBingo}</span>
-                  <span className="text-2xl">🎉</span>
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-        </div>
+                <p className="text-red-400 text-[9px] font-bold text-center animate-pulse px-2 bg-black/50 rounded py-0.5">
+                  {claimErrMsg || t[language].bingo.falseBingoLocked.replace('{s}', String(claimLockSeconds))}
+                </p>
+              </div>
+            ) : (
+              <button
+                type="button"
+                disabled={isClaiming}
+                onClick={handleClaimBingo}
+                className="w-full py-3 px-6 rounded-2xl bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 text-slate-950 font-black text-xl uppercase tracking-widest shadow-[0_0_25px_rgba(250,204,21,0.7)] active:scale-95 transition-all duration-150 border-2 border-yellow-200 flex items-center justify-center gap-2.5 animate-pulse hover:brightness-110 select-none cursor-pointer"
+              >
+                <span className="text-2xl">🏆</span>
+                <span>{t[language].bingo.claimBingo}</span>
+                <span className="text-2xl">🎉</span>
+              </button>
+            )}
+          </div>
+        )}
       </div>
     );
   };
