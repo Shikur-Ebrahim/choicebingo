@@ -876,8 +876,9 @@ export default function BingoGame() {
     setGame(prev => prev ? { ...prev, prize_pool: newUniquePlayers < 3 ? rawPool : Math.floor(rawPool * 0.8) } : prev);
     try {
       const r = await fetch(`${API}/bingo/join`, { method: "POST", headers: hdrs(), body: JSON.stringify({ cartela_number: seat, stake: selectedStake, game_id: game.id, card_matrix: matrix }) });
-      const d = await r.json();
-      if (r.ok) {
+      let d: any = null;
+      try { d = await r.json(); } catch {}
+      if (r.ok && d) {
         if (WebApp?.HapticFeedback) WebApp.HapticFeedback.notificationOccurred("success");
         const newCard = { cartela_number: seat, card_matrix: d.card_matrix };
         setMyCartelas(prev => [...prev, newCard]);
@@ -887,9 +888,16 @@ export default function BingoGame() {
       } else {
         setTaken(prev => prev.filter(n => n !== seat));
         useGameStore.setState(s => ({ user: s.user ? { ...s.user, main_balance: mainBal, bonus_balance: bonusBal } : s.user }));
-        setErrMsg(d.error ?? "Could not join."); fetchState();
+        setErrMsg(d?.error ?? (r.status === 401 ? "Session expired, please restart" : "Could not join.")); 
+        fetchState();
       }
-    } catch { setErrMsg("Network error"); } finally { setBuying(null); }
+    } catch (err: any) { 
+      setTaken(prev => prev.filter(n => n !== seat));
+      useGameStore.setState(s => ({ user: s.user ? { ...s.user, main_balance: mainBal, bonus_balance: bonusBal } : s.user }));
+      setErrMsg("Network error - please check connection"); 
+    } finally { 
+      setBuying(null); 
+    }
   };
 
   const fm = (a: number | undefined) => (a || 0).toLocaleString("en-US");

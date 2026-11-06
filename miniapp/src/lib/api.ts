@@ -1,6 +1,6 @@
 import { getInitData } from './telegram';
 
-const BASE = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
+const BASE = import.meta.env.VITE_API_URL || '/api';
 
 async function req<T>(path: string, opts: RequestInit = {}): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
