@@ -161,6 +161,26 @@ export default function BingoGame() {
   const [volume, setVolume] = useState(1.0);
   const [autoMark, setAutoMark] = useState(true); // default: auto-mark called numbers
   const [manuallyMarked, setManuallyMarked] = useState<Set<number>>(new Set());
+  const [claimLockSeconds, setClaimLockSeconds] = useState(0);
+  const [claimErrMsg, setClaimErrMsg] = useState("");
+  const [isClaiming, setIsClaiming] = useState(false);
+  const [celebrationSecondsLeft, setCelebrationSecondsLeft] = useState(5);
+
+  // False claim penalty cooldown timer
+  useEffect(() => {
+    if (claimLockSeconds <= 0) return;
+    const t = setInterval(() => {
+      setClaimLockSeconds(s => {
+        if (s <= 1) {
+          clearInterval(t);
+          setClaimErrMsg("");
+          return 0;
+        }
+        return s - 1;
+      });
+    }, 1000);
+    return () => clearInterval(t);
+  }, [claimLockSeconds]);
 
   // Fetch and listen for active derash & status on stake selection screen
   useEffect(() => {
@@ -278,6 +298,7 @@ export default function BingoGame() {
         ...Array.from({ length: 75 }, (_, i) => getAudioSrc(i + 1)),
         `/audio/bingo/game_start.mp3?v=${AUDIO_VERSION}`,
         `/audio/bingo/bingo_win.mp3?v=${AUDIO_VERSION}`,
+        `/audio/bingo/stop.mp3?v=${AUDIO_VERSION}`,
       ];
       // Stagger: 3 files concurrently, small gap between batches
       for (let i = 0; i < allSrcs.length; i += 3) {
@@ -413,7 +434,7 @@ export default function BingoGame() {
   // ── CELEBRATION ──────────────────────────────────────────────────────────────────────────
   // Plays stop.mp3 upon BINGO / game finish.
   // Plays at full volume, always on.
-  const playSpecial = useCallback((name: string = 'bingo_win') => {
+  const playSpecial = useCallback((name: string = 'stop') => {
     if (!soundEnabled) return;
     const src = `/audio/bingo/${name}.mp3?v=${AUDIO_VERSION}`;
     unlockAudio();
@@ -522,6 +543,9 @@ export default function BingoGame() {
       }
     } catch {}
     setManuallyMarked(new Set());
+    setClaimLockSeconds(0);
+    setClaimErrMsg("");
+    setIsClaiming(false);
     setActiveCartelaIdx(0);
     setPreviewCartela(null);
     return () => {
@@ -529,6 +553,9 @@ export default function BingoGame() {
       setCelebration(null);
       setMyCard(null);
       setMyCartelas([]);
+      setClaimLockSeconds(0);
+      setClaimErrMsg("");
+      setIsClaiming(false);
       hasCelebratedRef.current = null;
       hasStartedAudioGameIdRef.current = null;
       lastPlayedBallRef.current = null;
@@ -751,7 +778,7 @@ export default function BingoGame() {
 
     // ── REMATCH: 3+ way tie ───────────────────────────────────────────────────
     if (game.winner_first_name === 'REMATCH') {
-      playSpecial('bingo_win');
+      playSpecial('stop');
       setCelebration({
         winner_name: 'REMATCH',
         winner_cartela: 0,
@@ -764,9 +791,9 @@ export default function BingoGame() {
     }
 
     // ── Normal or 2-way tie ───────────────────────────────────────────────────
-          const iWon = game.winner_telegram_id === String(user?.telegram_id);
-      let isMounted = true;
-      playSpecial('bingo_win');
+    const iWon = game.winner_telegram_id === String(user?.telegram_id);
+    let isMounted = true;
+    playSpecial('stop');
       
       if (game.winner_first_name && game.winner_first_name.includes(' & ')) {
         fetch(`${API}/bingo/winners?game_id=${game.id}`, { headers: hdrs() })
@@ -814,9 +841,17 @@ export default function BingoGame() {
       return () => { isMounted = false; };
   }, [game?.status, game?.id, game?.winner_cartela, game?.winner_first_name]);
 
-  // Auto-dismiss celebration after 3 seconds
+  // Auto-dismiss celebration after exactly 5 seconds with live countdown
   useEffect(() => {
-    if (!celebration) return;
+    if (!celebration) {
+      setCelebrationSecondsLeft(5);
+      return;
+    }
+    setCelebrationSecondsLeft(5);
+    const interval = setInterval(() => {
+      setCelebrationSecondsLeft(prev => Math.max(0, prev - 1));
+    }, 1000);
+
     const timer = setTimeout(() => {
       setCelebration(null);
       setMyCard(null);
@@ -828,8 +863,12 @@ export default function BingoGame() {
       // It will reset to null only when a brand new game id arrives in fetchState().
       fetchState();
       refreshUser();
-    }, 3000);
-    return () => clearTimeout(timer);
+    }, 5000);
+
+    return () => {
+      clearTimeout(timer);
+      clearInterval(interval);
+    };
   }, [celebration]);
 
   // Generate matrix client-side for preview
@@ -897,6 +936,66 @@ export default function BingoGame() {
       setErrMsg("Network error - please check connection"); 
     } finally { 
       setBuying(null); 
+    }
+  };
+
+  const handleClaimBingo = async () => {
+    if (claimLockSeconds > 0 || isClaiming || !game || game.status !== 'calling') return;
+
+    // Check if any of the player's cartelas has a winning pattern with called numbers
+    let winningCartela: { cartela_number: number; card_matrix: number[][] } | null = null;
+
+    for (const c of myCartelas) {
+      const winCells = getWinningCells(c.card_matrix, called);
+      if (winCells.size > 0) {
+        winningCartela = c;
+        break;
+      }
+    }
+
+    if (!winningCartela) {
+      // FALSE BINGO! Penalty lock activates for 10 seconds
+      if (WebApp?.HapticFeedback) {
+        WebApp.HapticFeedback.notificationOccurred("error");
+      }
+      setClaimLockSeconds(10);
+      setClaimErrMsg(t[language].bingo.falseBingoLocked.replace('{s}', '10'));
+      return;
+    }
+
+    // VALID BINGO! Send claim to server
+    setIsClaiming(true);
+    if (WebApp?.HapticFeedback) {
+      WebApp.HapticFeedback.notificationOccurred("success");
+    }
+
+    try {
+      const res = await fetch(`${API}/bingo/claim`, {
+        method: 'POST',
+        headers: hdrs(),
+        body: JSON.stringify({
+          game_id: game.id,
+          cartela_number: winningCartela.cartela_number,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        if (data.error && (data.error.includes('False') || data.error.includes('No winning') || data.error.includes('pattern'))) {
+          setClaimLockSeconds(10);
+          setClaimErrMsg(t[language].bingo.falseBingoLocked.replace('{s}', '10'));
+          if (WebApp?.HapticFeedback) WebApp.HapticFeedback.notificationOccurred("error");
+        } else {
+          setClaimErrMsg(data.error || "Claim failed");
+        }
+      } else {
+        // Win confirmed! Play stop.mp3
+        playSpecial('stop');
+      }
+    } catch (err: any) {
+      console.error('Claim bingo error:', err);
+      setClaimErrMsg("Network error, please try again");
+    } finally {
+      setIsClaiming(false);
     }
   };
 
@@ -1102,9 +1201,6 @@ export default function BingoGame() {
                 })}
               </div>
               <div className="flex items-center gap-1.5">
-                <button onClick={() => setAutoMark(a => !a)} className={`w-8 h-8 rounded-lg border flex items-center justify-center active:scale-90 ${autoMark ? 'bg-amber-500/20 border-amber-500/50' : 'bg-slate-800 border-slate-700'}`}>
-                  {autoMark ? <Wand2 size={13} className="text-amber-400" /> : <Hand size={13} className="text-slate-400" />}
-                </button>
                 <button onClick={() => {
                     const next = !soundEnabled;
                     setSoundEnabled(next);
@@ -1119,6 +1215,52 @@ export default function BingoGame() {
                   {soundEnabled ? <Volume2 size={13} className="text-blue-400" /> : <VolumeX size={13} className="text-red-400" />}
                 </button>
               </div>
+            </div>
+          </div>
+
+          {/* Mode Switcher Banner (Auto vs Manual) */}
+          <div className="shrink-0 bg-[#0a0f1e] rounded-xl border border-white/10 px-2 py-1.5 w-full max-w-[320px] mx-auto flex items-center justify-between shadow-md">
+            <div className="flex items-center bg-black/50 p-0.5 rounded-lg border border-white/10">
+              <button
+                type="button"
+                onClick={() => {
+                  setAutoMark(true);
+                  if (WebApp?.HapticFeedback) WebApp.HapticFeedback.selectionChanged();
+                }}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-[11px] font-black uppercase transition-all duration-200 ${
+                  autoMark
+                    ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-[0_0_12px_rgba(16,185,129,0.5)] scale-[1.02]'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Wand2 size={12} className={autoMark ? 'animate-pulse text-yellow-300' : ''} />
+                <span>{t[language].bingo.autoMode}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAutoMark(false);
+                  if (WebApp?.HapticFeedback) WebApp.HapticFeedback.selectionChanged();
+                }}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-[11px] font-black uppercase transition-all duration-200 ${
+                  !autoMark
+                    ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-[0_0_12px_rgba(245,158,11,0.5)] scale-[1.02]'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Hand size={12} className={!autoMark ? 'text-white' : ''} />
+                <span>{t[language].bingo.manualMode}</span>
+              </button>
+            </div>
+
+            <div className="pr-1">
+              <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border ${
+                autoMark
+                  ? 'text-emerald-300 bg-emerald-500/15 border-emerald-500/30'
+                  : 'text-amber-300 bg-amber-500/15 border-amber-500/30'
+              }`}>
+                {autoMark ? t[language].bingo.autoOnDesc : t[language].bingo.manualDesc}
+              </span>
             </div>
           </div>
 
@@ -1286,6 +1428,36 @@ export default function BingoGame() {
                   </p>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Manual Mode: Big Attractive BINGO Button */}
+          {!autoMark && myCartelas.length > 0 && (
+            <div className="w-full max-w-[280px] mx-auto mt-2 px-1 pb-1 shrink-0">
+              {claimLockSeconds > 0 ? (
+                <div className="flex flex-col items-center gap-1.5 w-full">
+                  <div className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-red-950 via-red-900 to-slate-900 border-2 border-red-500/60 shadow-[0_0_20px_rgba(239,68,68,0.4)] flex items-center justify-center gap-2 select-none">
+                    <span className="text-red-400 text-lg animate-pulse">🔒</span>
+                    <span className="text-red-200 font-black text-xs tracking-widest uppercase">
+                      {t[language].bingo.locked} ({claimLockSeconds}s)
+                    </span>
+                  </div>
+                  <p className="text-red-400 text-[10px] font-bold text-center animate-pulse px-2">
+                    {claimErrMsg || t[language].bingo.falseBingoLocked.replace('{s}', String(claimLockSeconds))}
+                  </p>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  disabled={isClaiming}
+                  onClick={handleClaimBingo}
+                  className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 text-slate-950 font-black text-xl uppercase tracking-widest shadow-[0_0_25px_rgba(250,204,21,0.7)] active:scale-95 transition-all duration-150 border-2 border-yellow-200 flex items-center justify-center gap-2.5 animate-pulse hover:brightness-110 select-none cursor-pointer"
+                >
+                  <span className="text-2xl">🏆</span>
+                  <span>{t[language].bingo.claimBingo}</span>
+                  <span className="text-2xl">🎉</span>
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -1492,7 +1664,7 @@ export default function BingoGame() {
                   </div>
                 )}
                 
-                <p className="text-white/30 text-[10px] font-bold animate-pulse">{t[language].bingo.returning}</p>
+                <p className="text-white/40 text-[10px] font-bold animate-pulse">{t[language].bingo.returning} ({celebrationSecondsLeft}s)</p>
   
               {/* 🌟  ── */}
             </>) : (<>
@@ -1565,7 +1737,7 @@ export default function BingoGame() {
               )}
 
               {/* Auto-dismiss indicator */}
-              <p className="text-white/30 text-[10px] font-bold animate-pulse">{t[language].bingo.returning}</p>
+              <p className="text-white/40 text-[10px] font-bold animate-pulse">{t[language].bingo.returning} ({celebrationSecondsLeft}s)</p>
             </>)}
 
           </div>

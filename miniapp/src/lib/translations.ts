@@ -54,7 +54,14 @@ export const t = {
       preparingNext: 'Preparing next game...',
       refresh: 'Refresh',
       changeStake: 'Change Stake',
-      wallet: 'Wallet'
+      wallet: 'Wallet',
+      autoMode: 'Auto',
+      manualMode: 'Manual',
+      autoOnDesc: '⚡ Auto-Daub Active',
+      manualDesc: '✋ Tap numbers to mark',
+      claimBingo: 'BINGO!',
+      locked: 'LOCKED',
+      falseBingoLocked: '❌ Not a valid Bingo! Locked for {s}s'
     },
     support: {
       quick1: '👋 How do I start playing?',
@@ -443,7 +450,14 @@ export const t = {
       preparingNext: 'የሚቀጥለው ጨዋታ እየተዘጋጀ ነው...',
       refresh: 'አድስ',
       changeStake: 'መደብ ቀይር',
-      wallet: 'ዋና ሂሳብ'
+      wallet: 'ዋና ሂሳብ',
+      autoMode: 'አውቶ',
+      manualMode: 'በእጅ',
+      autoOnDesc: '⚡ ራስ-ሰር ምልክት በርቷል',
+      manualDesc: '✋ ቁጥሮችን ነክተው ምልክት ያድርጉ',
+      claimBingo: 'ቢንጎ!',
+      locked: 'ተቆልፏል',
+      falseBingoLocked: '❌ ትክክለኛ ቢንጎ አልተገኘም! ለ{s} ሰከንድ ተቆልፏል'
     },
     support: {
       quick1: '👋 እንዴት መጫወት እጀምራለሁ?',

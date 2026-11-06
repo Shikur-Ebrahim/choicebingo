@@ -290,6 +290,115 @@ router.get('/winners', async (req, res) => {
   res.json({ winners });
 });
 
+// ── POST /api/bingo/claim ── manual bingo claim validation and reward ─────────
+router.post('/claim', validateTelegramAuth, async (req: AuthRequest, res) => {
+  try {
+    const telegramId = req.telegramUser!.id.toString();
+    const { game_id, cartela_number } = req.body;
+
+    if (!game_id) {
+      res.status(400).json({ error: 'game_id required' });
+      return;
+    }
+
+    const { data: game } = await supabase
+      .from('bingo_games')
+      .select('*')
+      .eq('id', game_id)
+      .single();
+
+    if (!game) {
+      res.status(404).json({ error: 'Game not found' });
+      return;
+    }
+
+    if (game.status !== 'calling') {
+      res.status(400).json({ error: 'Game is not active or already finished' });
+      return;
+    }
+
+    const { data: pRows } = await supabase
+      .from('bingo_players')
+      .select('cartela_number, card_matrix, first_name')
+      .eq('game_id', game_id)
+      .eq('telegram_id', telegramId);
+
+    if (!pRows || pRows.length === 0) {
+      res.status(400).json({ error: 'No cartela registered for this game' });
+      return;
+    }
+
+    const cardsToCheck = cartela_number
+      ? pRows.filter((p: any) => Number(p.cartela_number) === Number(cartela_number))
+      : pRows;
+
+    const winningCartela = cardsToCheck.find((p: any) => checkBingo(p.card_matrix as number[][], game.called_numbers));
+
+    if (!winningCartela) {
+      res.status(400).json({ error: 'False Bingo claim! No winning pattern found.' });
+      return;
+    }
+
+    const cfg = await getSettings();
+    let finalPrize = Number(game.prize_pool || 0);
+    const called = game.called_numbers || [];
+    let isEarlyCall = false;
+
+    if (cfg.early_call_8_enabled && called.length <= 8) {
+      const rewards8 = cfg.early_call_8_rewards as Record<string, number>;
+      const rew = rewards8[String(game.stake)];
+      if (rew) { finalPrize = Number(rew); isEarlyCall = true; }
+    } else if (cfg.early_call_10_enabled && called.length <= 10) {
+      const rewards10 = cfg.early_call_10_rewards as Record<string, number>;
+      const rew = rewards10[String(game.stake)];
+      if (rew) { finalPrize = Number(rew); isEarlyCall = true; }
+    }
+
+    const { data: claim, error: claimErr } = await supabase
+      .from('bingo_games')
+      .update({
+        status: 'finished',
+        winner_telegram_id: telegramId,
+        winner_first_name: isEarlyCall ? `🚀 EARLY BINGO: ${winningCartela.first_name}` : winningCartela.first_name,
+        winner_cartela: winningCartela.cartela_number,
+        winner_prize: finalPrize,
+        finished_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', game.id)
+      .eq('status', 'calling')
+      .select('id');
+
+    if (claimErr || !claim || claim.length === 0) {
+      res.status(400).json({ error: 'Game already claimed or finished' });
+      return;
+    }
+
+    const { data: u } = await supabase
+      .from('users')
+      .select('main_balance, total_wins')
+      .eq('telegram_id', telegramId)
+      .single();
+
+    if (u) {
+      await supabase.from('users').update({
+        main_balance: Number(u.main_balance || 0) + finalPrize,
+        total_wins: Number(u.total_wins || 0) + 1,
+      }).eq('telegram_id', telegramId);
+    }
+
+    res.json({
+      success: true,
+      winner: winningCartela.first_name,
+      cartela: winningCartela.cartela_number,
+      prize: finalPrize,
+    });
+  } catch (err: any) {
+    console.error('[Claim Bingo Error]', err);
+    res.status(500).json({ error: 'Internal server error while claiming bingo' });
+  }
+});
+
 router.get('/tts', async (req, res) => {
   try {
     const text = req.query.text;
