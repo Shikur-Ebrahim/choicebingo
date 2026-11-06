@@ -55,28 +55,28 @@ const initData = typeof WebApp !== 'undefined' ? WebApp.initData : '';
 const STATUS_CONFIG: Record<PostStatus, { label: string; badgeCls: string; dotCls: string }> = {
   draft: {
     label: 'Draft',
-    badgeCls: 'bg-slate-700/80 text-slate-300 border-slate-600',
+    badgeCls: 'bg-slate-100 text-slate-700 border-slate-200',
     dotCls: 'bg-slate-400',
   },
   scheduled: {
     label: 'Scheduled',
-    badgeCls: 'bg-blue-500/20 text-blue-300 border-blue-500/40',
-    dotCls: 'bg-blue-400',
+    badgeCls: 'bg-blue-50 text-blue-700 border-blue-200',
+    dotCls: 'bg-blue-500',
   },
   sending: {
     label: 'Sending...',
-    badgeCls: 'bg-amber-500/20 text-amber-300 border-amber-500/40 animate-pulse',
-    dotCls: 'bg-amber-400 animate-ping',
+    badgeCls: 'bg-amber-50 text-amber-800 border-amber-200 animate-pulse',
+    dotCls: 'bg-amber-500 animate-ping',
   },
   sent: {
     label: 'Sent ✓',
-    badgeCls: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
-    dotCls: 'bg-emerald-400',
+    badgeCls: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    dotCls: 'bg-emerald-500',
   },
   failed: {
     label: 'Failed',
-    badgeCls: 'bg-rose-500/20 text-rose-300 border-rose-500/40',
-    dotCls: 'bg-rose-400',
+    badgeCls: 'bg-rose-50 text-rose-700 border-rose-200',
+    dotCls: 'bg-rose-500',
   },
 };
 
@@ -480,7 +480,7 @@ export default function AdminBroadcast() {
   });
 
   // ══════════════════════════════════════════════════════════════════════════
-  // 3D CREATE / EDIT MODAL VIEW
+  // 3D CREATE / EDIT MODAL VIEW (WHITE 3D CASINO LUXURY DESIGN)
   // ══════════════════════════════════════════════════════════════════════════
   if (showForm) {
     const isMedia = !!mediaPreview;
@@ -488,19 +488,19 @@ export default function AdminBroadcast() {
     const isOverLimit = body.length > maxChars;
 
     return (
-      <div className="min-h-screen bg-slate-950 text-white p-4 pb-16 flex flex-col items-center">
+      <div className="min-h-screen bg-slate-50 text-slate-900 p-4 pb-16 flex flex-col items-center">
         <div className="w-full max-w-md space-y-4">
           {/* Header Card */}
-          <div className="bg-slate-900/90 backdrop-blur-md rounded-2xl p-4 border border-slate-800 shadow-[0_8px_25px_rgba(0,0,0,0.5)] flex items-center justify-between">
+          <div className="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-[0_4px_16px_rgba(0,0,0,0.04)] flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-600">
                 {editPost ? <Edit2 size={20} /> : <Radio size={20} />}
               </div>
               <div>
-                <h2 className="text-base font-black text-amber-400">
+                <h2 className="text-base font-black text-slate-900">
                   {editPost ? 'Edit Broadcast Post' : 'New Broadcast Post'}
                 </h2>
-                <p className="text-[11px] text-slate-400 font-medium">Create announcement for Bot & Channel</p>
+                <p className="text-[11px] text-slate-500 font-medium">Create announcement for Bot &amp; Channel</p>
               </div>
             </div>
 
@@ -509,47 +509,47 @@ export default function AdminBroadcast() {
                 setShowForm(false);
                 resetForm();
               }}
-              className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center border border-slate-700 transition-all active:scale-95"
+              className="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 flex items-center justify-center border border-slate-200 shadow-[0_2px_0_0_#cbd5e1] transition-all active:scale-95"
             >
               <X size={16} />
             </button>
           </div>
 
           {/* Form Card */}
-          <div className="bg-slate-900/80 backdrop-blur-md rounded-2xl p-4 border border-slate-800 shadow-xl space-y-4">
+          <div className="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-[0_4px_20px_rgba(0,0,0,0.04)] space-y-4">
             {/* Title (Optional header) */}
             <div>
-              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">
-                Header Title <span className="text-[10px] text-slate-500 normal-case">(Optional)</span>
+              <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">
+                Header Title <span className="text-[10px] text-slate-400 normal-case">(Optional)</span>
               </label>
               <input
                 type="text"
                 value={title}
                 onChange={e => setTitle(e.target.value)}
                 placeholder="e.g. 🎁 Weekend Deposit Bonus Active!"
-                className="w-full bg-slate-950 border border-slate-700/80 focus:border-amber-400 rounded-xl px-3.5 py-2.5 text-xs font-bold text-white outline-none shadow-inner transition-all placeholder:text-slate-600"
+                className="w-full bg-slate-50 border-2 border-slate-200/90 focus:border-amber-500 focus:bg-white rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-900 outline-none shadow-inner transition-all placeholder:text-slate-400"
               />
             </div>
 
             {/* Media Upload Area */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
-                  Image or Video <span className="text-[10px] text-slate-500 normal-case">(Optional)</span>
+                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider">
+                  Image or Video <span className="text-[10px] text-slate-400 normal-case">(Optional)</span>
                 </label>
                 {mediaPreview && !uploading && (
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="text-[10px] font-bold text-amber-400 hover:text-amber-300 flex items-center gap-1"
+                      className="text-[10px] font-bold text-amber-600 hover:text-amber-700 flex items-center gap-1"
                     >
                       <RotateCcw size={11} /> Change
                     </button>
                     <button
                       type="button"
                       onClick={removeMedia}
-                      className="text-[10px] font-bold text-rose-400 hover:text-rose-300 flex items-center gap-1"
+                      className="text-[10px] font-bold text-rose-600 hover:text-rose-700 flex items-center gap-1"
                     >
                       <Trash2 size={11} /> Remove
                     </button>
@@ -558,7 +558,7 @@ export default function AdminBroadcast() {
               </div>
 
               {mediaPreview ? (
-                <div className="relative rounded-2xl overflow-hidden border-2 border-amber-500/40 bg-black shadow-lg">
+                <div className="relative rounded-2xl overflow-hidden border-2 border-amber-400 bg-black shadow-lg">
                   {/* FULLY VISIBLE & PLAYABLE VIDEO / IMAGE */}
                   {mediaType === 'video' ? (
                     <div className="relative w-full bg-black flex items-center justify-center">
@@ -617,15 +617,15 @@ export default function AdminBroadcast() {
               ) : (
                 <div
                   onClick={() => fileInputRef.current?.click()}
-                  className="w-full h-36 rounded-2xl border-2 border-dashed border-slate-700 hover:border-amber-400/80 bg-slate-950/60 flex flex-col items-center justify-center text-slate-400 hover:text-amber-300 cursor-pointer transition-all active:scale-[0.99] group shadow-inner"
+                  className="w-full h-36 rounded-2xl border-2 border-dashed border-slate-300 hover:border-amber-500 bg-slate-50/70 flex flex-col items-center justify-center text-slate-500 hover:text-amber-600 cursor-pointer transition-all active:scale-[0.99] group shadow-inner"
                 >
-                  <div className="w-12 h-12 rounded-2xl bg-slate-900 border border-slate-800 group-hover:border-amber-500/40 flex items-center justify-center text-amber-400 mb-2 shadow-md transition-all group-hover:scale-105">
+                  <div className="w-12 h-12 rounded-2xl bg-white border border-slate-200 group-hover:border-amber-400 flex items-center justify-center text-amber-500 mb-2 shadow-xs transition-all group-hover:scale-105">
                     <UploadCloud size={24} />
                   </div>
-                  <span className="text-xs font-black text-slate-200 group-hover:text-amber-300">
+                  <span className="text-xs font-black text-slate-800 group-hover:text-amber-600">
                     Tap to upload Image or Video
                   </span>
-                  <span className="text-[10px] text-slate-500 mt-0.5">MP4, MOV, WebM • JPG, PNG, GIF</span>
+                  <span className="text-[10px] text-slate-400 mt-0.5 font-medium">MP4, MOV, WebM • JPG, PNG, GIF</span>
                 </div>
               )}
 
@@ -641,23 +641,23 @@ export default function AdminBroadcast() {
             {/* Message Body */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
-                  Announcement Message <span className="text-amber-400">*</span>
+                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider">
+                  Announcement Message <span className="text-amber-500">*</span>
                 </label>
-                <span className="text-[10px] font-semibold text-slate-500">Supports *bold* _italic_</span>
+                <span className="text-[10px] font-semibold text-slate-400">Supports *bold* _italic_</span>
               </div>
               <textarea
                 value={body}
                 onChange={e => setBody(e.target.value)}
                 placeholder="Write your broadcast announcement here..."
                 rows={5}
-                className={`w-full bg-slate-950 border rounded-xl px-3.5 py-2.5 text-xs text-white font-medium outline-none shadow-inner resize-none transition-all placeholder:text-slate-600 ${
-                  isOverLimit ? 'border-rose-500 focus:border-rose-400' : 'border-slate-700/80 focus:border-amber-400'
+                className={`w-full bg-slate-50 border-2 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 font-medium outline-none shadow-inner resize-none transition-all placeholder:text-slate-400 ${
+                  isOverLimit ? 'border-rose-400 focus:border-rose-500' : 'border-slate-200/90 focus:border-amber-500 focus:bg-white'
                 }`}
               />
-              <div className="flex justify-between items-center text-[10px] mt-1 text-slate-500">
+              <div className="flex justify-between items-center text-[10px] mt-1 text-slate-400">
                 <span>{isMedia ? '📷 Caption limit: 1024 chars' : '💬 Text message'}</span>
-                <span className={isOverLimit ? 'font-black text-rose-400' : 'font-semibold'}>
+                <span className={isOverLimit ? 'font-black text-rose-500' : 'font-semibold text-slate-500'}>
                   {body.length} / {maxChars}
                 </span>
               </div>
@@ -665,7 +665,7 @@ export default function AdminBroadcast() {
 
             {/* Target Audience Selector */}
             <div>
-              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+              <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">
                 Target Audience
               </label>
               <div className="space-y-2">
@@ -678,22 +678,22 @@ export default function AdminBroadcast() {
                       onClick={() => setSendTo(opt.value)}
                       className={`w-full flex items-center space-x-3 p-3 rounded-xl border text-left transition-all ${
                         isSelected
-                          ? 'bg-gradient-to-r from-amber-500/20 to-yellow-500/10 border-amber-400 shadow-[0_3px_12px_rgba(245,158,11,0.2)]'
-                          : 'bg-slate-950/70 border-slate-800 hover:border-slate-700 text-slate-400'
+                          ? 'bg-amber-50/80 border-amber-400 shadow-[0_2px_8px_rgba(245,158,11,0.15)]'
+                          : 'bg-slate-50 border-slate-200 hover:border-slate-300 text-slate-600'
                       }`}
                     >
                       <span className="text-2xl shrink-0">{opt.icon}</span>
                       <div className="flex-1 min-w-0">
-                        <p className={`text-xs font-black ${isSelected ? 'text-amber-300' : 'text-slate-200'}`}>
+                        <p className={`text-xs font-black ${isSelected ? 'text-amber-800' : 'text-slate-800'}`}>
                           {opt.label}
                         </p>
-                        <p className="text-[10px] text-slate-400 mt-0.5 truncate">{opt.desc}</p>
+                        <p className="text-[10px] text-slate-500 mt-0.5 truncate">{opt.desc}</p>
                       </div>
                       <div
                         className={`w-5 h-5 rounded-full border flex items-center justify-center shrink-0 ${
                           isSelected
-                            ? 'bg-amber-400 border-amber-400 text-slate-950'
-                            : 'border-slate-700 bg-slate-900 text-transparent'
+                            ? 'bg-amber-400 border-amber-500 text-slate-950 shadow-xs'
+                            : 'border-slate-300 bg-white text-transparent'
                         }`}
                       >
                         <Check size={12} strokeWidth={3} />
@@ -705,9 +705,9 @@ export default function AdminBroadcast() {
 
               {/* Target Channel Input */}
               {(sendTo === 'channel' || sendTo === 'both') && (
-                <div className="mt-3 p-3 rounded-xl bg-slate-950 border border-amber-500/30 space-y-2">
+                <div className="mt-3 p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
                   <div className="flex items-center justify-between">
-                    <label className="text-[10px] font-black text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <label className="text-[10px] font-black text-amber-700 uppercase tracking-wider flex items-center gap-1.5">
                       <AtSign size={13} />
                       <span>Telegram Channel Username / Link</span>
                     </label>
@@ -715,7 +715,7 @@ export default function AdminBroadcast() {
                       href="https://t.me/ChoiceBingo"
                       target="_blank"
                       rel="noreferrer"
-                      className="text-[10px] font-bold text-amber-400 underline hover:text-amber-300"
+                      className="text-[10px] font-bold text-amber-600 underline hover:text-amber-700"
                     >
                       Open @ChoiceBingo
                     </a>
@@ -725,9 +725,9 @@ export default function AdminBroadcast() {
                     value={channelId}
                     onChange={e => setChannelId(e.target.value)}
                     placeholder="@ChoiceBingo"
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs font-bold text-white outline-none focus:border-amber-400"
+                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs font-bold text-slate-900 outline-none focus:border-amber-500"
                   />
-                  <p className="text-[10px] text-slate-400 leading-relaxed">
+                  <p className="text-[10px] text-slate-500 leading-relaxed font-medium">
                     Make sure <strong>@choicebingo_bot</strong> is an <strong>Administrator</strong> in @ChoiceBingo with
                     permission to post messages.
                   </p>
@@ -735,62 +735,62 @@ export default function AdminBroadcast() {
               )}
 
               {/* Interactive Action Button Info */}
-              <div className="mt-3 p-3 rounded-xl bg-slate-950 border border-amber-500/30 space-y-2">
+              <div className="mt-3 p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-black text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="text-[10px] font-black text-amber-700 uppercase tracking-wider flex items-center gap-1.5">
                     <Sparkles size={13} />
                     <span>Interactive Buttons Preview</span>
                   </span>
-                  <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                  <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
                     ✓ Auto-Attached
                   </span>
                 </div>
 
                 {sendTo === 'channel' ? (
                   <div className="space-y-1.5 pt-1">
-                    <p className="text-[10px] text-slate-400 font-semibold">For Channel (@ChoiceBingo):</p>
+                    <p className="text-[10px] text-slate-600 font-semibold">For Channel (@ChoiceBingo):</p>
                     <div className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 text-slate-950 font-black text-xs flex items-center justify-center space-x-1.5 shadow-[0_3px_0_0_#b45309]">
                       <span className="text-sm">🎮</span>
                       <span>PLAY CHOICE BINGO NOW 🎯</span>
                     </div>
-                    <div className="w-full py-2 px-3 rounded-xl bg-slate-800 border border-slate-700 text-slate-200 font-bold text-xs flex items-center justify-center space-x-1.5 shadow-[0_2px_0_0_#1e293b]">
+                    <div className="w-full py-2 px-3 rounded-xl bg-white border border-slate-200 text-slate-800 font-bold text-xs flex items-center justify-center space-x-1.5 shadow-[0_2px_0_0_#cbd5e1]">
                       <span>💬</span>
                       <span>24/7 Support</span>
                     </div>
                   </div>
                 ) : sendTo === 'bot' ? (
                   <div className="space-y-1.5 pt-1">
-                    <p className="text-[10px] text-slate-400 font-semibold">For Bot Direct Message (All Active Players):</p>
+                    <p className="text-[10px] text-slate-600 font-semibold">For Bot Direct Message (All Active Players):</p>
                     <div className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 text-slate-950 font-black text-xs flex items-center justify-center space-x-1.5 shadow-[0_3px_0_0_#b45309]">
                       <span className="text-sm">🎮</span>
                       <span>PLAY CHOICE BINGO NOW 🎯</span>
                     </div>
                     <div className="grid grid-cols-2 gap-1.5">
-                      <div className="py-2 px-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-200 font-bold text-[11px] flex items-center justify-center space-x-1 shadow-[0_2px_0_0_#1e293b]">
+                      <div className="py-2 px-2 rounded-xl bg-white border border-slate-200 text-slate-800 font-bold text-[11px] flex items-center justify-center space-x-1 shadow-[0_2px_0_0_#cbd5e1]">
                         <span>📢</span>
                         <span>Official Channel</span>
                       </div>
-                      <div className="py-2 px-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-200 font-bold text-[11px] flex items-center justify-center space-x-1 shadow-[0_2px_0_0_#1e293b]">
+                      <div className="py-2 px-2 rounded-xl bg-white border border-slate-200 text-slate-800 font-bold text-[11px] flex items-center justify-center space-x-1 shadow-[0_2px_0_0_#cbd5e1]">
                         <span>💬</span>
                         <span>24/7 Support</span>
                       </div>
                     </div>
                   </div>
                 ) : (
-                  <div className="space-y-2 pt-1">
+                  <div className="space-y-2.5 pt-1">
                     <div>
-                      <p className="text-[10px] text-amber-300 font-bold mb-1">🤖 Bot Direct Message Layout:</p>
+                      <p className="text-[10px] text-amber-700 font-bold mb-1">🤖 Bot Direct Message Layout:</p>
                       <div className="space-y-1">
                         <div className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 text-slate-950 font-black text-xs flex items-center justify-center space-x-1 shadow-[0_2px_0_0_#b45309]">
                           <span>🎮</span>
                           <span>PLAY CHOICE BINGO NOW 🎯</span>
                         </div>
                         <div className="grid grid-cols-2 gap-1">
-                          <div className="py-1.5 px-1 rounded-lg bg-slate-800 border border-slate-700 text-slate-200 font-bold text-[10px] flex items-center justify-center space-x-1">
+                          <div className="py-1.5 px-1 rounded-lg bg-white border border-slate-200 text-slate-800 font-bold text-[10px] flex items-center justify-center space-x-1 shadow-[0_1px_0_0_#cbd5e1]">
                             <span>📢</span>
                             <span>Official Channel</span>
                           </div>
-                          <div className="py-1.5 px-1 rounded-lg bg-slate-800 border border-slate-700 text-slate-200 font-bold text-[10px] flex items-center justify-center space-x-1">
+                          <div className="py-1.5 px-1 rounded-lg bg-white border border-slate-200 text-slate-800 font-bold text-[10px] flex items-center justify-center space-x-1 shadow-[0_1px_0_0_#cbd5e1]">
                             <span>💬</span>
                             <span>24/7 Support</span>
                           </div>
@@ -799,13 +799,13 @@ export default function AdminBroadcast() {
                     </div>
 
                     <div>
-                      <p className="text-[10px] text-teal-300 font-bold mb-1">📢 Channel Layout:</p>
+                      <p className="text-[10px] text-teal-700 font-bold mb-1">📢 Channel Layout:</p>
                       <div className="space-y-1">
                         <div className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 text-slate-950 font-black text-xs flex items-center justify-center space-x-1 shadow-[0_2px_0_0_#b45309]">
                           <span>🎮</span>
                           <span>PLAY CHOICE BINGO NOW 🎯</span>
                         </div>
-                        <div className="w-full py-1.5 px-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-200 font-bold text-[10px] flex items-center justify-center space-x-1">
+                        <div className="w-full py-1.5 px-2 rounded-lg bg-white border border-slate-200 text-slate-800 font-bold text-[10px] flex items-center justify-center space-x-1 shadow-[0_2px_0_0_#cbd5e1]">
                           <span>💬</span>
                           <span>24/7 Support</span>
                         </div>
@@ -817,17 +817,17 @@ export default function AdminBroadcast() {
             </div>
 
             {/* Schedule Section */}
-            <div className="pt-2 border-t border-slate-800">
+            <div className="pt-2 border-t border-slate-100">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center space-x-2">
-                  <Calendar size={15} className="text-amber-400" />
-                  <span className="text-xs font-bold text-slate-300">Schedule Broadcast</span>
+                  <Calendar size={15} className="text-amber-600" />
+                  <span className="text-xs font-bold text-slate-700">Schedule Broadcast</span>
                 </div>
                 <button
                   type="button"
                   onClick={() => setScheduleEnabled(!scheduleEnabled)}
                   className={`relative w-11 h-6 rounded-full transition-colors ${
-                    scheduleEnabled ? 'bg-amber-500' : 'bg-slate-800 border border-slate-700'
+                    scheduleEnabled ? 'bg-amber-500' : 'bg-slate-200 border border-slate-300'
                   }`}
                 >
                   <span
@@ -844,10 +844,10 @@ export default function AdminBroadcast() {
                   value={scheduledAt}
                   onChange={e => setScheduledAt(e.target.value)}
                   min={new Date().toISOString().slice(0, 16)}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-xs font-bold text-white outline-none focus:border-amber-400"
+                  className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-3.5 py-2 text-xs font-bold text-slate-900 outline-none focus:border-amber-500"
                 />
               ) : (
-                <p className="text-[10px] text-slate-500 font-medium">
+                <p className="text-[10px] text-slate-400 font-medium">
                   If unscheduled, you can save as draft and send manually anytime.
                 </p>
               )}
@@ -855,8 +855,8 @@ export default function AdminBroadcast() {
 
             {/* Error Overlay */}
             {error && (
-              <div className="flex items-center space-x-2 bg-rose-500/10 border border-rose-500/30 rounded-xl p-3 text-rose-300 text-xs">
-                <AlertCircle size={15} className="shrink-0" />
+              <div className="flex items-center space-x-2 bg-rose-50 border border-rose-200 rounded-xl p-3 text-rose-700 text-xs">
+                <AlertCircle size={15} className="shrink-0 text-rose-500" />
                 <span>{error}</span>
               </div>
             )}
@@ -869,7 +869,7 @@ export default function AdminBroadcast() {
                   setShowForm(false);
                   resetForm();
                 }}
-                className="flex-1 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs border border-slate-700 active:scale-95 transition-all shadow-[0_3px_0_0_#1e293b] active:translate-y-0.5 active:shadow-none"
+                className="flex-1 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs border border-slate-200 active:scale-95 transition-all shadow-[0_3px_0_0_#cbd5e1] active:translate-y-0.5 active:shadow-none"
               >
                 Cancel
               </button>
@@ -899,35 +899,37 @@ export default function AdminBroadcast() {
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  // 3D MAIN BROADCAST LIST VIEW
+  // 3D MAIN BROADCAST LIST VIEW (WHITE 3D CASINO LUXURY DESIGN)
   // ══════════════════════════════════════════════════════════════════════════
   return (
-    <div className="min-h-screen bg-slate-950 text-white p-4 pb-20 flex flex-col items-center">
+    <div className="min-h-screen bg-slate-50 text-slate-900 p-4 pb-20 flex flex-col items-center">
       <div className="w-full max-w-md space-y-4">
         {/* Toast Overlay */}
         {successMsg && (
-          <div className="fixed top-4 left-4 right-4 z-50 flex items-center justify-center space-x-2 px-4 py-3 rounded-xl font-black text-xs shadow-xl bg-amber-400 text-slate-950 animate-fade-in border border-amber-300">
+          <div className="fixed top-4 left-4 right-4 z-50 flex items-center justify-center space-x-2 px-4 py-3 rounded-2xl font-black text-xs shadow-xl bg-amber-400 text-slate-950 animate-fade-in border border-amber-300">
             <CheckCircle2 size={16} />
             <span>{successMsg}</span>
           </div>
         )}
 
         {/* Top Header Card */}
-        <div className="bg-slate-900/90 backdrop-blur-md rounded-2xl p-4 border border-slate-800 shadow-[0_8px_25px_rgba(0,0,0,0.5)]">
+        <div className="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-[0_4px_20px_rgba(0,0,0,0.04)]">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <Link
                 to="/admin"
-                className="w-9 h-9 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 flex items-center justify-center text-slate-200 active:scale-95 transition-all shadow-[0_2px_0_0_#334155]"
+                className="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 flex items-center justify-center text-slate-700 active:scale-95 transition-all shadow-[0_2px_0_0_#cbd5e1]"
               >
                 <ArrowLeft size={18} />
               </Link>
               <div>
-                <h1 className="text-base font-black flex items-center gap-1.5 text-amber-400">
-                  <Radio size={18} className="animate-pulse text-amber-400" />
+                <h1 className="text-base font-black flex items-center gap-1.5 text-slate-900">
+                  <div className="w-6 h-6 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-600">
+                    <Radio size={15} className="animate-pulse" />
+                  </div>
                   <span>Broadcast Center</span>
                 </h1>
-                <p className="text-[10px] text-slate-400 font-medium">Push to players &amp; channel @ChoiceBingo</p>
+                <p className="text-[10px] text-slate-500 font-semibold">Push to players &amp; channel @ChoiceBingo</p>
               </div>
             </div>
 
@@ -942,7 +944,7 @@ export default function AdminBroadcast() {
           </div>
 
           {/* Quick Filter Tabs */}
-          <div className="grid grid-cols-5 gap-1.5 mt-3 pt-3 border-t border-slate-800/80 text-[10px] font-black">
+          <div className="grid grid-cols-5 gap-1.5 mt-3 pt-3 border-t border-slate-100 text-[10px] font-black">
             {[
               { id: 'all', label: 'All', count: posts.length },
               { id: 'sent', label: 'Sent', count: posts.filter(p => p.status === 'sent').length },
@@ -955,8 +957,8 @@ export default function AdminBroadcast() {
                 onClick={() => setFilterTab(tab.id as any)}
                 className={`py-1.5 px-1 rounded-lg text-center transition-all ${
                   filterTab === tab.id
-                    ? 'bg-amber-400 text-slate-950 shadow-md font-black'
-                    : 'bg-slate-950/60 text-slate-400 hover:text-white border border-slate-800/60'
+                    ? 'bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 shadow-sm font-black'
+                    : 'bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200'
                 }`}
               >
                 <span>{tab.label}</span>
@@ -968,9 +970,9 @@ export default function AdminBroadcast() {
 
         {/* Global Error Banner */}
         {error && (
-          <div className="flex items-center space-x-2 bg-rose-500/10 border border-rose-500/30 rounded-xl p-3 text-rose-300 text-xs shadow-md">
-            <AlertCircle size={16} className="shrink-0" />
-            <span className="flex-1">{error}</span>
+          <div className="flex items-center space-x-2 bg-rose-50 border border-rose-200 rounded-xl p-3 text-rose-700 text-xs shadow-xs">
+            <AlertCircle size={16} className="shrink-0 text-rose-500" />
+            <span className="flex-1 font-semibold">{error}</span>
             <button onClick={() => setError('')}>
               <X size={14} />
             </button>
@@ -980,25 +982,25 @@ export default function AdminBroadcast() {
         {/* Posts List */}
         {loading ? (
           <div className="flex flex-col items-center justify-center pt-20 space-y-3">
-            <Loader2 size={36} className="animate-spin text-amber-400" />
-            <p className="text-xs text-slate-400 font-bold">Loading broadcasts...</p>
+            <Loader2 size={36} className="animate-spin text-amber-500" />
+            <p className="text-xs text-slate-500 font-bold">Loading broadcasts...</p>
           </div>
         ) : filteredPosts.length === 0 ? (
-          <div className="bg-slate-900/60 rounded-2xl border border-slate-800 p-8 flex flex-col items-center justify-center text-center space-y-3 shadow-inner">
-            <div className="w-16 h-16 rounded-2xl bg-slate-800/80 border border-slate-700 flex items-center justify-center text-slate-500">
+          <div className="bg-white rounded-2xl border border-slate-200/90 p-8 flex flex-col items-center justify-center text-center space-y-3 shadow-[0_4px_16px_rgba(0,0,0,0.03)]">
+            <div className="w-16 h-16 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400">
               <MessageSquare size={32} />
             </div>
             <div className="space-y-1">
-              <p className="text-sm font-black text-slate-300">
+              <p className="text-sm font-black text-slate-800">
                 {filterTab === 'all' ? 'No broadcast posts yet' : `No ${filterTab} posts`}
               </p>
-              <p className="text-xs text-slate-500 max-w-xs">
+              <p className="text-xs text-slate-500 max-w-xs font-medium">
                 Announce bonuses, jackpots, or game updates directly to all active players.
               </p>
             </div>
             <button
               onClick={openCreateForm}
-              className="mt-2 text-xs font-black text-amber-400 hover:text-amber-300 flex items-center gap-1.5 underline"
+              className="mt-2 text-xs font-black text-amber-600 hover:text-amber-700 flex items-center gap-1.5 underline"
             >
               <Plus size={14} /> Create your first broadcast post
             </button>
@@ -1017,17 +1019,17 @@ export default function AdminBroadcast() {
               return (
                 <div
                   key={post.id}
-                  className="bg-slate-900/90 backdrop-blur-md rounded-2xl border border-slate-800 shadow-[0_6px_20px_rgba(0,0,0,0.4)] overflow-hidden transition-all hover:border-slate-700"
+                  className="bg-white rounded-2xl border border-slate-200/90 shadow-[0_6px_24px_rgba(0,0,0,0.04)] overflow-hidden transition-all hover:border-slate-300"
                 >
                   {/* FULLY VISIBLE & PLAYABLE MEDIA BANNER IN CARD */}
                   {post.media_url && post.media_type === 'image' && (
-                    <div className="relative w-full bg-black flex items-center justify-center overflow-hidden border-b border-slate-800">
+                    <div className="relative w-full bg-slate-950 flex items-center justify-center overflow-hidden border-b border-slate-100">
                       <img src={post.media_url} alt="post" className="w-full max-h-60 object-contain bg-black mx-auto block" />
                     </div>
                   )}
 
                   {post.media_url && post.media_type === 'video' && (
-                    <div className="relative w-full bg-black flex items-center justify-center overflow-hidden border-b border-slate-800">
+                    <div className="relative w-full bg-slate-950 flex items-center justify-center overflow-hidden border-b border-slate-100">
                       <video
                         src={post.media_url}
                         controls
@@ -1046,9 +1048,9 @@ export default function AdminBroadcast() {
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
                         {post.title ? (
-                          <p className="font-black text-amber-300 text-sm truncate">{post.title}</p>
+                          <p className="font-black text-slate-900 text-sm truncate">{post.title}</p>
                         ) : null}
-                        <p className="text-slate-300 text-xs line-clamp-3 leading-relaxed mt-0.5 font-medium whitespace-pre-wrap">
+                        <p className="text-slate-600 text-xs line-clamp-3 leading-relaxed mt-0.5 font-medium whitespace-pre-wrap">
                           {post.body}
                         </p>
                       </div>
@@ -1064,20 +1066,20 @@ export default function AdminBroadcast() {
 
                     {/* Metadata Badges */}
                     <div className="flex flex-wrap gap-1.5 text-[10px] font-bold">
-                      <span className="bg-slate-950 text-slate-300 border border-slate-800 px-2 py-0.5 rounded-md flex items-center gap-1">
+                      <span className="bg-slate-50 text-slate-700 border border-slate-200 px-2 py-0.5 rounded-md flex items-center gap-1">
                         {post.send_to === 'bot' && '🤖 Bot Only'}
                         {post.send_to === 'channel' && `📢 Channel (${targetChannelName})`}
                         {post.send_to === 'both' && `📡 Bot + Channel (${targetChannelName})`}
                       </span>
 
                       {post.scheduled_at && post.status === 'scheduled' && (
-                        <span className="bg-blue-500/10 text-blue-300 border border-blue-500/30 px-2 py-0.5 rounded-md flex items-center gap-1">
+                        <span className="bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-md flex items-center gap-1">
                           <Clock size={11} /> {fmtDate(post.scheduled_at)}
                         </span>
                       )}
 
                       {!post.scheduled_at && (
-                        <span className="text-slate-500 px-1 py-0.5">Created {fmtDate(post.created_at)}</span>
+                        <span className="text-slate-400 px-1 py-0.5">Created {fmtDate(post.created_at)}</span>
                       )}
                     </div>
 
@@ -1089,17 +1091,17 @@ export default function AdminBroadcast() {
                       </div>
 
                       {post.send_to === 'channel' ? (
-                        <div className="w-full py-1.5 px-3 rounded-xl bg-slate-800/90 border border-slate-700 text-slate-200 font-bold text-[11px] flex items-center justify-center space-x-1.5 shadow-[0_2px_0_0_#1e293b] pointer-events-none select-none">
+                        <div className="w-full py-1.5 px-3 rounded-xl bg-slate-100 border border-slate-200 text-slate-800 font-bold text-[11px] flex items-center justify-center space-x-1.5 shadow-[0_2px_0_0_#cbd5e1] pointer-events-none select-none">
                           <span>💬</span>
                           <span>24/7 Support</span>
                         </div>
                       ) : (
                         <div className="grid grid-cols-2 gap-1.5 pointer-events-none select-none">
-                          <div className="py-1.5 px-2 rounded-xl bg-slate-800/90 border border-slate-700 text-slate-200 font-bold text-[10px] flex items-center justify-center space-x-1 shadow-[0_2px_0_0_#1e293b]">
+                          <div className="py-1.5 px-2 rounded-xl bg-slate-100 border border-slate-200 text-slate-800 font-bold text-[10px] flex items-center justify-center space-x-1 shadow-[0_2px_0_0_#cbd5e1]">
                             <span>📢</span>
                             <span className="truncate">Official Channel</span>
                           </div>
-                          <div className="py-1.5 px-2 rounded-xl bg-slate-800/90 border border-slate-700 text-slate-200 font-bold text-[10px] flex items-center justify-center space-x-1 shadow-[0_2px_0_0_#1e293b]">
+                          <div className="py-1.5 px-2 rounded-xl bg-slate-100 border border-slate-200 text-slate-800 font-bold text-[10px] flex items-center justify-center space-x-1 shadow-[0_2px_0_0_#cbd5e1]">
                             <span>💬</span>
                             <span>24/7 Support</span>
                           </div>
@@ -1109,22 +1111,22 @@ export default function AdminBroadcast() {
 
                     {/* Delivery Stats */}
                     {post.status === 'sent' && (
-                      <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-bold text-emerald-400 flex items-center justify-between">
+                      <div className="p-2 rounded-xl bg-emerald-50 border border-emerald-200 text-[10px] font-bold text-emerald-800 flex items-center justify-between">
                         <span className="flex items-center gap-1">
-                          <CheckCircle2 size={13} /> Delivered to {post.sent_count} targets
+                          <CheckCircle2 size={13} className="text-emerald-600" /> Delivered to {post.sent_count} targets
                         </span>
                         <span>{fmtDate(post.sent_at)}</span>
                       </div>
                     )}
 
                     {post.error_message && (
-                      <div className="p-2 rounded-xl bg-rose-500/10 border border-rose-500/20 text-[10px] text-rose-300 font-medium leading-relaxed">
+                      <div className="p-2 rounded-xl bg-rose-50 border border-rose-200 text-[10px] text-rose-800 font-medium leading-relaxed">
                         ⚠️ {post.error_message}
                       </div>
                     )}
 
                     {/* 3D Action Buttons */}
-                    <div className="flex items-center space-x-2 pt-1 border-t border-slate-800/80">
+                    <div className="flex items-center space-x-2 pt-1 border-t border-slate-100">
                       {isSendable && (
                         <button
                           onClick={() => handleSend(post.id)}
@@ -1139,7 +1141,7 @@ export default function AdminBroadcast() {
                       {isEditable && (
                         <button
                           onClick={() => openEditForm(post)}
-                          className="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs border border-slate-700 flex items-center justify-center space-x-1 shadow-[0_3px_0_0_#1e293b] active:translate-y-0.5 active:shadow-none transition-all"
+                          className="py-2.5 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs border border-slate-200 flex items-center justify-center space-x-1 shadow-[0_2px_0_0_#cbd5e1] active:translate-y-0.5 active:shadow-none transition-all"
                         >
                           <Edit2 size={12} />
                           <span>Edit</span>
@@ -1148,7 +1150,7 @@ export default function AdminBroadcast() {
 
                       <button
                         onClick={() => handleDelete(post.id)}
-                        className="p-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center justify-center active:scale-95 transition-all"
+                        className="p-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 shadow-[0_2px_0_0_#fecdd3] flex items-center justify-center active:translate-y-0.5 active:shadow-none transition-all"
                         title="Delete Post"
                       >
                         <Trash2 size={14} />

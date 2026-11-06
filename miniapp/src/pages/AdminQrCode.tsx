@@ -537,12 +537,14 @@ export default function AdminQrCode() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-slate-900 text-white">
+    <div className="flex flex-col min-h-screen bg-slate-50 text-slate-900 pb-16">
       {/* Toast Overlay */}
       {toast && (
         <div
-          className={`fixed top-4 left-4 right-4 z-50 flex items-center justify-center space-x-2 px-4 py-3 rounded-xl font-black text-xs shadow-xl animate-fade-in ${
-            toast.type === 'success' ? 'bg-amber-500 text-slate-950' : 'bg-rose-500 text-white'
+          className={`fixed top-4 left-4 right-4 z-50 flex items-center justify-center space-x-2 px-4 py-3 rounded-2xl font-black text-xs shadow-xl animate-fade-in border ${
+            toast.type === 'success'
+              ? 'bg-amber-400 text-slate-950 border-amber-300'
+              : 'bg-rose-500 text-white border-rose-400'
           }`}
         >
           <CheckCircle2 size={16} />
@@ -550,42 +552,46 @@ export default function AdminQrCode() {
         </div>
       )}
 
-      {/* Header */}
-      <div className="bg-slate-800/90 backdrop-blur-md px-4 py-3 border-b border-slate-700 flex items-center justify-between shrink-0 sticky top-0 z-30">
+      {/* 3D White Top Header */}
+      <div className="bg-white/95 backdrop-blur-md px-4 py-3.5 border-b border-slate-200/80 flex items-center justify-between shrink-0 sticky top-0 z-30 shadow-xs">
         <div className="flex items-center space-x-3">
           <Link
             to="/admin"
-            className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-slate-200 active:bg-slate-600 transition-colors"
+            className="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 flex items-center justify-center text-slate-700 active:scale-95 transition-all shadow-[0_2px_0_0_#cbd5e1]"
           >
             <ArrowLeft size={18} />
           </Link>
           <div>
-            <h1 className="text-base font-black flex items-center gap-1.5 text-amber-400">
-              <QrCode size={18} />
+            <h1 className="text-base font-black flex items-center gap-1.5 text-slate-900">
+              <div className="w-6 h-6 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-600">
+                <QrCode size={15} />
+              </div>
               <span>QR Poster Generator</span>
             </h1>
-            <p className="text-[10px] text-slate-400 font-medium">Canva-style High Resolution Marketing Poster</p>
+            <p className="text-[10px] text-slate-500 font-semibold">Canva-style High Resolution Marketing Poster</p>
           </div>
         </div>
 
         <button
           onClick={() => setShowOptions(!showOptions)}
-          className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
-            showOptions ? 'bg-amber-500 text-slate-900' : 'bg-slate-700 text-slate-300'
+          className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all border ${
+            showOptions
+              ? 'bg-gradient-to-r from-amber-400 to-yellow-500 border-amber-500 text-slate-950 shadow-[0_2px_0_0_#b45309]'
+              : 'bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-700 shadow-[0_2px_0_0_#cbd5e1]'
           }`}
           title="Customize Poster"
         >
-          <Sliders size={15} />
+          <Sliders size={16} />
         </button>
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 max-w-md mx-auto w-full">
         {/* Customization Drawer */}
         {showOptions && (
-          <div className="bg-slate-800 rounded-2xl p-4 border border-amber-500/30 space-y-3 shadow-md">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-700">
-              <span className="text-xs font-black uppercase text-amber-400 tracking-wider flex items-center gap-1.5">
+          <div className="bg-white rounded-2xl p-4 border border-slate-200/90 space-y-3 shadow-[0_4px_16px_rgba(0,0,0,0.04)] animate-fade-in">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <span className="text-xs font-black uppercase text-amber-600 tracking-wider flex items-center gap-1.5">
                 <Sliders size={13} />
                 Customize Poster Content
               </span>
@@ -595,58 +601,58 @@ export default function AdminQrCode() {
                   setRoomTitle('OFFICIAL CHOICE BINGO');
                   setStartParam('qr');
                 }}
-                className="text-[10px] text-slate-400 hover:text-white flex items-center gap-1"
+                className="text-[10px] text-slate-500 hover:text-slate-800 font-bold flex items-center gap-1"
               >
                 <RefreshCw size={10} /> Reset
               </button>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-3">
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Bot Username</label>
+                <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Bot Username</label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 font-bold text-xs">@</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">@</span>
                   <input
                     type="text"
                     value={botUsername.replace(/^@/, '')}
                     onChange={(e) => setBotUsername(e.target.value)}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg pl-7 pr-3 py-1.5 text-xs font-bold text-white outline-none focus:border-amber-400"
+                    className="w-full bg-slate-50 border-2 border-slate-200 focus:border-amber-500 focus:bg-white rounded-xl pl-7 pr-3 py-2 text-xs font-bold text-slate-900 outline-none shadow-inner transition-all"
                     placeholder="choicebingo_bot"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Header Subtitle</label>
+                <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Header Subtitle</label>
                 <input
                   type="text"
                   value={roomTitle}
                   onChange={(e) => setRoomTitle(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-bold text-white outline-none focus:border-amber-400"
+                  className="w-full bg-slate-50 border-2 border-slate-200 focus:border-amber-500 focus:bg-white rounded-xl px-3 py-2 text-xs font-bold text-slate-900 outline-none shadow-inner transition-all"
                   placeholder="OFFICIAL CHOICE BINGO"
                 />
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">
+                <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">
                   Start Parameter (Optional Tracking/Agent Tag)
                 </label>
                 <input
                   type="text"
                   value={startParam}
                   onChange={(e) => setStartParam(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-bold text-white outline-none focus:border-amber-400"
+                  className="w-full bg-slate-50 border-2 border-slate-200 focus:border-amber-500 focus:bg-white rounded-xl px-3 py-2 text-xs font-bold text-slate-900 outline-none shadow-inner transition-all"
                   placeholder="qr"
                 />
-                <p className="text-[10px] text-slate-500 mt-0.5">Scans will start: {getFullTelegramUrl()}</p>
+                <p className="text-[10px] text-slate-400 mt-1 font-medium">Scans will start: {getFullTelegramUrl()}</p>
               </div>
             </div>
           </div>
         )}
 
-        {/* Live Poster Preview */}
+        {/* Live Poster Preview in 3D Card */}
         <div className="flex flex-col items-center">
-          <div className="relative w-full max-w-sm rounded-2xl overflow-hidden shadow-2xl border-2 border-amber-500/40 bg-slate-950">
+          <div className="relative w-full max-w-sm rounded-2xl overflow-hidden shadow-[0_12px_36px_rgba(0,0,0,0.1)] border-4 border-amber-400/50 bg-amber-50/40">
             {/* Real Image tag so mobile users can long-press to save directly to gallery */}
             {posterUrl ? (
               <img
@@ -661,19 +667,19 @@ export default function AdminQrCode() {
             <canvas ref={canvasRef} className="hidden" />
           </div>
 
-          <div className="flex items-center gap-1.5 mt-2 text-[11px] font-semibold text-amber-300/80 bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/20">
-            <ImageIcon size={13} />
-            <span>Mobile Tip: Tap & hold the poster to Save to Gallery!</span>
+          <div className="flex items-center gap-1.5 mt-2.5 text-[11px] font-bold text-amber-800 bg-amber-50 px-3.5 py-1.5 rounded-full border border-amber-200 shadow-xs">
+            <ImageIcon size={13} className="text-amber-600" />
+            <span>Mobile Tip: Tap &amp; hold the poster to Save to Gallery!</span>
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="max-w-sm mx-auto space-y-2 pt-1">
+        {/* 3D Action Buttons */}
+        <div className="max-w-sm mx-auto space-y-2.5 pt-1 w-full">
           {/* Method 1: Send Photo Directly to Telegram Chat (Guaranteed 1-Tap Save to Gallery) */}
           <button
             onClick={handleSendToTelegram}
             disabled={sendingTg}
-            className="w-full py-3.5 px-4 bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 hover:from-emerald-400 hover:to-teal-400 text-white font-black text-sm rounded-xl shadow-lg flex items-center justify-center space-x-2 active:scale-95 transition-all"
+            className="w-full py-3.5 px-4 bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 hover:from-emerald-400 hover:to-teal-400 text-white font-black text-sm rounded-xl shadow-[0_4px_0_0_#065f46] active:translate-y-1 active:shadow-none flex items-center justify-center space-x-2 transition-all disabled:opacity-50"
           >
             {sendingTg ? (
               <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -687,7 +693,7 @@ export default function AdminQrCode() {
           <button
             onClick={handleDownload}
             disabled={downloading}
-            className="w-full py-3 px-4 bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-black text-sm rounded-xl shadow-md flex items-center justify-center space-x-2 active:scale-95 transition-all"
+            className="w-full py-3 px-4 bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-slate-950 font-black text-sm rounded-xl shadow-[0_4px_0_0_#b45309] active:translate-y-1 active:shadow-none flex items-center justify-center space-x-2 transition-all disabled:opacity-50"
           >
             <Download size={17} />
             <span>{downloading ? 'Preparing PNG...' : '📥 Download Poster (PNG)'}</span>
@@ -696,7 +702,7 @@ export default function AdminQrCode() {
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={handleCopyLink}
-              className="py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-xl border border-slate-700 flex items-center justify-center space-x-1.5 active:scale-95 transition-all"
+              className="py-2.5 px-3 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-xl border border-slate-200 shadow-[0_2px_0_0_#cbd5e1] active:translate-y-0.5 active:shadow-none flex items-center justify-center space-x-1.5 transition-all"
             >
               <Copy size={14} />
               <span>Copy Bot Link</span>
@@ -704,7 +710,7 @@ export default function AdminQrCode() {
 
             <button
               onClick={handleOpenLink}
-              className="py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-xl border border-slate-700 flex items-center justify-center space-x-1.5 active:scale-95 transition-all"
+              className="py-2.5 px-3 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-xl border border-slate-200 shadow-[0_2px_0_0_#cbd5e1] active:translate-y-0.5 active:shadow-none flex items-center justify-center space-x-1.5 transition-all"
             >
               <ExternalLink size={14} />
               <span>Test Bot Link</span>
@@ -713,11 +719,11 @@ export default function AdminQrCode() {
         </div>
 
         {/* Info Card */}
-        <div className="max-w-sm mx-auto bg-slate-800/60 rounded-xl p-3 border border-slate-800 flex items-start space-x-2.5">
-          <Sparkles size={16} className="text-amber-400 shrink-0 mt-0.5" />
-          <p className="text-[11px] text-slate-400 leading-relaxed font-medium">
-            This QR poster is generated in <strong className="text-slate-200">Ultra-HD print resolution (1200 &times; 1800)</strong>.
-            Click <strong className="text-emerald-400">"Send to My Telegram"</strong> to receive the high-res photo directly in your chat with @choicebingo_bot, then tap <strong>Save to Gallery</strong>!
+        <div className="max-w-sm mx-auto bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-[0_2px_12px_rgba(0,0,0,0.03)] flex items-start space-x-2.5">
+          <Sparkles size={16} className="text-amber-500 shrink-0 mt-0.5" />
+          <p className="text-[11px] text-slate-600 leading-relaxed font-medium">
+            This QR poster is generated in <strong className="text-slate-900">Ultra-HD print resolution (1200 &times; 1800)</strong>.
+            Click <strong className="text-emerald-600">"Send to My Telegram"</strong> to receive the high-res photo directly in your chat with @choicebingo_bot, then tap <strong>Save to Gallery</strong>!
           </p>
         </div>
       </div>
