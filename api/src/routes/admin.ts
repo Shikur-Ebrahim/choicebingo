@@ -76,10 +76,27 @@ router.get('/deposit-methods', async (req, res) => {
 
 // Create a deposit method
 router.post('/deposit-methods', async (req, res) => {
-  const { type, name, account_number, logo_url, min_deposit } = req.body;
+  const { type, name, account_number, logo_url, min_deposit, is_active } = req.body;
+  const activeStatus = is_active !== false;
+
+  // RULE: Only ONE method of each category (type) can be active at the same time!
+  if (activeStatus && type) {
+    await supabase
+      .from('deposit_methods')
+      .update({ is_active: false })
+      .eq('type', type);
+  }
+
   const { data, error } = await supabase
     .from('deposit_methods')
-    .insert([{ type, name, account_number, logo_url, min_deposit }])
+    .insert([{
+      type,
+      name,
+      account_number,
+      logo_url: logo_url || '',
+      min_deposit: min_deposit || 10,
+      is_active: activeStatus,
+    }])
     .select().single();
     
   if (error) { res.status(500).json({ error: error.message }); return; }
@@ -89,12 +106,71 @@ router.post('/deposit-methods', async (req, res) => {
 // Update a deposit method
 router.put('/deposit-methods/:id', async (req, res) => {
   const { type, name, account_number, logo_url, min_deposit, is_active } = req.body;
+
+  // RULE: Only ONE method of each category (type) can be active at the same time!
+  if (is_active === true) {
+    let targetType = type;
+    if (!targetType) {
+      const { data: cur } = await supabase.from('deposit_methods').select('type').eq('id', req.params.id).single();
+      targetType = cur?.type;
+    }
+    if (targetType) {
+      await supabase
+        .from('deposit_methods')
+        .update({ is_active: false })
+        .eq('type', targetType)
+        .neq('id', req.params.id);
+    }
+  }
+
+  const updateData: any = { updated_at: new Date() };
+  if (type !== undefined) updateData.type = type;
+  if (name !== undefined) updateData.name = name;
+  if (account_number !== undefined) updateData.account_number = account_number;
+  if (logo_url !== undefined) updateData.logo_url = logo_url;
+  if (min_deposit !== undefined) updateData.min_deposit = min_deposit;
+  if (is_active !== undefined) updateData.is_active = is_active;
+
   const { data, error } = await supabase
     .from('deposit_methods')
-    .update({ type, name, account_number, logo_url, min_deposit, is_active, updated_at: new Date() })
+    .update(updateData)
     .eq('id', req.params.id)
     .select().single();
     
+  if (error) { res.status(500).json({ error: error.message }); return; }
+  res.json(data);
+});
+
+// Toggle a deposit method active/inactive
+router.patch('/deposit-methods/:id/toggle', async (req, res) => {
+  const { data: cur, error: getErr } = await supabase
+    .from('deposit_methods')
+    .select('id, type, is_active')
+    .eq('id', req.params.id)
+    .single();
+
+  if (getErr || !cur) {
+    res.status(404).json({ error: 'Deposit method not found' });
+    return;
+  }
+
+  const nextActive = !cur.is_active;
+
+  // If activating, deactivate all other methods of the same category
+  if (nextActive && cur.type) {
+    await supabase
+      .from('deposit_methods')
+      .update({ is_active: false })
+      .eq('type', cur.type)
+      .neq('id', cur.id);
+  }
+
+  const { data, error } = await supabase
+    .from('deposit_methods')
+    .update({ is_active: nextActive, updated_at: new Date() })
+    .eq('id', req.params.id)
+    .select().single();
+
   if (error) { res.status(500).json({ error: error.message }); return; }
   res.json(data);
 });
@@ -120,11 +196,27 @@ router.get('/withdrawal-methods', async (req, res) => {
 
 // Create a withdrawal method
 router.post('/withdrawal-methods', async (req, res) => {
-  const { type, logo_url, min_withdrawal } = req.body;
+  const { type, logo_url, min_withdrawal, is_active } = req.body;
+  const activeStatus = is_active !== false;
+
+  // RULE: Only ONE method of each category (type) can be active at the same time!
+  if (activeStatus && type) {
+    await supabase
+      .from('withdrawal_methods')
+      .update({ is_active: false })
+      .eq('type', type);
+  }
+
   const { data, error } = await supabase
     .from('withdrawal_methods')
-    .insert([{ type, logo_url, min_withdrawal }])
+    .insert([{
+      type,
+      logo_url: logo_url || '',
+      min_withdrawal: min_withdrawal || 10,
+      is_active: activeStatus,
+    }])
     .select().single();
+
   if (error) { res.status(500).json({ error: error.message }); return; }
   res.json(data);
 });
@@ -132,11 +224,68 @@ router.post('/withdrawal-methods', async (req, res) => {
 // Update a withdrawal method
 router.put('/withdrawal-methods/:id', async (req, res) => {
   const { type, logo_url, min_withdrawal, is_active } = req.body;
+
+  // RULE: Only ONE method of each category (type) can be active at the same time!
+  if (is_active === true) {
+    let targetType = type;
+    if (!targetType) {
+      const { data: cur } = await supabase.from('withdrawal_methods').select('type').eq('id', req.params.id).single();
+      targetType = cur?.type;
+    }
+    if (targetType) {
+      await supabase
+        .from('withdrawal_methods')
+        .update({ is_active: false })
+        .eq('type', targetType)
+        .neq('id', req.params.id);
+    }
+  }
+
+  const updateData: any = { updated_at: new Date() };
+  if (type !== undefined) updateData.type = type;
+  if (logo_url !== undefined) updateData.logo_url = logo_url;
+  if (min_withdrawal !== undefined) updateData.min_withdrawal = min_withdrawal;
+  if (is_active !== undefined) updateData.is_active = is_active;
+
   const { data, error } = await supabase
     .from('withdrawal_methods')
-    .update({ type, logo_url, min_withdrawal, is_active, updated_at: new Date() })
+    .update(updateData)
     .eq('id', req.params.id)
     .select().single();
+  if (error) { res.status(500).json({ error: error.message }); return; }
+  res.json(data);
+});
+
+// Toggle a withdrawal method active/inactive
+router.patch('/withdrawal-methods/:id/toggle', async (req, res) => {
+  const { data: cur, error: getErr } = await supabase
+    .from('withdrawal_methods')
+    .select('id, type, is_active')
+    .eq('id', req.params.id)
+    .single();
+
+  if (getErr || !cur) {
+    res.status(404).json({ error: 'Withdrawal method not found' });
+    return;
+  }
+
+  const nextActive = !cur.is_active;
+
+  // If activating, deactivate all other methods of the same category
+  if (nextActive && cur.type) {
+    await supabase
+      .from('withdrawal_methods')
+      .update({ is_active: false })
+      .eq('type', cur.type)
+      .neq('id', cur.id);
+  }
+
+  const { data, error } = await supabase
+    .from('withdrawal_methods')
+    .update({ is_active: nextActive, updated_at: new Date() })
+    .eq('id', req.params.id)
+    .select().single();
+
   if (error) { res.status(500).json({ error: error.message }); return; }
   res.json(data);
 });

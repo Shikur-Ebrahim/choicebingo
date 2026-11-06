@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useGameStore } from '../store/gameStore';
-import { ArrowLeft, Plus, Edit2, Trash2, UploadCloud, Save, X, ChevronDown, CheckCircle2, CreditCard } from 'lucide-react';
+import { ArrowLeft, Plus, Edit2, Trash2, UploadCloud, Save, X, ChevronDown, CheckCircle2, CreditCard, Power } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import WebApp from '@twa-dev/sdk';
 import { uploadImage } from '../lib/upload';
@@ -9,14 +9,14 @@ const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 interface WithdrawalMethod {
   id: string;
-  type: 'cbe' | 'boa' | 'telebirr' | 'mpesa';
+  type: string;
   logo_url: string;
   min_withdrawal: number;
   is_active: boolean;
 }
 
-const methodNames = {
-    cbe: 'Commercial Bank of Ethiopia',
+const methodNames: Record<string, string> = {
+  cbe: 'Commercial Bank of Ethiopia',
   boa: 'Bank of Abyssinia',
   telebirr: 'Telebirr',
   mpesa: 'M-Pesa',
@@ -36,22 +36,22 @@ const methodNames = {
 };
 
 const methodColors: Record<string, string> = {
-    cbe: 'bg-yellow-50 text-yellow-700 border-yellow-100',
-  boa: 'bg-blue-50 text-blue-700 border-blue-100',
-  telebirr: 'bg-purple-50 text-purple-700 border-purple-100',
-  mpesa: 'bg-green-50 text-green-700 border-green-100',
-  cbebirr: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-  ebirr: 'bg-orange-50 text-orange-700 border-orange-100',
-  awash: 'bg-slate-50 text-slate-700 border-slate-100',
-  dashen: 'bg-blue-100 text-blue-800 border-blue-200',
-  amhara: 'bg-teal-50 text-teal-700 border-teal-100',
-  coop: 'bg-indigo-50 text-indigo-700 border-indigo-100',
-  amole: 'bg-red-50 text-red-700 border-red-100',
-  hello_cash: 'bg-green-100 text-green-800 border-green-200',
-  nib: 'bg-purple-100 text-purple-800 border-purple-200',
-  wegagen: 'bg-slate-100 text-slate-800 border-slate-200',
-  zemen: 'bg-orange-100 text-orange-800 border-orange-200',
-  oromia: 'bg-teal-100 text-teal-800 border-teal-200',
+  cbe: 'bg-amber-50 text-amber-700 border-amber-200',
+  boa: 'bg-blue-50 text-blue-700 border-blue-200',
+  telebirr: 'bg-purple-50 text-purple-700 border-purple-200',
+  mpesa: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  cbebirr: 'bg-yellow-50 text-yellow-800 border-yellow-200',
+  ebirr: 'bg-orange-50 text-orange-700 border-orange-200',
+  awash: 'bg-slate-50 text-slate-700 border-slate-200',
+  dashen: 'bg-blue-50 text-blue-800 border-blue-200',
+  amhara: 'bg-teal-50 text-teal-700 border-teal-200',
+  coop: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+  amole: 'bg-rose-50 text-rose-700 border-rose-200',
+  hello_cash: 'bg-emerald-50 text-emerald-800 border-emerald-200',
+  nib: 'bg-purple-50 text-purple-800 border-purple-200',
+  wegagen: 'bg-slate-50 text-slate-800 border-slate-200',
+  zemen: 'bg-amber-50 text-amber-800 border-amber-200',
+  oromia: 'bg-teal-50 text-teal-800 border-teal-200',
   hibret: 'bg-yellow-50 text-yellow-800 border-yellow-200',
 };
 
@@ -69,6 +69,7 @@ export default function AdminWithdrawalMethods() {
   const [formData, setFormData] = useState({
     type: 'cbe',
     min_withdrawal: 10,
+    is_active: true,
   });
   const [file, setFile] = useState<File | null>(null);
   const [existingLogoUrl, setExistingLogoUrl] = useState('');
@@ -76,11 +77,18 @@ export default function AdminWithdrawalMethods() {
 
   useEffect(() => { fetchMethods(); }, []);
 
+  const getHeaders = () => {
+    const initData = typeof WebApp !== 'undefined' ? WebApp.initData : '';
+    return {
+      'Content-Type': 'application/json',
+      'x-telegram-init-data': initData,
+    };
+  };
+
   const fetchMethods = async () => {
     try {
-      const initData = typeof WebApp !== 'undefined' ? WebApp.initData : '';
       const res = await fetch(`${API_URL}/admin/withdrawal-methods`, {
-        headers: { 'x-telegram-init-data': initData }
+        headers: getHeaders(),
       });
       if (res.ok) setMethods(await res.json());
     } catch (err) {
@@ -92,7 +100,7 @@ export default function AdminWithdrawalMethods() {
 
   const openNewModal = () => {
     setEditingId(null);
-    setFormData({ type: 'cbe', min_withdrawal: 10 });
+    setFormData({ type: 'cbe', min_withdrawal: 10, is_active: true });
     setFile(null);
     setExistingLogoUrl('');
     setIsModalOpen(true);
@@ -100,19 +108,60 @@ export default function AdminWithdrawalMethods() {
 
   const openEditModal = (method: WithdrawalMethod) => {
     setEditingId(method.id);
-    setFormData({ type: method.type, min_withdrawal: method.min_withdrawal });
+    setFormData({
+      type: method.type,
+      min_withdrawal: method.min_withdrawal,
+      is_active: method.is_active !== false,
+    });
     setFile(null);
     setExistingLogoUrl(method.logo_url || '');
     setIsModalOpen(true);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Delete this withdrawal method?')) return;
+  const handleToggleActive = async (method: WithdrawalMethod) => {
+    const nextActive = !method.is_active;
+
+    // Optimistic UI update: if activating, deactivate other methods of the same category
+    setMethods(prev =>
+      prev.map(m => {
+        if (m.id === method.id) return { ...m, is_active: nextActive };
+        if (nextActive && m.type === method.type) return { ...m, is_active: false };
+        return m;
+      })
+    );
+
     try {
-      const initData = typeof WebApp !== 'undefined' ? WebApp.initData : '';
+      // Try PATCH toggle first
+      const toggleRes = await fetch(`${API_URL}/admin/withdrawal-methods/${method.id}/toggle`, {
+        method: 'PATCH',
+        headers: getHeaders(),
+      });
+
+      if (!toggleRes.ok) {
+        // Fallback to PUT
+        await fetch(`${API_URL}/admin/withdrawal-methods/${method.id}`, {
+          method: 'PUT',
+          headers: getHeaders(),
+          body: JSON.stringify({
+            ...method,
+            is_active: nextActive,
+          }),
+        });
+      }
+
+      fetchMethods();
+    } catch (err) {
+      console.error('Failed to toggle status:', err);
+      fetchMethods();
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this withdrawal method?')) return;
+    try {
       const res = await fetch(`${API_URL}/admin/withdrawal-methods/${id}`, {
         method: 'DELETE',
-        headers: { 'x-telegram-init-data': initData }
+        headers: getHeaders(),
       });
       if (res.ok) fetchMethods();
     } catch (err) { console.error(err); }
@@ -123,17 +172,25 @@ export default function AdminWithdrawalMethods() {
     setIsSubmitting(true);
     try {
       let finalLogoUrl = existingLogoUrl;
-      if (file) finalLogoUrl = await uploadImage(file);
+      
+      // Process image directly (locally optimized data URL - guaranteed never to fail with "Failed to fetch")
+      if (file) {
+        finalLogoUrl = await uploadImage(file);
+      }
 
-      const payload = { ...formData, logo_url: finalLogoUrl, is_active: true };
-      const initData = typeof WebApp !== 'undefined' ? WebApp.initData : '';
+      const payload = {
+        ...formData,
+        logo_url: finalLogoUrl,
+        is_active: formData.is_active,
+      };
+
       const url = editingId
         ? `${API_URL}/admin/withdrawal-methods/${editingId}`
         : `${API_URL}/admin/withdrawal-methods`;
 
       const res = await fetch(url, {
         method: editingId ? 'PUT' : 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-telegram-init-data': initData },
+        headers: getHeaders(),
         body: JSON.stringify(payload)
       });
 
@@ -141,11 +198,11 @@ export default function AdminWithdrawalMethods() {
         setIsModalOpen(false);
         fetchMethods();
       } else {
-        const err = await res.json();
-        alert('API Error: ' + err.error);
+        const err = await res.json().catch(() => ({}));
+        alert('API Error: ' + (err.error || 'Failed to save method'));
       }
     } catch (err: any) {
-      alert(`Failed! ${err.message}`);
+      alert(`Save failed: ${err.message || 'Unknown error'}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -156,145 +213,273 @@ export default function AdminWithdrawalMethods() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50  pb-20">
-
+    <div className="min-h-screen bg-slate-50 dark:bg-[#070b14] text-slate-800 dark:text-slate-100 transition-colors duration-200 pb-20">
       {/* Header */}
-      <div className="bg-white  px-4 py-4 rounded-b-2xl shadow-sm border-b border-gray-100  flex items-center justify-between sticky top-0 z-10">
-        <Link to="/admin" className="p-2 bg-slate-100  rounded-full text-slate-600  hover:bg-slate-200 transition-colors">
+      <div className="bg-white dark:bg-slate-900 px-4 py-4 rounded-b-2xl shadow-sm border-b border-slate-100 dark:border-slate-800 flex items-center justify-between sticky top-0 z-20">
+        <Link to="/admin" className="p-2.5 bg-slate-100 dark:bg-slate-800 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-200 transition-colors">
           <ArrowLeft size={18} />
         </Link>
-        <h1 className="font-black text-slate-800  text-lg tracking-tight">Withdrawal Methods</h1>
-        <button onClick={openNewModal} className="p-2.5 bg-yellow-400 text-yellow-950 rounded-full hover:bg-yellow-500 shadow-sm transition-transform active:scale-95">
-          <Plus size={18} strokeWidth={3} />
+        <div className="text-center">
+          <h1 className="font-black text-slate-800 dark:text-white text-base">Withdrawal Methods</h1>
+          <p className="text-[11px] text-slate-400 font-medium">1 active method per category allowed</p>
+        </div>
+        <button
+          onClick={openNewModal}
+          className="bg-amber-500 hover:bg-amber-600 text-white p-2.5 rounded-xl shadow-md flex items-center justify-center transition-transform active:scale-95"
+        >
+          <Plus size={18} />
         </button>
       </div>
 
-      {/* List */}
-      <div className="p-4 space-y-3">
+      {/* Methods List */}
+      <div className="p-4 space-y-3.5">
         {loading ? (
-          <p className="text-center text-slate-500  mt-10 font-medium">Loading...</p>
+          <div className="flex flex-col items-center justify-center py-20">
+            <div className="w-10 h-10 border-4 border-amber-400 border-t-transparent rounded-full animate-spin mb-3" />
+            <p className="text-slate-400 font-bold text-sm">Loading methods...</p>
+          </div>
         ) : methods.length === 0 ? (
-          <div className="bg-white  border-2 border-dashed border-gray-200 rounded-2xl p-10 text-center flex flex-col items-center mt-4">
-            <div className="w-16 h-16 bg-slate-50  rounded-full flex items-center justify-center mb-3">
-              <CreditCard size={24} className="text-slate-400" />
+          <div className="text-center py-16 bg-white dark:bg-slate-900/90 rounded-3xl border border-dashed border-slate-200 dark:border-slate-800 p-8 shadow-sm">
+            <div className="w-16 h-16 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center mx-auto mb-3 text-slate-400">
+              <CreditCard size={32} />
             </div>
-            <p className="text-slate-500  font-medium">No withdrawal methods yet.</p>
-            <p className="text-xs text-slate-400 mt-1">Tap the + button to add one.</p>
+            <h3 className="font-black text-slate-700 dark:text-slate-200 text-base">No Withdrawal Methods Added</h3>
+            <p className="text-slate-400 text-xs mt-1 mb-4">Click below to add your first withdrawal banking method.</p>
+            <button
+              onClick={openNewModal}
+              className="bg-amber-500 text-white font-black text-xs px-5 py-2.5 rounded-xl shadow-md"
+            >
+              Add First Method
+            </button>
           </div>
         ) : (
-          methods.map((method) => (
-            <div key={method.id} className="bg-white  p-4 rounded-2xl shadow-sm border border-gray-100  flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                {method.logo_url ? (
-                  <img src={method.logo_url} alt="Logo" className="w-12 h-12 rounded-xl object-contain bg-slate-50  border border-slate-100 p-1" />
-                ) : (
-                  <div className="w-12 h-12 rounded-xl bg-slate-100  flex items-center justify-center text-slate-400 text-[10px] font-bold">NO IMG</div>
-                )}
-                <div>
-                  <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border ${methodColors[method.type]}`}>
-                    {method.type.toUpperCase()}
-                  </span>
-                  <h3 className="font-bold text-slate-800  leading-tight mt-1">{methodNames[method.type]}</h3>
-                  <p className="text-xs text-slate-500  font-semibold mt-0.5">Min: {method.min_withdrawal.toLocaleString('en-US')} ETB</p>
+          methods.map((method) => {
+            const isActive = method.is_active !== false;
+            const badgeColor = methodColors[method.type] || 'bg-slate-50 text-slate-700 border-slate-200';
+
+            return (
+              <div
+                key={method.id}
+                className={`bg-white dark:bg-slate-900/95 p-4 rounded-3xl shadow-sm border transition-all ${
+                  isActive
+                    ? 'border-emerald-300 dark:border-emerald-500/40 ring-1 ring-emerald-400/20'
+                    : 'border-slate-200/80 dark:border-slate-800 opacity-75'
+                }`}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  {/* Logo / Thumbnail */}
+                  <div className="flex items-center space-x-3 min-w-0 flex-1">
+                    {method.logo_url ? (
+                      <img
+                        src={method.logo_url}
+                        alt="Logo"
+                        className="w-13 h-13 rounded-2xl object-contain bg-slate-50 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 p-1 shrink-0 shadow-sm"
+                      />
+                    ) : (
+                      <div className="w-13 h-13 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 flex items-center justify-center text-amber-600 dark:text-amber-400 text-lg font-black shrink-0">
+                        💳
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md border ${badgeColor}`}>
+                          {methodNames[method.type] || method.type.toUpperCase()}
+                        </span>
+                        {isActive ? (
+                          <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800/60 px-2 py-0.5 rounded-md flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> ACTIVE
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-black text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
+                            INACTIVE
+                          </span>
+                        )}
+                      </div>
+                      <p className="font-black text-slate-800 dark:text-white text-sm truncate mt-1">
+                        {methodNames[method.type] || method.type.toUpperCase()}
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold mt-0.5">
+                        Min Withdrawal: <span className="font-black text-slate-700 dark:text-slate-200">{method.min_withdrawal} ETB</span>
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Actions Column */}
+                  <div className="flex flex-col items-end space-y-2 shrink-0">
+                    {/* Active / Inactive 3D Toggle Switch */}
+                    <button
+                      type="button"
+                      onClick={() => handleToggleActive(method)}
+                      title={isActive ? 'Click to deactivate' : 'Click to activate'}
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                        isActive ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.4)]' : 'bg-slate-300 dark:bg-slate-700'
+                      }`}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                          isActive ? 'translate-x-5' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+
+                    <div className="flex items-center space-x-1.5 pt-1">
+                      <button
+                        onClick={() => openEditModal(method)}
+                        className="p-2 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 rounded-xl hover:bg-blue-100 transition-colors border border-blue-100 dark:border-blue-900/50"
+                      >
+                        <Edit2 size={15} />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(method.id)}
+                        className="p-2 bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 rounded-xl hover:bg-rose-100 transition-colors border border-rose-100 dark:border-rose-900/50"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div className="flex flex-col space-y-2">
-                <button onClick={() => openEditModal(method)} className="p-2.5 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition-colors">
-                  <Edit2 size={16} />
-                </button>
-                <button onClick={() => handleDelete(method.id)} className="p-2.5 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-100 transition-colors">
-                  <Trash2 size={16} />
-                </button>
-              </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
 
-      {/* Add / Edit Modal */}
+      {/* Main Form Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
-          <div className="bg-white  w-full max-w-sm rounded-t-3xl sm:rounded-3xl shadow-xl overflow-hidden">
-            <div className="px-5 py-4 border-b border-gray-100  flex justify-between items-center bg-slate-50 /50">
-              <h2 className="font-black text-slate-800  text-lg">{editingId ? 'Edit Method' : 'Add New Method'}</h2>
-              <button onClick={() => setIsModalOpen(false)} className="bg-white  p-2 rounded-full text-slate-400 hover:text-slate-600  shadow-sm border border-gray-100 ">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 animate-slide-up">
+            <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/40">
+              <h2 className="font-black text-slate-800 dark:text-white text-lg">{editingId ? 'Edit Method' : 'Add New Method'}</h2>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="bg-white dark:bg-slate-800 p-2 rounded-full text-slate-400 hover:text-slate-600 shadow-sm border border-slate-100 dark:border-slate-700"
+              >
                 <X size={18} strokeWidth={3} />
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-5 space-y-5">
-
-              {/* Custom Dropdown */}
+            <form onSubmit={handleSubmit} className="p-5 space-y-4 max-h-[80vh] overflow-y-auto">
+              
+              {/* Method Type Dropdown */}
               <div className="relative">
-                <label className="block text-[10px] font-black text-slate-400 tracking-wider mb-2">METHOD TYPE</label>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1.5">METHOD CATEGORY</label>
                 <button
                   type="button"
                   onClick={() => setShowTypeSelect(!showTypeSelect)}
-                  className="w-full bg-slate-50  border border-gray-200 rounded-xl px-4 py-3.5 text-sm font-bold text-slate-700  flex justify-between items-center focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all"
+                  className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 py-3 text-sm font-bold text-slate-700 dark:text-slate-200 flex justify-between items-center text-left"
                 >
-                  <span>{methodNames[formData.type as keyof typeof methodNames]}</span>
+                  <span>{methodNames[formData.type] || formData.type.toUpperCase()}</span>
                   <ChevronDown size={18} className={`text-slate-400 transition-transform ${showTypeSelect ? 'rotate-180' : ''}`} />
                 </button>
 
                 {showTypeSelect && (
-                  <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-100 z-50 overflow-y-auto max-h-60">
-                    {Object.entries(methodNames).map(([key, name]) => (
-                      <button
-                        key={key}
-                        type="button"
-                        onClick={() => { setFormData({ ...formData, type: key as any }); setShowTypeSelect(false); }}
-                        className={`w-full text-left px-5 py-4 font-bold flex items-center justify-between transition-colors border-b border-gray-50 last:border-0 ${
-                          formData.type === key ? 'bg-blue-50/50 text-blue-600' : 'bg-white  text-slate-700  hover:bg-slate-50 '
-                        }`}
-                      >
-                        <span>{name}</span>
-                        {formData.type === key && <CheckCircle2 size={18} className="text-blue-500" />}
-                      </button>
-                    ))}
+                  <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 z-50 overflow-y-auto max-h-56">
+                    <div className="flex flex-col">
+                      {Object.entries(methodNames).map(([key, name]) => (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => {
+                            setFormData({ ...formData, type: key });
+                            setShowTypeSelect(false);
+                          }}
+                          className={`w-full text-left px-4 py-3 font-bold text-xs flex items-center justify-between border-b border-slate-100 dark:border-slate-700/60 last:border-0 ${
+                            formData.type === key 
+                              ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400' 
+                              : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700'
+                          }`}
+                        >
+                          <span>{name}</span>
+                          {formData.type === key && <CheckCircle2 size={16} className="text-amber-500" />}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
 
               {/* Min Withdrawal */}
               <div>
-                <label className="block text-[10px] font-black text-slate-400 tracking-wider mb-2">MIN WITHDRAWAL (ETB)</label>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1.5">MIN WITHDRAWAL (ETB)</label>
                 <input
                   type="number"
                   required
-                  min="10"
-                  className="w-full bg-slate-50  border border-gray-200 rounded-xl px-4 py-3.5 text-sm font-bold outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all"
+                  min={1}
+                  className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 py-3 text-sm font-bold text-slate-800 dark:text-white outline-none focus:border-amber-400"
                   value={formData.min_withdrawal}
                   onChange={(e) => setFormData({ ...formData, min_withdrawal: Number(e.target.value) })}
                 />
               </div>
 
-              {/* Logo Upload */}
+              {/* Active / Inactive Toggle Switch */}
+              <div className="bg-slate-50 dark:bg-slate-800/60 p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-700 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-black text-slate-800 dark:text-white">Active Status</p>
+                  <p className="text-[10px] text-slate-400 font-medium">Activating deactivates other methods of this type</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, is_active: !formData.is_active })}
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                    formData.is_active ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.4)]' : 'bg-slate-300 dark:bg-slate-700'
+                  }`}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                      formData.is_active ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {/* Logo Upload Section */}
               <div>
-                <label className="block text-[10px] font-black text-slate-400 tracking-wider mb-2">LOGO IMAGE</label>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1.5">LOGO IMAGE (OPTIONAL)</label>
                 <div className="flex items-center space-x-3">
-                  <label className="flex-1 bg-blue-50 text-blue-600 px-4 py-3.5 rounded-xl font-bold text-sm cursor-pointer border border-blue-100 flex justify-center items-center space-x-2 hover:bg-blue-100 transition-colors">
+                  <label className="flex-1 bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 px-4 py-3.5 rounded-2xl font-black text-xs cursor-pointer border border-amber-200 dark:border-amber-800/60 flex justify-center items-center space-x-2 hover:bg-amber-100 transition-colors">
                     <UploadCloud size={18} />
                     <span>Choose Image</span>
-                    <input type="file" accept="image/*" className="hidden" onChange={(e) => setFile(e.target.files?.[0] || null)} />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => setFile(e.target.files?.[0] || null)}
+                    />
                   </label>
                   {(file || existingLogoUrl) && (
-                    <div className="w-14 h-14 rounded-xl bg-slate-50  border border-gray-200 flex-shrink-0 flex items-center justify-center p-1 shadow-inner">
+                    <div className="w-14 h-14 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex-shrink-0 flex items-center justify-center p-1 shadow-inner relative group">
                       <img
                         src={file ? URL.createObjectURL(file) : existingLogoUrl}
                         alt="Preview"
-                        className="w-full h-full object-contain rounded-lg"
+                        className="w-full h-full object-contain rounded-xl"
                       />
+                      <button
+                        type="button"
+                        onClick={() => { setFile(null); setExistingLogoUrl(''); }}
+                        className="absolute -top-1 -right-1 bg-rose-500 text-white rounded-full p-0.5 shadow-md"
+                        title="Remove image"
+                      >
+                        <X size={12} />
+                      </button>
                     </div>
                   )}
                 </div>
               </div>
 
+              {/* Submit Button */}
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full bg-yellow-400 hover:bg-yellow-500 text-yellow-950 font-black py-4 rounded-xl flex items-center justify-center space-x-2 shadow-sm disabled:opacity-50 transition-all active:scale-95"
+                className="w-full py-4 rounded-2xl font-black text-white text-sm bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 shadow-lg shadow-amber-500/25 active:translate-y-0.5 transition-all flex items-center justify-center space-x-2"
               >
-                {isSubmitting ? <span>Saving...</span> : <><Save size={18} /><span>Save Method</span></>}
+                {isSubmitting ? (
+                  <span>Saving...</span>
+                ) : (
+                  <>
+                    <Save size={18} />
+                    <span>{editingId ? 'Update Method' : 'Save Method'}</span>
+                  </>
+                )}
               </button>
             </form>
           </div>
