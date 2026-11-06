@@ -17,48 +17,6 @@ export default function Home() {
   const [showAnnouncement, setShowAnnouncement] = useState(false);
   const announcementShownRef = useRef(false);
 
-  // Support banner state
-  const [showSupportBanner, setShowSupportBanner] = useState(false);
-  const bannerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Play popup sound using Web Audio API
-  const playPopSound = () => {
-    try {
-      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const o = ctx.createOscillator();
-      const g = ctx.createGain();
-      o.connect(g);
-      g.connect(ctx.destination);
-      o.type = 'sine';
-      o.frequency.setValueAtTime(600, ctx.currentTime);
-      o.frequency.exponentialRampToValueAtTime(900, ctx.currentTime + 0.08);
-      g.gain.setValueAtTime(0.3, ctx.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
-      o.start(ctx.currentTime);
-      o.stop(ctx.currentTime + 0.3);
-    } catch { /* ignore if audio blocked */ }
-  };
-
-  // Show banner 2s after each visit to home â€” cooldown 30s between re-shows
-  useEffect(() => {
-    if (location.pathname !== '/') return;
-    if (bannerTimerRef.current) clearTimeout(bannerTimerRef.current);
-    setShowSupportBanner(false);
-
-    const lastShown = parseInt(sessionStorage.getItem('support_banner_ts') || '0', 10);
-    const cooldown = 30 * 1000; // 30 seconds cooldown between re-shows
-    const now = Date.now();
-    const delay = (now - lastShown < cooldown) ? 2000 : 2000; // always 2s delay
-
-    bannerTimerRef.current = setTimeout(() => {
-      setShowSupportBanner(true);
-      sessionStorage.setItem('support_banner_ts', String(Date.now()));
-      playPopSound();
-    }, delay);
-
-    return () => { if (bannerTimerRef.current) clearTimeout(bannerTimerRef.current); };
-  }, [location.pathname]);
-
   useEffect(() => {
     let isMounted = true;
     const API = import.meta.env.VITE_API_URL || '/api';
@@ -270,32 +228,6 @@ export default function Home() {
         </div>
       </div>
 
-      {/* SUPPORT BANNER â€” fixed floating above bottom nav */}
-      {showSupportBanner && (
-        <div
-          className="fixed bottom-[74px] left-0 right-0 z-50 flex justify-center pointer-events-none px-4"
-          style={{ animation: 'slideUp 0.4s cubic-bezier(0.34,1.56,0.64,1)' }}
-        >
-          <div className="flex items-center bg-white border border-violet-300 rounded-full p-1 shadow-[0_4px_28px_rgba(109,40,217,0.3)] pointer-events-auto max-w-fit">
-            {/* Clickable area */}
-            <button
-              onClick={() => { setShowSupportBanner(false); navigate('/support'); }}
-              className="flex items-center gap-2 active:bg-violet-50 transition-colors rounded-full px-3 py-1.5"
-            >
-              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse flex-shrink-0" />
-              <MessageCircle size={15} className="text-violet-600 flex-shrink-0" />
-              <span className="text-violet-800 font-bold text-[13px] leading-tight">{t[language].home.supportBanner}</span>
-            </button>
-            {/* Dismiss X */}
-            <button
-              onClick={(e) => { e.stopPropagation(); setShowSupportBanner(false); }}
-              className="w-7 h-7 ml-1 mr-0.5 rounded-full flex items-center justify-center text-slate-400 active:bg-slate-100 transition-colors flex-shrink-0 text-lg"
-            >
-              Ã—
-            </button>
-          </div>
-        </div>
-      )}
       <div className="px-4 grid grid-cols-3 gap-3">
         <Link to="/deposit" className="flex items-center justify-center space-x-1.5 bg-yellow-400 hover:bg-yellow-500 text-yellow-950 py-2 rounded-xl font-bold text-xs shadow-sm transition-colors">
           <PlusCircle size={16} />

@@ -18,7 +18,6 @@ import Leaderboard from './pages/Leaderboard';
 import GamesReport from './pages/GamesReport';
 import Audit from './pages/Audit';
 import Rules from './pages/Rules';
-import Support from './pages/Support';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
 // Show/hide Telegram's native Back button based on route depth
@@ -229,7 +228,6 @@ function App() {
           <Route path="/games-report" element={<GamesReport />} />
           <Route path="/audit" element={<Audit />} />
           <Route path="/rules" element={<Rules />} />
-          <Route path="/support" element={<Support />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/admin/bingo-games" element={<AdminBingoGames />} />
           <Route path="/admin/user-audit" element={<AdminUserAudit />} />
