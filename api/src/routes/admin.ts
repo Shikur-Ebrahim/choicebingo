@@ -903,7 +903,7 @@ router.get('/tx-report', validateTelegramAuth, requireAdmin, async (req, res) =>
   const gameUniquePlayers: Record<string, number> = {};
 
   if (fGameIds.length > 0) {
-    const CHUNK_SIZE = 80;
+    const CHUNK_SIZE = 50;
     const chunks: string[][] = [];
     for (let i = 0; i < fGameIds.length; i += CHUNK_SIZE) {
       chunks.push(fGameIds.slice(i, i + CHUNK_SIZE));
@@ -914,10 +914,13 @@ router.get('/tx-report', validateTelegramAuth, requireAdmin, async (req, res) =>
       const batch = chunks.slice(i, i + BATCH_CONCURRENCY);
       await Promise.all(
         batch.map(async (chunk) => {
-          const { data: pRows } = await supabase
-            .from('bingo_players')
-            .select('game_id, telegram_id')
-            .in('game_id', chunk);
+          const pRows = await fetchAllRows(async (rangeFrom, rangeTo) => {
+            return supabase
+              .from('bingo_players')
+              .select('game_id, telegram_id, cartela_number')
+              .in('game_id', chunk)
+              .range(rangeFrom, rangeTo);
+          });
 
           const uMap: Record<string, Set<string>> = {};
           (pRows || []).forEach((p: any) => {
@@ -946,20 +949,14 @@ router.get('/tx-report', validateTelegramAuth, requireAdmin, async (req, res) =>
     let commission = 0;
     let labelInfo = '';
 
-    if (uniqueCount >= 3) {
-      // Direct player records available with 3+ unique players (20% house commission)
+    // CRITICAL CHOICE BINGO RULE:
+    // Game commission ONLY exists when there are 3 OR MORE UNIQUE PLAYERS (uniqueCount >= 3).
+    // If there are fewer than 3 players (1 or 2 players), the winner receives 100% of the pot (0% commission).
+    // The commission must NEVER add any fake or additional cartela; it strictly uses the exact total cartelas.
+    if (uniqueCount >= 3 && totalCartelas > 0 && stakeAmt > 0) {
       const totalCollected = totalCartelas * stakeAmt;
       commission = Math.max(0, totalCollected - prize);
-      labelInfo = `${totalCartelas} cards, ${uniqueCount} players`;
-    } else if (totalCartelas > 0 && totalCartelas * stakeAmt > prize && prize > 0) {
-      commission = (totalCartelas * stakeAmt) - prize;
-      labelInfo = `${totalCartelas} cards`;
-    } else if (prize > 0 && stakeAmt > 0 && prize > stakeAmt * 2) {
-      // Fallback from game prize_pool / winner_prize when bingo_players table was pruned
-      const estTotal = Math.round(prize / 0.8);
-      commission = Math.max(0, estTotal - prize);
-      const estCards = Math.round(estTotal / stakeAmt);
-      labelInfo = `~${estCards} cards, 20% cut`;
+      labelInfo = `${totalCartelas} cards, ${uniqueCount} players (20% cut)`;
     }
 
     if (commission > 0) {
@@ -972,7 +969,7 @@ router.get('/tx-report', validateTelegramAuth, requireAdmin, async (req, res) =>
         amount: commission,
         status: 'approved',
         created_at: g.finished_at || g.created_at,
-        username: `Game #${shortId} (${labelInfo || '20% commission'})`,
+        username: `Game #${shortId} (${labelInfo})`,
         telegram_id: '',
         game_id: shortId,
         stake: g.stake

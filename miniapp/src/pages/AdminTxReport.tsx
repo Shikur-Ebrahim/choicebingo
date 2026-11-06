@@ -397,10 +397,10 @@ export default function AdminTxReport() {
                   </div>
                   {Boolean((stats.totalFinishedGames || 0) > 0) && (
                     <p className="text-[10px] text-cyan-300 font-bold text-right">
-                      🎮 {fmt(stats.totalCommissionGames || stats.totalFinishedGames || 0)} finished games with 20% house cut
-                      {stats.totalFinishedGames && stats.totalCommissionGames && stats.totalFinishedGames > stats.totalCommissionGames ? (
+                      🎮 {fmt(stats.totalCommissionGames || 0)} games with 20% commission (3+ players)
+                      {stats.totalFinishedGames && (
                         <span className="text-white/60 font-medium"> ({fmt(stats.totalFinishedGames)} total played)</span>
-                      ) : null}
+                      )}
                     </p>
                   )}
                 </div>
