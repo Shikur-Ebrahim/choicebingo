@@ -1234,65 +1234,51 @@ export default function BingoGame() {
 
   if (loading && !game) {
     return (
-      <div
-        className="h-[calc(100dvh-80px)] w-full flex flex-col items-center justify-center relative overflow-hidden select-none px-4"
-        style={{
-          background: 'radial-gradient(circle at 50% 40%, #1a123a 0%, #0c0d20 50%, #03040a 100%)',
-        }}
-      >
+      <div className="h-[calc(100dvh-80px)] w-full flex flex-col items-center justify-center relative overflow-hidden select-none px-4 bg-slate-50 dark:bg-[#070b14] transition-colors">
         {/* Ambient 3D Glow Rings */}
-        <div className="absolute w-72 h-72 rounded-full bg-pink-500/15 blur-3xl pointer-events-none animate-pulse" />
-        <div className="absolute w-56 h-56 rounded-full bg-yellow-400/10 blur-2xl pointer-events-none" />
+        <div className="absolute w-80 h-80 rounded-full bg-pink-500/10 dark:bg-pink-500/20 blur-3xl pointer-events-none animate-pulse" />
+        <div className="absolute w-64 h-64 rounded-full bg-amber-400/15 dark:bg-yellow-400/10 blur-2xl pointer-events-none" />
 
         <div className="relative z-10 flex flex-col items-center text-center">
-          {/* Logo with 3D drop-shadow */}
-          <div className="relative mb-5">
-            <img
-              src="/hero.png"
-              alt="Choice Bingo"
-              className="w-64 max-w-[85vw] object-contain drop-shadow-[0_10px_25px_rgba(236,72,153,0.45)] animate-pulse"
-            />
-          </div>
-
           {/* 3D Casino Bingo Ball Loading Spinner */}
-          <div className="relative flex items-center justify-center mb-4">
-            {/* Spinning Outer Ring */}
+          <div className="relative flex items-center justify-center mb-6">
+            {/* Soft Ambient Glow Behind Spinner */}
+            <div className="absolute w-24 h-24 rounded-full bg-gradient-to-tr from-pink-500/30 to-amber-400/30 blur-xl animate-pulse" />
+
+            {/* Outer Orbital Dotted Ring */}
+            <div className="w-24 h-24 rounded-full border border-dashed border-slate-300 dark:border-slate-700/80 animate-[spin_8s_linear_infinite]" />
+
+            {/* Spinning Neon Gradient Ring */}
             <div
-              className="w-16 h-16 rounded-full border-4 border-t-pink-500 border-r-yellow-400 border-b-cyan-400 border-l-transparent animate-spin"
-              style={{
-                boxShadow: '0 0 20px rgba(236, 72, 153, 0.5)',
-              }}
+              className="absolute w-18 h-18 rounded-full border-[3.5px] border-t-pink-500 border-r-amber-400 border-b-cyan-400 border-l-transparent animate-spin shadow-[0_0_20px_rgba(236,72,153,0.35)] dark:shadow-[0_0_25px_rgba(236,72,153,0.6)]"
             />
-            {/* 3D Center Sphere */}
+
+            {/* 3D Glossy Bingo Center Sphere */}
             <div
-              className="absolute w-10 h-10 rounded-full flex items-center justify-center font-black text-white text-sm"
+              className="absolute w-11 h-11 rounded-full flex items-center justify-center font-black text-white text-base shadow-[0_8px_18px_rgba(219,39,119,0.45)]"
               style={{
                 background: 'radial-gradient(circle at 35% 25%, #ff2a8d 0%, #db2777 50%, #831843 100%)',
-                boxShadow: 'inset 0 2px 3px rgba(255,255,255,0.8), 0 3px 6px rgba(0,0,0,0.5)',
+                boxShadow: 'inset 0 2px 4px rgba(255,255,255,0.9), 0 4px 10px rgba(0,0,0,0.3)',
               }}
             >
-              <span className="drop-shadow">7</span>
+              <span className="drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)] font-mono">7</span>
             </div>
           </div>
 
           {/* Glowing Brand Headline */}
-          <h2 className="text-xl font-black tracking-wider uppercase bg-gradient-to-r from-purple-300 via-pink-400 to-yellow-300 bg-clip-text text-transparent drop-shadow-[0_0_12px_rgba(236,72,153,0.5)] mb-1">
+          <h2 className="text-2xl font-black tracking-wider uppercase bg-gradient-to-r from-purple-700 via-pink-600 to-amber-500 dark:from-purple-300 dark:via-pink-400 dark:to-yellow-300 bg-clip-text text-transparent drop-shadow-sm dark:drop-shadow-[0_0_15px_rgba(236,72,153,0.6)] mb-1.5">
             ChoiceBingo
           </h2>
-          <p className="text-xs font-bold text-slate-300 tracking-widest uppercase animate-pulse">
+          <p className="text-xs font-black text-slate-500 dark:text-slate-300 tracking-widest uppercase animate-pulse">
             {t[language].bingo.preparingNext}
           </p>
 
           {/* 3D Sleek Progress Shimmer Track */}
           <div
-            className="w-48 h-1.5 rounded-full overflow-hidden mt-4"
-            style={{
-              background: 'rgba(255, 255, 255, 0.1)',
-              boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.5)',
-            }}
+            className="w-52 h-2 rounded-full overflow-hidden mt-5 bg-slate-200/90 dark:bg-white/10 shadow-inner border border-slate-300/40 dark:border-white/10"
           >
             <div
-              className="h-full rounded-full w-24 animate-[pulse_1.5s_ease-in-out_infinite]"
+              className="h-full rounded-full w-28 animate-[pulse_1.5s_ease-in-out_infinite]"
               style={{
                 background: 'linear-gradient(90deg, #ec4899, #facc15, #34d399)',
                 boxShadow: '0 0 10px rgba(236, 72, 153, 0.8)',
@@ -1306,38 +1292,52 @@ export default function BingoGame() {
 
   if (!game) {
     return (
-      <div
-        className="h-[calc(100dvh-80px)] w-full flex flex-col items-center justify-center text-white gap-4 p-6 text-center select-none"
-        style={{
-          background: 'radial-gradient(circle at 50% 40%, #1a123a 0%, #0c0d20 50%, #03040a 100%)',
-        }}
-      >
-        <img
-          src="/hero.png"
-          alt="Choice Bingo"
-          className="w-56 max-w-[80vw] object-contain mb-2 drop-shadow-[0_10px_25px_rgba(236,72,153,0.4)] animate-pulse"
-        />
-        <h2 className="text-xl font-black tracking-wider uppercase bg-gradient-to-r from-purple-300 via-pink-400 to-yellow-300 bg-clip-text text-transparent drop-shadow-[0_0_10px_rgba(236,72,153,0.5)]">
-          ChoiceBingo
-        </h2>
-        <p className="font-black text-sm text-yellow-300 drop-shadow-sm">{t[language].bingo.preparingNext}</p>
-        <button
-          onClick={fetchState}
-          className="px-7 py-2.5 rounded-full font-black text-sm active:translate-y-1 transition-all select-none cursor-pointer"
-          style={{
-            background: 'linear-gradient(180deg, #fef08a 0%, #facc15 35%, #ca8a04 100%)',
-            boxShadow: '0 4px 0 #854d0e, 0 6px 15px rgba(234,179,8,0.4)',
-            color: '#451a03',
-          }}
-        >
-          {t[language].bingo.refresh}
-        </button>
-        <button
-          onClick={() => setSelectedStake(null)}
-          className="text-slate-400 text-xs underline mt-2 hover:text-white transition-colors cursor-pointer"
-        >
-          {t[language].bingo.changeStake}
-        </button>
+      <div className="h-[calc(100dvh-80px)] w-full flex flex-col items-center justify-center p-6 text-center select-none bg-slate-50 dark:bg-[#070b14] transition-colors relative overflow-hidden">
+        {/* Ambient 3D Glow Rings */}
+        <div className="absolute w-80 h-80 rounded-full bg-pink-500/10 dark:bg-pink-500/20 blur-3xl pointer-events-none animate-pulse" />
+        <div className="absolute w-64 h-64 rounded-full bg-amber-400/15 dark:bg-yellow-400/10 blur-2xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col items-center">
+          {/* 3D Casino Bingo Ball Loading Spinner */}
+          <div className="relative flex items-center justify-center mb-6">
+            <div className="w-24 h-24 rounded-full border border-dashed border-slate-300 dark:border-slate-700/80 animate-[spin_8s_linear_infinite]" />
+            <div
+              className="absolute w-18 h-18 rounded-full border-[3.5px] border-t-pink-500 border-r-amber-400 border-b-cyan-400 border-l-transparent animate-spin shadow-[0_0_20px_rgba(236,72,153,0.35)] dark:shadow-[0_0_25px_rgba(236,72,153,0.6)]"
+            />
+            <div
+              className="absolute w-11 h-11 rounded-full flex items-center justify-center font-black text-white text-base shadow-[0_8px_18px_rgba(219,39,119,0.45)]"
+              style={{
+                background: 'radial-gradient(circle at 35% 25%, #ff2a8d 0%, #db2777 50%, #831843 100%)',
+                boxShadow: 'inset 0 2px 4px rgba(255,255,255,0.9), 0 4px 10px rgba(0,0,0,0.3)',
+              }}
+            >
+              <span className="drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)] font-mono">7</span>
+            </div>
+          </div>
+
+          <h2 className="text-2xl font-black tracking-wider uppercase bg-gradient-to-r from-purple-700 via-pink-600 to-amber-500 dark:from-purple-300 dark:via-pink-400 dark:to-yellow-300 bg-clip-text text-transparent drop-shadow-sm dark:drop-shadow-[0_0_15px_rgba(236,72,153,0.6)] mb-1">
+            ChoiceBingo
+          </h2>
+          <p className="font-black text-sm text-amber-600 dark:text-yellow-300 drop-shadow-sm mb-6">{t[language].bingo.preparingNext}</p>
+
+          <button
+            onClick={fetchState}
+            className="px-8 py-3 rounded-2xl font-black text-sm active:translate-y-1 transition-all select-none cursor-pointer shadow-lg"
+            style={{
+              background: 'linear-gradient(180deg, #fef08a 0%, #facc15 35%, #ca8a04 100%)',
+              boxShadow: '0 4px 0 #854d0e, 0 6px 15px rgba(234,179,8,0.4)',
+              color: '#451a03',
+            }}
+          >
+            {t[language].bingo.refresh}
+          </button>
+          <button
+            onClick={() => setSelectedStake(null)}
+            className="text-slate-500 dark:text-slate-400 text-xs font-bold underline mt-4 hover:text-slate-800 dark:hover:text-white transition-colors cursor-pointer"
+          >
+            {t[language].bingo.changeStake}
+          </button>
+        </div>
       </div>
     );
   }
