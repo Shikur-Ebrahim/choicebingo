@@ -564,64 +564,63 @@ export default function Deposit() {
             <div className="w-9" />
           </div>
 
-          <div className="p-4 space-y-4 max-w-md mx-auto">
-            {/* 3D Banking Account Card */}
-            <div className="relative rounded-3xl p-5 bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-950 border border-slate-200/90 dark:border-slate-800 shadow-[0_10px_30px_rgba(0,0,0,0.04)] dark:shadow-[0_12px_35px_rgba(0,0,0,0.4)] overflow-hidden">
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">
+          <div className="px-3.5 py-2.5 space-y-2.5 max-w-md mx-auto">
+            {/* 3D Compact Banking Account Card */}
+            <div className="relative rounded-2xl p-3 bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-950 border border-slate-200/90 dark:border-slate-800 shadow-[0_4px_16px_rgba(0,0,0,0.03)] dark:shadow-[0_6px_20px_rgba(0,0,0,0.3)] overflow-hidden">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">
                   {language === 'am' ? 'ገንዘብ የሚላክበት አካውንት' : 'OFFICIAL RECEIVING ACCOUNT'}
                 </span>
-                <span className="text-[10px] font-black px-2.5 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60 flex items-center gap-1">
-                  <ShieldCheck size={12} />
+                <span className="text-[9px] font-black px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60 flex items-center gap-1">
+                  <ShieldCheck size={11} />
                   <span>Verified</span>
                 </span>
               </div>
 
-              <div className="flex items-center gap-3.5 mb-4">
-                <div className="w-16 h-16 min-w-[64px] max-w-[64px] h-[64px] max-h-[64px] rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 p-1.5 flex items-center justify-center shrink-0 overflow-hidden shadow-sm">
+              <div className="flex items-center gap-2.5 mb-2.5">
+                <div className="w-12 h-12 min-w-[48px] max-w-[48px] h-[48px] max-h-[48px] rounded-xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 p-1 flex items-center justify-center shrink-0 overflow-hidden shadow-sm">
                   {selected.logo_url ? (
-                    <img src={selected.logo_url} alt="Logo" className="w-full h-full object-contain rounded-xl" />
+                    <img src={selected.logo_url} alt="Logo" className="w-full h-full object-contain rounded-lg" />
                   ) : (
-                    <span className="text-2xl">🏦</span>
+                    <span className="text-xl">🏦</span>
                   )}
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-black text-slate-400 uppercase tracking-wider">{methodNames[selected.type] || selected.type.toUpperCase()}</p>
-                  <h3 className="font-black text-slate-800 dark:text-white text-base leading-tight truncate">{selected.name}</h3>
-                  <p className="text-[11px] font-bold text-amber-600 dark:text-amber-400 mt-0.5">
-                    {language === 'am' ? 'ዝቅተኛ:' : 'Min Deposit:'} <span className="font-black">{selected.min_deposit} ETB</span>
+                  <h3 className="font-black text-slate-800 dark:text-white text-xs leading-tight truncate">{selected.name}</h3>
+                  <p className="text-[10px] font-bold text-slate-400 truncate mt-0.5">
+                    {methodNames[selected.type] || selected.type.toUpperCase()}
+                  </p>
+                  <p className="text-[10px] font-bold text-amber-600 dark:text-amber-400">
+                    {language === 'am' ? 'ዝቅተኛ:' : 'Min:'} <span className="font-black">{selected.min_deposit} ETB</span>
                   </p>
                 </div>
               </div>
 
-              {/* Monospace Copy Pill */}
-              <div className="bg-slate-100/90 dark:bg-slate-800/90 rounded-2xl p-3 flex items-center justify-between border border-slate-200/80 dark:border-slate-700/80">
+              {/* Compact Monospace Copy Pill */}
+              <div className="bg-slate-100/90 dark:bg-slate-800/90 rounded-xl px-2.5 py-1.5 flex items-center justify-between border border-slate-200/80 dark:border-slate-700/80">
                 <div className="min-w-0 flex-1 pr-2">
-                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
-                    {language === 'am' ? 'የአካውንት / ስልክ ቁጥር' : 'ACCOUNT / PHONE NUMBER'}
-                  </p>
-                  <p className="font-mono font-black text-slate-800 dark:text-white text-base tracking-wider truncate">
+                  <p className="font-mono font-black text-slate-800 dark:text-white text-sm tracking-wider truncate">
                     {selected.account_number}
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => copyToClipboard(selected.account_number)}
-                  className={`px-3 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all active:scale-95 shadow-sm ${
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-black flex items-center gap-1 transition-all active:scale-95 shadow-sm ${
                     copied
                       ? 'bg-emerald-500 text-white shadow-emerald-500/25'
-                      : 'bg-amber-500 hover:bg-amber-600 text-white shadow-amber-500/25'
+                      : 'bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-amber-500/25'
                   }`}
                 >
                   {copied ? (
                     <>
-                      <Check size={14} strokeWidth={3} />
+                      <Check size={12} strokeWidth={3} />
                       <span>{language === 'am' ? 'ተቀድቷል!' : 'Copied!'}</span>
                     </>
                   ) : (
                     <>
-                      <Copy size={14} />
+                      <Copy size={12} />
                       <span>{language === 'am' ? 'ቅዳ' : 'Copy'}</span>
                     </>
                   )}
@@ -629,9 +628,9 @@ export default function Deposit() {
               </div>
             </div>
 
-            {/* Amount Input */}
-            <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3">
-              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider">
+            {/* Compact Amount Input */}
+            <div className="bg-white dark:bg-slate-900 rounded-2xl p-3 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-1.5">
+              <label className="block text-[9px] font-black text-slate-400 uppercase tracking-wider">
                 {language === 'am' ? 'የላኩት የገንዘብ መጠን (ETB)' : 'AMOUNT YOU TRANSFERRED (ETB)'}
               </label>
 
@@ -642,82 +641,81 @@ export default function Deposit() {
                   placeholder={`Min ${selected.min_deposit || 10} ETB`}
                   value={amount}
                   onChange={(e) => { setAmount(e.target.value); setError(''); }}
-                  className="w-full bg-slate-50 dark:bg-slate-800/80 border-2 border-slate-200 dark:border-slate-700 rounded-2xl px-4 py-4 text-2xl font-black text-slate-800 dark:text-white outline-none focus:border-amber-400 transition-all font-mono"
+                  className="w-full bg-slate-50 dark:bg-slate-800/80 border-2 border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-base font-black text-slate-800 dark:text-white outline-none focus:border-amber-400 transition-all font-mono"
                 />
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-black text-slate-400">
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-black text-slate-400">
                   ETB
                 </span>
               </div>
             </div>
 
-            {/* ── DUAL PAYMENT PROOF SECTION (SCREENSHOT OR SMS MESSAGE) ── */}
-            <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3.5">
+            {/* ── DUAL PAYMENT PROOF SECTION (COMPACT 3D) ── */}
+            <div className="bg-white dark:bg-slate-900 rounded-2xl p-3 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-2">
               <div className="flex items-center justify-between">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-wider">
                   {language === 'am' ? 'የክፍያ ማረጋገጫ (አማራጭ ይምረጡ)' : 'PAYMENT PROOF (CHOOSE OPTION)'}
                 </label>
-                <span className="text-[9px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 px-2 py-0.5 rounded-md">
+                <span className="text-[8px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 px-1.5 py-0.5 rounded-md">
                   Required
                 </span>
               </div>
 
-              {/* 3D Segmented Switch */}
-              <div className="grid grid-cols-2 p-1.5 bg-slate-100 dark:bg-slate-800/90 rounded-2xl gap-1.5 border border-slate-200/60 dark:border-slate-700/60 shadow-inner">
+              {/* 3D Compact Segmented Switch */}
+              <div className="grid grid-cols-2 p-1 bg-slate-100 dark:bg-slate-800/90 rounded-xl gap-1 border border-slate-200/60 dark:border-slate-700/60 shadow-inner">
                 <button
                   type="button"
                   onClick={() => { setProofType('screenshot'); setError(''); }}
-                  className={`py-3 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-all ${
+                  className={`py-1.5 px-2 rounded-lg text-[11px] font-black flex items-center justify-center gap-1 transition-all ${
                     proofType === 'screenshot'
-                      ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-md shadow-amber-500/25 active:scale-95'
+                      ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-sm shadow-amber-500/25 active:scale-95'
                       : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 active:scale-95'
                   }`}
                 >
-                  <Camera size={15} />
-                  <span>{language === 'am' ? 'ስክሪንሾት ጫን' : 'Screenshot'}</span>
+                  <Camera size={13} />
+                  <span>{language === 'am' ? 'ስክሪንሾት' : 'Screenshot'}</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => { setProofType('sms'); setError(''); }}
-                  className={`py-3 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-all ${
+                  className={`py-1.5 px-2 rounded-lg text-[11px] font-black flex items-center justify-center gap-1 transition-all ${
                     proofType === 'sms'
-                      ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-md shadow-amber-500/25 active:scale-95'
+                      ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-sm shadow-amber-500/25 active:scale-95'
                       : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 active:scale-95'
                   }`}
                 >
-                  <FileText size={15} />
-                  <span>{language === 'am' ? 'SMS / የግብይት መልእክት' : 'SMS / Text'}</span>
+                  <FileText size={13} />
+                  <span>{language === 'am' ? 'SMS / መልእክት' : 'SMS / Text'}</span>
                 </button>
               </div>
 
-              {/* OPTION 1: SCREENSHOT UPLOAD */}
+              {/* OPTION 1: SCREENSHOT UPLOAD (COMPACT) */}
               {proofType === 'screenshot' && (
-                <div className="space-y-2">
+                <div>
                   {file ? (
-                    <div className="relative rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-2">
+                    <div className="relative rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-1.5">
                       <img
                         src={URL.createObjectURL(file)}
                         alt="Receipt"
-                        className="w-full max-h-52 object-contain rounded-xl"
+                        className="w-full max-h-28 object-contain rounded-lg"
                       />
                       <button
                         type="button"
                         onClick={() => setFile(null)}
-                        className="absolute top-3 right-3 bg-rose-500 text-white p-1.5 rounded-full shadow-md hover:bg-rose-600 active:scale-95 transition-all"
+                        className="absolute top-2 right-2 bg-rose-500 text-white p-1 rounded-full shadow-md hover:bg-rose-600 active:scale-95 transition-all"
                         title="Remove image"
                       >
-                        <X size={14} strokeWidth={3} />
+                        <X size={12} strokeWidth={3} />
                       </button>
                     </div>
                   ) : (
-                    <label className="border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-amber-400 rounded-2xl p-6 flex flex-col items-center justify-center cursor-pointer transition-all bg-slate-50/50 dark:bg-slate-800/40 hover:bg-amber-50/30">
-                      <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center mb-2 shadow-inner">
-                        <UploadCloud size={24} />
+                    <label className="border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-amber-400 rounded-xl p-3.5 flex flex-col items-center justify-center cursor-pointer transition-all bg-slate-50/50 dark:bg-slate-800/40 hover:bg-amber-50/30">
+                      <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center mb-1 shadow-inner">
+                        <UploadCloud size={16} />
                       </div>
-                      <p className="text-xs font-black text-slate-700 dark:text-slate-200 text-center">
-                        {language === 'am' ? 'ስክሪንሾቱን እዚህ ይጫኑ' : 'Tap to upload screenshot'}
+                      <p className="text-[11px] font-black text-slate-700 dark:text-slate-200 text-center">
+                        {language === 'am' ? 'ስክሪንሾት ለመጫን ይንኩ' : 'Tap to upload screenshot'}
                       </p>
-                      <p className="text-[10px] text-slate-400 mt-0.5">JPG, PNG, HEIC (Max 10MB)</p>
                       <input
                         type="file"
                         accept="image/*"
@@ -732,62 +730,57 @@ export default function Deposit() {
                 </div>
               )}
 
-              {/* OPTION 2: SMS / TRANSACTION TEXT */}
+              {/* OPTION 2: SMS / TRANSACTION TEXT (COMPACT) */}
               {proofType === 'sms' && (
-                <div className="space-y-2">
+                <div className="space-y-1">
                   <div className="relative">
                     <textarea
-                      rows={3}
+                      rows={2}
                       value={smsText}
                       onChange={(e) => { setSmsText(e.target.value); setError(''); }}
                       placeholder={
                         language === 'am'
-                          ? 'የቴሌብር ወይም የባንክ ማረጋገጫ የደረሰዎትን መልእክት (SMS) ወይም የግብይት ቁጥር (Txn Ref) እዚህ ይለጥፉ...'
-                          : 'Paste the bank or Telebirr confirmation SMS or transaction ID here (e.g. Txn ID: 123456789)...'
+                          ? 'የቴሌብር/ባንክ ማረጋገጫ መልእክት (SMS) ወይም የግብይት ቁጥር (Txn Ref) እዚህ ይለጥፉ...'
+                          : 'Paste Telebirr/bank confirmation SMS or Txn Ref ID here...'
                       }
-                      className="w-full bg-slate-50 dark:bg-slate-800/80 border-2 border-slate-200 dark:border-slate-700 rounded-2xl p-3.5 text-xs font-mono font-medium text-slate-800 dark:text-white outline-none focus:border-amber-400 resize-none transition-all placeholder:font-sans placeholder:text-slate-400"
+                      className="w-full bg-slate-50 dark:bg-slate-800/80 border-2 border-slate-200 dark:border-slate-700 rounded-xl p-2.5 pr-14 text-xs font-mono font-medium text-slate-800 dark:text-white outline-none focus:border-amber-400 resize-none transition-all placeholder:font-sans placeholder:text-slate-400"
                     />
                     <button
                       type="button"
                       onClick={pasteFromClipboard}
-                      className="absolute right-3 bottom-3 px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-[10px] font-black shadow-sm active:scale-95 transition-all flex items-center gap-1"
+                      className="absolute right-2 bottom-2 px-2 py-1 bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-md text-[9px] font-black shadow-sm active:scale-95 transition-all flex items-center gap-0.5"
                     >
-                      <Copy size={11} />
+                      <Copy size={10} />
                       <span>{language === 'am' ? 'ለጥፍ' : 'Paste'}</span>
                     </button>
                   </div>
-                  <p className="text-[10px] text-slate-400 leading-tight">
-                    {language === 'am'
-                      ? '💡 ሙሉውን የቴሌብር ወይም የባንክ SMS መልእክት እዚህ በቀላሉ መለጠፍ ይችላሉ::'
-                      : '💡 You can paste the complete SMS text sent by Telebirr or your bank.'}
-                  </p>
                 </div>
               )}
             </div>
 
             {/* Error Message Display */}
             {error && (
-              <div className="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 rounded-2xl p-3.5 flex items-center gap-2.5 text-rose-600 dark:text-rose-400 text-xs font-bold animate-shake">
-                <AlertCircle size={18} className="shrink-0" />
+              <div className="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 rounded-xl p-2.5 flex items-center gap-2 text-rose-600 dark:text-rose-400 text-[11px] font-bold animate-shake">
+                <AlertCircle size={15} className="shrink-0" />
                 <span>{error}</span>
               </div>
             )}
 
-            {/* 3D Submit Button */}
+            {/* 3D Compact Submit Button */}
             <button
               type="button"
               onClick={handleSubmit}
               disabled={submitting}
-              className="w-full py-4 rounded-2xl font-black text-white text-sm bg-gradient-to-r from-amber-500 via-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 shadow-[0_8px_20px_rgba(245,158,11,0.3)] active:translate-y-0.5 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              className="w-full py-3 rounded-2xl font-black text-white text-xs bg-gradient-to-r from-amber-500 via-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 shadow-[0_6px_18px_rgba(245,158,11,0.28)] active:translate-y-0.5 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-1.5"
             >
               {submitting ? (
                 <>
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   <span>{language === 'am' ? 'በመላክ ላይ...' : 'Submitting...'}</span>
                 </>
               ) : (
                 <>
-                  <Zap size={18} />
+                  <Zap size={16} />
                   <span>{language === 'am' ? 'ማስገቢያ ጥያቄውን ላክ' : 'Submit Deposit Request'}</span>
                 </>
               )}
