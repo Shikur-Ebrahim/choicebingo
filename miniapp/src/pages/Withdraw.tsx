@@ -382,7 +382,7 @@ export default function Withdraw() {
         <div className="bg-white rounded-2xl p-4 shadow-md border border-white/10">
           <p className="text-slate-500 text-sm font-medium">{t[language].withdraw.balance}</p>
           <p className="text-3xl font-black text-slate-800">{userBalance.toLocaleString('en-US')} <span className="text-xl text-slate-600">ETB</span></p>
-          <p className="text-slate-400 text-xs mt-1">{language === 'am' ? 'á‹‹áŠ“á‹ áˆ‚áˆ³á‰¥ á‰¥á‰» áˆŠá‹ˆáŒ£ á‹­á‰½áˆ‹áˆ' : 'Only main balance can be withdrawn'}</p>
+          <p className="text-slate-400 text-xs mt-1">{language === 'am' ? 'ዋናው ሂሳብ ብቻ ነው ሊወጣ የሚችለው' : 'Only main balance can be withdrawn'}</p>
         </div>
       </div>
 
@@ -396,8 +396,8 @@ export default function Withdraw() {
           {methods.length === 0 ? (
             <div className="flex flex-col items-center py-12 text-slate-400">
               <AlertCircle size={40} className="mb-3 opacity-50" />
-              <p className="font-semibold">No withdrawal methods available</p>
-              <p className="text-xs mt-1">Please check back later</p>
+              <p className="font-semibold">{language === 'am' ? 'ምንም አይነት የማውጫ መንገዶች አልተገኙም' : 'No withdrawal methods available'}</p>
+              <p className="text-xs mt-1">{language === 'am' ? 'እባክዎ ጥቂት ቆይተው እንደገና ይመልከቱ' : 'Please check back later'}</p>
             </div>
           ) : (
             <div className="divide-y divide-gray-50">

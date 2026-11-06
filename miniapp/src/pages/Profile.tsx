@@ -213,7 +213,7 @@ export default function Profile() {
                     onClick={() => { setLanguage('am'); setShowLangDropdown(false); }}
                     className={`w-full text-left px-3 py-2 text-[10px] font-bold flex items-center justify-between border-t border-slate-100 dark:border-slate-700 ${language === 'am' ? 'text-purple-600 bg-purple-50 dark:bg-purple-900/20' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50'}`}
                   >
-                    áŠ áˆ›áˆ­áŠ›
+                    አማርኛ
                     {language === 'am' && <Check size={10} />}
                   </button>
                 </div>

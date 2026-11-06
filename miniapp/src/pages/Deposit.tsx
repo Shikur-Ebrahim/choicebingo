@@ -386,8 +386,8 @@ export default function Deposit() {
           </div>
         ) : methods.length === 0 ? (
           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 p-10 text-center mt-4">
-            <p className="text-slate-500 dark:text-slate-400 font-medium">No deposit methods available.</p>
-            <p className="text-xs text-slate-400 mt-1">Please check back later.</p>
+            <p className="text-slate-500 dark:text-slate-400 font-medium">{language === 'am' ? 'ምንም አይነት የማስገቢያ መንገዶች አልተገኙም።' : 'No deposit methods available.'}</p>
+            <p className="text-xs text-slate-400 mt-1">{language === 'am' ? 'እባክዎ ጥቂት ቆይተው እንደገና ይመልከቱ።' : 'Please check back later.'}</p>
           </div>
         ) : (
           <>
