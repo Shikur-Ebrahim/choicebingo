@@ -8,12 +8,12 @@ router.use(validateTelegramAuth);
 // Default fallback settings
 export const DEFAULT_SETTINGS = {
   call_interval_ms:  3000,
-  waiting_period_s:  60,
+  waiting_period_s:  30,
   release_time_s:    60,   // seconds before solo player's cartela is released and refunded
   min_players:       2,
   max_players:       150,
   prize_percent:     80,   // % of total stakes (for 3+ players)
-  max_cartelas_per_user: 2, // max cartelas a single user can pick per game
+  max_cartelas_per_user: 4, // max cartelas a single user can pick per game
   early_call_8_enabled: false,
   early_call_8_rewards: { '10': 100, '20': 200, '50': 500, '100': 1000 } as Record<string, number>,
   early_call_10_enabled: false,

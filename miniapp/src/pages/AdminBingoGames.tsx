@@ -32,12 +32,12 @@ interface GameSettings {
 }
 const DEFAULT: GameSettings = { 
   call_interval_ms: 3000, 
-  waiting_period_s: 60, 
+  waiting_period_s: 30, 
   release_time_s: 60,
   min_players: 2, 
   max_players: 150, 
   prize_percent: 80,
-  max_cartelas_per_user: 2,
+  max_cartelas_per_user: 4,
   early_call_8_enabled: false,
   early_call_8_rewards: { 10: 100, 20: 200, 50: 500, 100: 1000 },
   early_call_10_enabled: false,

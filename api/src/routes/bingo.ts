@@ -93,7 +93,7 @@ router.get('/current', validateTelegramAuth, async (req: AuthRequest, res) => {
     }
   }
 
-  if (!game) { res.json({ game: null, taken_cartelas: [], my_card: null, my_cartelas: [], max_players: 150, max_cartelas_per_user: 2 }); return; }
+  if (!game) { res.json({ game: null, taken_cartelas: [], my_card: null, my_cartelas: [], max_players: 150, max_cartelas_per_user: 4 }); return; }
 
   const { data: rows } = await supabase
     .from('bingo_players')

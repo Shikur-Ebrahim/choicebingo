@@ -146,7 +146,7 @@ export default function BingoGame() {
   const [selectedStake, setSelectedStake] = useState<number | null>(urlStake ? Number(urlStake) : null);
   const [showStakeDropdown, setShowStakeDropdown] = useState(false);
   const [maxPlayers, setMaxPlayers] = useState<number>(150);
-  const [maxCartelasPerUser, setMaxCartelasPerUser] = useState<number>(2);
+  const [maxCartelasPerUser, setMaxCartelasPerUser] = useState<number>(4);
   const [myCartelas, setMyCartelas] = useState<Array<{ cartela_number: number; card_matrix: number[][] }>>([]);
   const [activeCartelaIdx, setActiveCartelaIdx] = useState(0);
   const [uniquePlayers, setUniquePlayers] = useState<number>(0);
