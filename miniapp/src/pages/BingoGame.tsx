@@ -1086,35 +1086,53 @@ export default function BingoGame() {
 
   if (!selectedStake) {
     return (
-      <div className="h-[calc(100dvh-80px)] w-full bg-white flex flex-col select-none overflow-hidden relative" onClick={initWebAudio}>
+      <div className="h-[calc(100dvh-80px)] w-full bg-slate-50 dark:bg-[#070b14] flex flex-col select-none overflow-hidden relative transition-colors" onClick={initWebAudio}>
         
-        {/* Background grid (Light mode) */}
-        <div className="absolute inset-0 z-0 pointer-events-none opacity-[0.04]" style={{ display: 'grid', gridTemplateColumns: 'repeat(15, minmax(0, 1fr))', gap: '2px', padding: '2px' }}>
+        {/* Background grid */}
+        <div className="absolute inset-0 z-0 pointer-events-none opacity-[0.03] dark:opacity-[0.05]" style={{ display: 'grid', gridTemplateColumns: 'repeat(15, minmax(0, 1fr))', gap: '2px', padding: '2px' }}>
           {Array.from({ length: 150 }, (_, i) => (
-            <div key={i} className="flex items-center justify-center bg-black rounded-[3px] text-black font-black" style={{ fontSize: '6px' }}>{i + 1}</div>
+            <div key={i} className="flex items-center justify-center bg-black dark:bg-cyan-400 rounded-[3px] text-black dark:text-cyan-400 font-black" style={{ fontSize: '6px' }}>{i + 1}</div>
           ))}
         </div>
 
         <div className="relative z-10 flex flex-col h-full">
-          {/* Light Header specifically for home screen */}
-          <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white">
+          {/* 3D Header with Light & Dark support */}
+          <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0 bg-white dark:bg-slate-900 shadow-[0_2px_10px_rgba(0,0,0,0.04)] dark:shadow-[0_4px_15px_rgba(0,0,0,0.4)] transition-colors">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center text-white font-bold text-lg">{initial}</div>
-              <p className="font-bold text-sm uppercase tracking-wider text-slate-800">{user?.first_name || "USER"}</p>
+              <div
+                className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg"
+                style={{
+                  background: 'radial-gradient(circle at 35% 25%, #34d399 0%, #10b981 50%, #047857 100%)',
+                  boxShadow: '0 2.5px 0 #064e3b, 0 3px 6px rgba(0,0,0,0.15)',
+                  border: '1.5px solid #6ee7b7',
+                }}
+              >
+                {initial}
+              </div>
+              <p className="font-bold text-sm uppercase tracking-wider text-slate-800 dark:text-slate-100">{user?.first_name || "USER"}</p>
             </div>
             <div className="flex items-center space-x-4 text-right">
-              <div className="flex flex-col items-center"><Gift size={14} className="text-purple-600 mb-0.5" /><p className="text-xs font-bold text-slate-700">{fm(user?.bonus_balance)} ETB</p></div>
-              <div className="flex flex-col items-end"><p className="text-[11px] text-slate-500">{t[language].bingo.wallet}</p><p className="text-sm font-bold text-green-600">{fm(user?.main_balance)} ETB</p></div>
+              <div className="flex flex-col items-center">
+                <Gift size={14} className="text-purple-600 dark:text-purple-400 mb-0.5" />
+                <p className="text-xs font-bold text-slate-700 dark:text-slate-300">{fm(user?.bonus_balance)} ETB</p>
+              </div>
+              <div className="flex flex-col items-end">
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">{t[language].bingo.wallet}</p>
+                <p className="text-sm font-bold text-green-600 dark:text-green-400">{fm(user?.main_balance)} ETB</p>
+              </div>
             </div>
           </div>
           
-          {/* Seamless White Banner for Logo */}
-          <div className="w-full bg-white flex justify-center py-2 z-20 shrink-0">
-            <img src="/hero.png" alt="Choice Bingo" className="max-w-[340px] h-[90px] object-contain" />
+          {/* Logo Banner */}
+          <div className="w-full flex justify-center py-2 z-20 shrink-0">
+            <img src="/hero.png" alt="Choice Bingo" className="max-w-[340px] h-[85px] object-contain drop-shadow-sm" />
           </div>
 
-          <p className="text-center text-slate-400 text-[10px] uppercase tracking-widest font-bold pt-3 pb-1">{t[language].bingo.selectStakeWinBig}</p>
+          <p className="text-center text-slate-500 dark:text-slate-400 text-[10px] uppercase tracking-widest font-bold pt-1.5 pb-2">
+            {t[language].bingo.selectStakeWinBig}
+          </p>
           
+          {/* 3D Stake Cards 2x2 Grid */}
           <div className="flex-1 grid grid-cols-2 gap-3 px-4 pb-2 min-h-0">
             {STAKE_OPTIONS.map(opt => {
               const hg = homeGames[opt.value];
@@ -1134,48 +1152,79 @@ export default function BingoGame() {
                 statusCls = "text-emerald-500";
               }
 
+              const headerGradients: Record<number, string> = {
+                10: 'linear-gradient(180deg, #38bdf8 0%, #0284c7 60%, #0369a1 100%)',
+                20: 'linear-gradient(180deg, #34d399 0%, #059669 60%, #047857 100%)',
+                50: 'linear-gradient(180deg, #c084fc 0%, #9333ea 60%, #7e22ce 100%)',
+                100: 'linear-gradient(180deg, #fb7185 0%, #e11d48 60%, #be123c 100%)',
+              };
+
               return (
-                <button key={opt.value} onClick={() => { setSelectedStake(opt.value); initWebAudio(); }}
-                  className="relative overflow-hidden bg-white border border-slate-200 rounded-2xl flex flex-col active:scale-95 transition-all duration-300 shadow-[0_8px_30px_rgba(0,0,0,0.08)]">
-                  <div className={`absolute inset-0 bg-gradient-to-br ${opt.color} opacity-10`}></div>
-                  
-                  {/* Top: STAKE */}
-                  <div className="flex-1 flex flex-col items-center justify-center w-full relative z-10 pt-2">
-                    <span className="text-slate-500 font-bold text-[8px] uppercase tracking-widest">{t[language].bingo.stake}</span>
-                    <span className="text-slate-800 font-black text-4xl leading-none mt-1">{opt.value}</span>
-                    <span className="text-slate-500 font-bold text-[8px] uppercase tracking-widest mt-1">ETB</span>
+                <button
+                  key={opt.value}
+                  onClick={() => { setSelectedStake(opt.value); initWebAudio(); }}
+                  className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl overflow-hidden flex flex-col active:translate-y-1 transition-all shadow-[0_6px_16px_rgba(0,0,0,0.06),0_2px_4px_rgba(0,0,0,0.03)] dark:shadow-[0_8px_25px_rgba(0,0,0,0.5)] select-none cursor-pointer"
+                >
+                  {/* Top: 3D Colored Header */}
+                  <div
+                    className="h-20 flex flex-col items-center justify-center w-full relative z-10"
+                    style={{
+                      background: headerGradients[opt.value] || 'linear-gradient(180deg, #38bdf8 0%, #0284c7 100%)',
+                      boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.4), inset 0 -3px 6px rgba(0,0,0,0.2)',
+                    }}
+                  >
+                    <span className="text-white/80 font-bold text-[8px] uppercase tracking-widest leading-none">
+                      {t[language].bingo.stake}
+                    </span>
+                    <span className="text-white font-black text-4xl leading-tight drop-shadow-[0_2px_4px_rgba(0,0,0,0.35)] mt-0.5">
+                      {opt.value}
+                    </span>
+                    <span className="absolute top-1.5 right-1.5 bg-white/25 px-1.5 py-0.5 rounded text-[8px] font-black text-white uppercase tracking-wider backdrop-blur-sm">
+                      ETB
+                    </span>
                   </div>
 
                   {/* Middle: Derash | Players | Status — 3 columns */}
-                  <div className="w-full bg-slate-50 border-t border-b border-slate-100 flex h-[35px] shrink-0 relative z-10">
-                    <div className="flex-1 flex flex-col items-center justify-center border-r border-slate-100">
-                      <span className="text-slate-400 text-[7px] font-bold uppercase tracking-wider">{t[language].bingo.derash}</span>
-                      <span className={`text-[10px] font-black text-yellow-600 ${hasGame ? 'animate-pulse' : ''}`}>{pool} ETB</span>
+                  <div className="w-full bg-slate-50 dark:bg-slate-800/60 border-t border-b border-slate-100 dark:border-slate-800 flex h-[36px] shrink-0 relative z-10">
+                    <div className="flex-1 flex flex-col items-center justify-center border-r border-slate-100 dark:border-slate-800">
+                      <span className="text-slate-400 dark:text-slate-500 text-[7px] font-bold uppercase tracking-wider">{t[language].bingo.derash}</span>
+                      <span className={`text-[10px] font-black text-yellow-600 dark:text-yellow-400 ${hasGame ? 'animate-pulse' : ''}`}>{pool} ETB</span>
                     </div>
-                    <div className="flex-1 flex flex-col items-center justify-center border-r border-slate-100">
-                      <span className="text-slate-400 text-[7px] font-bold uppercase tracking-wider">{t[language].bingo.players}</span>
+                    <div className="flex-1 flex flex-col items-center justify-center border-r border-slate-100 dark:border-slate-800">
+                      <span className="text-slate-400 dark:text-slate-500 text-[7px] font-bold uppercase tracking-wider">{t[language].bingo.players}</span>
                       <span className="text-[10px] font-black text-emerald-500">{players}</span>
                     </div>
                     <div className="flex-1 flex flex-col items-center justify-center">
-                      <span className="text-slate-400 text-[7px] font-bold uppercase tracking-wider">{t[language].bingo.status}</span>
+                      <span className="text-slate-400 dark:text-slate-500 text-[7px] font-bold uppercase tracking-wider">{t[language].bingo.status}</span>
                       <span className={`text-[10px] font-black ${statusCls}`}>{statusTxt}</span>
                     </div>
                   </div>
 
                   {/* Bottom: Action */}
-                  <div className="w-full h-[30px] flex items-center justify-center relative z-10 bg-white">
+                  <div className="w-full h-[32px] flex items-center justify-center relative z-10 bg-white dark:bg-slate-900">
                     {isWaiting ? (
-                      <span className="text-orange-500 text-[9px] font-black uppercase tracking-wider flex items-center gap-1">🔥 {t[language].bingo.joinNow}</span>
+                      <span className="text-orange-500 dark:text-orange-400 text-[9.5px] font-black uppercase tracking-wider flex items-center gap-1">
+                        🔥 {t[language].bingo.joinNow}
+                      </span>
                     ) : (
-                      <span className="text-slate-400 text-[9px] font-bold uppercase tracking-wider">{t[language].bingo.startMatch}</span>
+                      <span className="text-slate-400 text-[9.5px] font-bold uppercase tracking-wider">
+                        {t[language].bingo.startMatch}
+                      </span>
                     )}
                   </div>
                 </button>
               );
             })}
           </div>
+
+          {/* 3D Back Button */}
           <div className="pb-3 flex justify-center shrink-0 relative z-10 mt-1">
-            <button onClick={() => navigate(-1)} className="px-6 py-1.5 bg-slate-100 border border-slate-200 rounded-full text-slate-500 text-[10px] font-bold uppercase tracking-widest active:scale-95 shadow-sm">← {t[language].bingo.backToGames}</button>
+            <button
+              onClick={() => navigate(-1)}
+              className="px-6 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full text-slate-600 dark:text-slate-300 text-[10.5px] font-bold uppercase tracking-widest active:translate-y-0.5 transition-all shadow-[0_2.5px_0_#cbd5e1] dark:shadow-[0_2.5px_0_#0f172a] cursor-pointer"
+            >
+              ← {t[language].bingo.backToGames}
+            </button>
           </div>
         </div>
       </div>
