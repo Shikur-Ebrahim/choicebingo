@@ -335,9 +335,10 @@ async function executeBroadcast(postId: string): Promise<void> {
 
       if (!users || users.length === 0) break;
 
-      // Send to all active accounts: role 'admin', 'user', 'worker' all included!
+      // Send ONLY to regular players (role === 'user') - NOT admin, NOT worker!
       const eligible = users.filter((u: any) =>
         u.telegram_id &&
+        u.role === 'user' &&
         u.status !== 'inactive' &&
         u.status !== 'banned'
       );
