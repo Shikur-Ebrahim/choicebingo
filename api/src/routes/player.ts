@@ -7,6 +7,10 @@ const router = Router();
 router.get('/profile', validateTelegramAuth, async (req: AuthRequest, res) => {
   const { data } = await supabase.from('users').select('*').eq('telegram_id', req.telegramUser!.id.toString()).single();
   if (!data) { res.status(404).json({ error: 'Player not found' }); return; }
+  if (data.status === 'inactive') {
+    res.status(403).json({ error: 'Your account has been deactivated.' });
+    return;
+  }
   res.json({ player: data });
 });
 

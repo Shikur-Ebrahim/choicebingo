@@ -1004,7 +1004,7 @@ router.get('/tx-report', validateTelegramAuth, requireAdmin, async (req, res) =>
 // ─── USER MANAGEMENT ──────────────────────────────────────────────────────────
 
 router.get('/users', async (req, res) => {
-  const { search = '', page = '1', limit = '20' } = req.query;
+  const { search = '', page = '1', limit = '20', role = '', status = '' } = req.query;
   const pageNum = Math.max(1, parseInt(page as string));
   const limitNum = Math.min(50, parseInt(limit as string));
   const offset = (pageNum - 1) * limitNum;
@@ -1012,15 +1012,41 @@ router.get('/users', async (req, res) => {
   let query = supabase
     .from('users')
     .select('id, telegram_id, username, first_name, role, status, main_balance, bonus_balance, total_wins, created_at', { count: 'exact' })
-    .order('created_at', { ascending: false })
-    .range(offset, offset + limitNum - 1);
+    .order('created_at', { ascending: false });
 
   if (search) {
     query = query.or(`username.ilike.%${search}%,first_name.ilike.%${search}%,telegram_id.eq.${search}`);
   }
 
+  if (role && role !== 'all') {
+    query = query.eq('role', role);
+  }
+
+  if (status && status !== 'all') {
+    query = query.eq('status', status);
+  }
+
+  query = query.range(offset, offset + limitNum - 1);
+
   const { data, error, count } = await query;
   if (error) { res.status(500).json({ error: error.message }); return; }
+
+  // Fetch live counts for filter tabs
+  const [totalRes, userRes, workerRes, adminRes, inactiveRes] = await Promise.all([
+    supabase.from('users').select('*', { count: 'exact', head: true }),
+    supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'user'),
+    supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'worker'),
+    supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'admin'),
+    supabase.from('users').select('*', { count: 'exact', head: true }).eq('status', 'inactive'),
+  ]);
+
+  const counts = {
+    all: totalRes.count || 0,
+    user: userRes.count || 0,
+    worker: workerRes.count || 0,
+    admin: adminRes.count || 0,
+    inactive: inactiveRes.count || 0,
+  };
 
   const telegramIds = (data || []).map((u: any) => u.telegram_id);
   let statsMap: Record<string, { totalDeposited: number; depositCount: number }> = {};
@@ -1041,7 +1067,7 @@ router.get('/users', async (req, res) => {
     depositCount: statsMap[u.telegram_id]?.depositCount || 0,
   }));
 
-  res.json({ users: enriched, total: count || 0, page: pageNum, limit: limitNum });
+  res.json({ users: enriched, total: count || 0, counts, page: pageNum, limit: limitNum });
 });
 
 router.get('/users/:telegramId', async (req, res) => {

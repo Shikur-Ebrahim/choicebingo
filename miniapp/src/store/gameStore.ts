@@ -80,16 +80,24 @@ export const useGameStore = create<GameStore>()(
 
           if (response.ok) {
             const data = await response.json();
-            set({ user: data.user, loading: false, isBlocked: false });
+            if (data.user?.status === 'inactive') {
+              set({ user: data.user, loading: false, isBlocked: true });
+            } else {
+              set({ user: data.user, loading: false, isBlocked: false });
+            }
           } else if (response.status === 403) {
-            set({ loading: false, isBlocked: true, user: null });
+            set({ loading: false, isBlocked: true });
           } else {
             // Direct Supabase fetch fallback
             const tgId = WebApp.initDataUnsafe?.user?.id?.toString();
             if (tgId) {
               const { data: dbUser } = await supabase.from('users').select('*').eq('telegram_id', tgId).maybeSingle();
               if (dbUser) {
-                set({ user: dbUser, loading: false });
+                if (dbUser.status === 'inactive') {
+                  set({ user: dbUser, loading: false, isBlocked: true });
+                } else {
+                  set({ user: dbUser, loading: false, isBlocked: false });
+                }
               }
             }
           }
@@ -100,7 +108,11 @@ export const useGameStore = create<GameStore>()(
             try {
               const { data: dbUser } = await supabase.from('users').select('*').eq('telegram_id', tgId).maybeSingle();
               if (dbUser) {
-                set({ user: dbUser, loading: false });
+                if (dbUser.status === 'inactive') {
+                  set({ user: dbUser, loading: false, isBlocked: true });
+                } else {
+                  set({ user: dbUser, loading: false, isBlocked: false });
+                }
                 return;
               }
             } catch (_) {}
@@ -109,13 +121,13 @@ export const useGameStore = create<GameStore>()(
         }
       },
 
-      // Realtime subscription â€” updates balance instantly when admin approves
+      // Realtime subscription — updates balance and active/inactive status instantly
       subscribeToBalance: () => {
-        const telegramId = get().user?.telegram_id;
+        const telegramId = get().user?.telegram_id || WebApp.initDataUnsafe?.user?.id?.toString();
         if (!telegramId) return () => {};
 
         const channel = supabase
-          .channel(`user-balance-${telegramId}-${Date.now()}`)
+          .channel(`user-sync-${telegramId}-${Date.now()}`)
           .on(
             'postgres_changes',
             {
@@ -126,8 +138,16 @@ export const useGameStore = create<GameStore>()(
             },
             (payload) => {
               const updated = payload.new as User;
+              const isInactive = updated.status === 'inactive';
               set((state) => ({
-                user: state.user ? { ...state.user, main_balance: updated.main_balance, bonus_balance: updated.bonus_balance } : state.user,
+                isBlocked: isInactive,
+                user: state.user ? { 
+                  ...state.user, 
+                  main_balance: updated.main_balance, 
+                  bonus_balance: updated.bonus_balance,
+                  status: updated.status,
+                  role: updated.role,
+                } : updated,
               }));
             }
           )
