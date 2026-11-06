@@ -287,25 +287,32 @@ export default function Home() {
           </button>
         </div>
         
-        {/* Live Games Marquee Banner — Compact Sleek Height */}
+        {/* Live Games Marquee Banner */}
         <Link
           to="/bingo/live"
-          className="block relative rounded-2xl overflow-hidden shadow-md h-36 bg-gradient-to-br from-[#1a1a3e] to-[#0d0d1f] flex flex-col items-center justify-center border border-indigo-900/50 select-none cursor-pointer"
+          className="block relative rounded-2xl overflow-hidden shadow-md h-44 bg-gradient-to-br from-[#1a1a3e] to-[#0d0d1f] flex flex-col items-center justify-center border border-indigo-900/50 select-none cursor-pointer"
         >
           <div className="absolute inset-0 opacity-20 pointer-events-none">
-            <div className="grid grid-cols-10 gap-2 p-2 h-full">
+            <div className="grid grid-cols-10 gap-2 p-2.5 h-full">
               {Array.from({length: 40}).map((_, i) => <div key={i} className="bg-white rounded-sm opacity-50" />)}
             </div>
           </div>
           
           <div className="relative z-10 flex flex-col items-center text-center px-4">
-            <span className="text-yellow-400 font-black text-2xl mb-2.5 drop-shadow-[0_2px_8px_rgba(250,204,21,0.4)]">
-              {t[language].home.joinNextGame}
-            </span>
+            <div className="text-yellow-400 font-black text-2xl leading-tight mb-3 drop-shadow-[0_2px_8px_rgba(250,204,21,0.4)]">
+              {language === 'am' ? (
+                <>
+                  <div>የሚቀጥለውን ጨዋታ</div>
+                  <div>ይቀላቀሉ</div>
+                </>
+              ) : (
+                <div>{t[language].home.joinNextGame}</div>
+              )}
+            </div>
             
             {/* 3D Pencil Color (Graphite) CTA Button with "ካርቴላዎን አሁን ይምረጡ!" */}
             <div
-              className="px-6 py-2 rounded-full font-black text-xs active:translate-y-1 transition-all flex items-center gap-1.5 select-none"
+              className="px-7 py-2.5 rounded-full font-black text-xs active:translate-y-1 transition-all flex items-center gap-1.5 select-none"
               style={{
                 background: 'linear-gradient(180deg, #94a3b8 0%, #64748b 45%, #475569 100%)',
                 boxShadow: '0 3.5px 0 #1e293b, 0 4px 10px rgba(0,0,0,0.35), inset 0 1px 1px rgba(255,255,255,0.4)',
