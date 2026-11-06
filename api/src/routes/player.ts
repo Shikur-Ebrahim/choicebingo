@@ -1,4 +1,4 @@
-﻿import { Router } from 'express';
+import { Router } from 'express';
 import { AuthRequest, validateTelegramAuth } from '../middleware/auth';
 import { supabase } from '../services/supabase';
 

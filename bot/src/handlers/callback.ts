@@ -1,4 +1,4 @@
-﻿import { Context } from 'grammy';
+import { Context } from 'grammy';
 import { startDeposit, handleMethodSelect, cancelDeposit, handleCopyAccount } from './deposit';
 
 export async function handleCallback(ctx: Context) {

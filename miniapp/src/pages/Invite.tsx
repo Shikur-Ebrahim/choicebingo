@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { ArrowLeft, Share2, Copy, Check, Users, Gift, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useGameStore } from '../store/gameStore';

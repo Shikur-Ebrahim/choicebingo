@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { ArrowLeft, Download, Copy, ExternalLink, QrCode, Sparkles, CheckCircle2, Sliders, RefreshCw, Send, Image as ImageIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import WebApp from '@twa-dev/sdk';

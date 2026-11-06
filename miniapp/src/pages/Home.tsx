@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { t } from '../lib/translations';
 import { Gift, ArrowDownToLine, Share2, PlusCircle, Info, MessageCircle } from 'lucide-react';

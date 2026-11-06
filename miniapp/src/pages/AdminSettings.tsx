@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { ArrowLeft, Settings, Save, Gift, Users, Headphones, Megaphone, CheckCircle2, AlertCircle, Calendar, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import WebApp from '@twa-dev/sdk';

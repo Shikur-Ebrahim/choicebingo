@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { ArrowLeft, ChevronRight, CheckCircle2, Clock, AlertCircle, User, Phone, MessageCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import WebApp from '@twa-dev/sdk';

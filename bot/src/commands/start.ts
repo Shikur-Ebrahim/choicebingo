@@ -1,4 +1,4 @@
-﻿import { Context } from 'grammy';
+import { Context } from 'grammy';
 import { InputFile } from 'grammy';
 import { upsertUser } from '../services/game';
 import path from 'path';

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * ADWA Bingo â€” Professional Audio Generator
  * Uses Azure Cognitive Services with am-ET-AmehaNeural (genuine male neural voice)
  *

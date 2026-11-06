@@ -1,4 +1,4 @@
-﻿export const t = {
+export const t = {
   en: {
     leaderboard: {
       title: 'Leaderboard',

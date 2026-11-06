@@ -1,4 +1,4 @@
-﻿/**
+/**
  * api/src/routes/broadcast.ts
  * Admin Broadcast / Post management
  *

@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Send, Clock, Trash2, Plus, Image as ImageIcon, Edit2, CheckCircle, Loader2, AlertCircle, Radio, MessageSquare, X, Video, Film, AtSign } from 'lucide-react';
 import WebApp from '@twa-dev/sdk';
 
