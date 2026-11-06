@@ -69,7 +69,14 @@ function Navigation() {
   ];
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-slate-800 pb-safe z-40 transition-colors">
+    <div
+      className="fixed bottom-0 left-0 right-0 border-t pb-safe z-40 transition-colors select-none"
+      style={{
+        background: 'linear-gradient(180deg, #1e293b 0%, #0a0f1d 100%)',
+        borderTopColor: 'rgba(255, 255, 255, 0.1)',
+        boxShadow: '0 -4px 20px rgba(0, 0, 0, 0.7), inset 0 1px 1px rgba(255, 255, 255, 0.12)',
+      }}
+    >
       <div className="flex justify-around items-center h-16">
         {navItems.map((item) => {
           const Icon = item.icon;
@@ -88,12 +95,14 @@ function Navigation() {
                   setProfileOpen(false);
                 }
               }}
-              className={`flex flex-col items-center justify-center w-full h-full space-y-1 ${
-                isActive ? 'text-yellow-600 dark:text-yellow-500' : 'text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300'
+              className={`flex flex-col items-center justify-center w-full h-full space-y-1 transition-all ${
+                isActive
+                  ? 'text-yellow-400 font-black scale-105 drop-shadow-[0_0_8px_rgba(250,204,21,0.6)]'
+                  : 'text-slate-400 hover:text-slate-200'
               }`}
             >
               <Icon size={24} strokeWidth={isActive ? 2.5 : 2} />
-              <span className="text-[10px] font-medium">{item.label}</span>
+              <span className="text-[10px] font-bold">{item.label}</span>
             </Link>
           );
         })}
