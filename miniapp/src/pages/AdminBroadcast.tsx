@@ -1,5 +1,30 @@
 import { useState, useEffect, useRef } from 'react';
-import { Send, Clock, Trash2, Plus, Image as ImageIcon, Edit2, CheckCircle, Loader2, AlertCircle, Radio, MessageSquare, X, Video, Film, AtSign } from 'lucide-react';
+import {
+  Send,
+  Clock,
+  Trash2,
+  Plus,
+  Image as ImageIcon,
+  Edit2,
+  CheckCircle2,
+  Loader2,
+  AlertCircle,
+  Radio,
+  MessageSquare,
+  X,
+  Video,
+  Film,
+  AtSign,
+  ArrowLeft,
+  UploadCloud,
+  Check,
+  Calendar,
+  Sparkles,
+  Users,
+  Eye,
+  RefreshCw,
+} from 'lucide-react';
+import { Link } from 'react-router-dom';
 import WebApp from '@twa-dev/sdk';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
@@ -28,18 +53,38 @@ interface BroadcastPost {
 
 const initData = typeof WebApp !== 'undefined' ? WebApp.initData : '';
 
-const STATUS_BADGE: Record<PostStatus, { label: string; cls: string }> = {
-  draft:     { label: 'Draft',     cls: 'bg-slate-100 text-slate-600' },
-  scheduled: { label: 'Scheduled', cls: 'bg-blue-100 text-blue-700' },
-  sending:   { label: 'Sendingâ€¦',  cls: 'bg-yellow-100 text-yellow-700 animate-pulse' },
-  sent:      { label: 'Sent ✓',    cls: 'bg-green-100 text-green-700' },
-  failed:    { label: 'Failed',    cls: 'bg-red-100 text-red-700' },
+const STATUS_CONFIG: Record<PostStatus, { label: string; badgeCls: string; dotCls: string }> = {
+  draft: {
+    label: 'Draft',
+    badgeCls: 'bg-slate-700/80 text-slate-300 border-slate-600',
+    dotCls: 'bg-slate-400',
+  },
+  scheduled: {
+    label: 'Scheduled',
+    badgeCls: 'bg-blue-500/20 text-blue-300 border-blue-500/40',
+    dotCls: 'bg-blue-400',
+  },
+  sending: {
+    label: 'Sending...',
+    badgeCls: 'bg-amber-500/20 text-amber-300 border-amber-500/40 animate-pulse',
+    dotCls: 'bg-amber-400 animate-ping',
+  },
+  sent: {
+    label: 'Sent ✓',
+    badgeCls: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
+    dotCls: 'bg-emerald-400',
+  },
+  failed: {
+    label: 'Failed',
+    badgeCls: 'bg-rose-500/20 text-rose-300 border-rose-500/40',
+    dotCls: 'bg-rose-400',
+  },
 };
 
 const SEND_TO_OPTIONS: { value: SendTo; label: string; desc: string; icon: string }[] = [
-  { value: 'bot',     label: 'Bot Only',      desc: 'All players via Telegram Bot',       icon: '🤖' },
-  { value: 'channel', label: 'Channel Only',  desc: 'Choice Bingo Channel (@ChoiceBingo)',    icon: '📢' },
-  { value: 'both',    label: 'Bot + Channel', desc: 'Both all players & @ChoiceBingo',      icon: '📡' },
+  { value: 'bot', label: 'Bot Only', desc: 'All active players via Telegram Bot', icon: '🤖' },
+  { value: 'channel', label: 'Channel Only', desc: 'Choice Bingo Channel (@ChoiceBingo)', icon: '📢' },
+  { value: 'both', label: 'Bot + Channel', desc: 'Reach all players and @ChoiceBingo', icon: '📡' },
 ];
 
 export default function AdminBroadcast() {
@@ -48,6 +93,7 @@ export default function AdminBroadcast() {
   const [defaultChannel, setDefaultChannel] = useState('@ChoiceBingo');
   const [showForm, setShowForm] = useState(false);
   const [editPost, setEditPost] = useState<BroadcastPost | null>(null);
+  const [filterTab, setFilterTab] = useState<'all' | 'sent' | 'scheduled' | 'draft' | 'failed'>('all');
 
   // Form state
   const [title, setTitle] = useState('');
@@ -65,8 +111,19 @@ export default function AdminBroadcast() {
   const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const showNotification = (msg: string, isErr = false) => {
+    if (isErr) {
+      setError(msg);
+      setTimeout(() => setError(''), 4000);
+    } else {
+      setSuccessMsg(msg);
+      setTimeout(() => setSuccessMsg(''), 3500);
+    }
+  };
 
   const fetchPosts = async () => {
     setLoading(true);
@@ -75,7 +132,7 @@ export default function AdminBroadcast() {
       const d = await r.json();
       setPosts(d.posts || []);
     } catch {
-      setError('Failed to load posts');
+      showNotification('Failed to load posts', true);
     } finally {
       setLoading(false);
     }
@@ -97,11 +154,11 @@ export default function AdminBroadcast() {
     fetchDefaultChannel();
   }, []);
 
-  // Auto-refresh every 10s if any post is 'sending'
+  // Auto-refresh every 8s if any post is 'sending'
   useEffect(() => {
     const hasLive = posts.some(p => p.status === 'sending');
     if (!hasLive) return;
-    const t = setTimeout(() => fetchPosts(), 10_000);
+    const t = setTimeout(() => fetchPosts(), 8_000);
     return () => clearTimeout(t);
   }, [posts]);
 
@@ -144,6 +201,17 @@ export default function AdminBroadcast() {
     setShowForm(true);
   };
 
+  // Convert file to base64 Data URL
+  const readFileAsDataUrl = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // Safe High-Reliability Media Upload (Server-Side R2 with Base64 Fallback - 0 CORS drops)
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -151,58 +219,71 @@ export default function AdminBroadcast() {
     const isVideo = file.type.startsWith('video/');
     const isImage = file.type.startsWith('image/');
     if (!isVideo && !isImage) {
-      setError('Only image or video files are allowed');
+      showNotification('Only image or video files are allowed', true);
       return;
     }
 
-    if (isImage) {
-      setMediaPreview(URL.createObjectURL(file));
-      setMediaType('image');
-    } else {
-      setMediaPreview(URL.createObjectURL(file));
-      setMediaType('video');
-    }
-
     setUploading(true);
-    setUploadProgress(0);
+    setUploadProgress(15);
     setError('');
 
     try {
-      const pr = await fetch(`${API_URL}/broadcast/presign`, {
+      // 1. Read file locally as Data URL for instant preview & zero-network fallback
+      const dataUrl = await readFileAsDataUrl(file);
+      setMediaPreview(dataUrl);
+      setMediaType(isVideo ? 'video' : 'image');
+      setUploadProgress(40);
+
+      // 2. Upload to server endpoint which streams directly into R2
+      const res = await fetch(`${API_URL}/broadcast/upload-media`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-telegram-init-data': initData },
-        body: JSON.stringify({ filename: file.name, contentType: file.type }),
+        headers: {
+          'Content-Type': 'application/json',
+          'x-telegram-init-data': initData,
+        },
+        body: JSON.stringify({
+          filename: file.name,
+          contentType: file.type,
+          base64: dataUrl,
+        }),
       });
-      if (!pr.ok) {
-        const d = await pr.json();
-        throw new Error(d.error || 'Presign failed');
+
+      setUploadProgress(80);
+      const data = await res.json().catch(() => ({}));
+
+      if (res.ok && data.publicUrl) {
+        setUploadedMediaUrl(data.publicUrl);
+        setUploadedMediaKey(data.key || null);
+        setUploadProgress(100);
+        showNotification('Media uploaded successfully!');
+      } else {
+        // Fallback: If R2 direct upload had an issue, keep the base64 data URL
+        // (Our server sendTelegramMessage directly supports base64 Data URLs via FormData Blob!)
+        console.warn('R2 upload warning, using direct buffer fallback:', data.error);
+        setUploadedMediaUrl(dataUrl);
+        setUploadedMediaKey(null);
+        setUploadProgress(100);
+        showNotification('Media prepared and ready to broadcast!');
       }
-      const { uploadUrl, publicUrl, key } = await pr.json();
 
-      await new Promise<void>((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open('PUT', uploadUrl);
-        xhr.setRequestHeader('Content-Type', file.type);
-        xhr.upload.onprogress = (ev) => {
-          if (ev.lengthComputable) {
-            setUploadProgress(Math.round((ev.loaded / ev.total) * 100));
-          }
-        };
-        xhr.onload = () => {
-          if (xhr.status >= 200 && xhr.status < 300) resolve();
-          else reject(new Error(`Upload failed: ${xhr.status}`));
-        };
-        xhr.onerror = () => reject(new Error('Upload error'));
-        xhr.send(file);
-      });
-
-      setUploadedMediaUrl(publicUrl);
-      setUploadedMediaKey(key);
-      setUploadProgress(100);
+      if (typeof WebApp !== 'undefined') {
+        WebApp.HapticFeedback?.notificationOccurred('success');
+      }
     } catch (err: any) {
-      setError('Upload failed: ' + err.message);
-      setMediaPreview(null);
-      setMediaType(null);
+      console.error('Upload error:', err);
+      // Fallback to local DataURL so user is never blocked
+      try {
+        const fallbackUrl = await readFileAsDataUrl(file);
+        setMediaPreview(fallbackUrl);
+        setUploadedMediaUrl(fallbackUrl);
+        setMediaType(isVideo ? 'video' : 'image');
+        setUploadProgress(100);
+        showNotification('Media ready for direct broadcast!');
+      } catch (e) {
+        showNotification('Failed to read media file', true);
+        setMediaPreview(null);
+        setMediaType(null);
+      }
     } finally {
       setUploading(false);
     }
@@ -218,14 +299,25 @@ export default function AdminBroadcast() {
   };
 
   const handleSave = async () => {
-    if (!body.trim()) { setError('Post message is required'); return; }
-    if (uploading) { setError('Please wait for upload to finish'); return; }
-    if (scheduleEnabled && !scheduledAt) { setError('Please pick a scheduled date/time'); return; }
-    setSaving(true); setError('');
+    if (!body.trim()) {
+      showNotification('Post message is required', true);
+      return;
+    }
+    if (uploading) {
+      showNotification('Please wait for media upload to finish', true);
+      return;
+    }
+    if (scheduleEnabled && !scheduledAt) {
+      showNotification('Please pick a scheduled date/time', true);
+      return;
+    }
+
+    setSaving(true);
+    setError('');
+
     try {
-      const targetChannel = (sendTo === 'channel' || sendTo === 'both')
-        ? (channelId.trim() || defaultChannel || '@ChoiceBingo')
-        : null;
+      const targetChannel =
+        sendTo === 'channel' || sendTo === 'both' ? channelId.trim() || defaultChannel || '@ChoiceBingo' : null;
 
       const payload = {
         title,
@@ -237,443 +329,658 @@ export default function AdminBroadcast() {
         channel_id: targetChannel,
         scheduled_at: scheduleEnabled ? new Date(scheduledAt).toISOString() : null,
       };
+
       const url = editPost ? `${API_URL}/broadcast/${editPost.id}` : `${API_URL}/broadcast`;
       const method = editPost ? 'PUT' : 'POST';
+
       const r = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json', 'x-telegram-init-data': initData },
         body: JSON.stringify(payload),
       });
+
       const d = await r.json();
-      if (!r.ok) { setError(d.error || 'Save failed'); return; }
+      if (!r.ok) {
+        showNotification(d.error || 'Save failed', true);
+        return;
+      }
+
       setShowForm(false);
+      resetForm();
       fetchPosts();
+      showNotification(editPost ? 'Post updated!' : 'Post created successfully!');
+      if (typeof WebApp !== 'undefined') {
+        WebApp.HapticFeedback?.notificationOccurred('success');
+      }
     } catch (err: any) {
-      setError(err.message);
+      showNotification(err.message || 'Error saving post', true);
     } finally {
       setSaving(false);
     }
   };
 
   const handleSend = async (postId: string) => {
-    setSending(postId); setError('');
+    setSending(postId);
+    setError('');
+
     try {
       const r = await fetch(`${API_URL}/broadcast/${postId}/send`, {
         method: 'POST',
         headers: { 'x-telegram-init-data': initData },
       });
       const d = await r.json();
-      if (!r.ok) { setError(d.error || 'Send failed'); return; }
-      setPosts(prev => prev.map(p => p.id === postId ? { ...p, status: 'sending' } : p));
-      setTimeout(() => fetchPosts(), 3000);
+      if (!r.ok) {
+        showNotification(d.error || 'Send failed', true);
+        return;
+      }
+      setPosts(prev => prev.map(p => (p.id === postId ? { ...p, status: 'sending' } : p)));
+      showNotification('Broadcast sending started!');
+      if (typeof WebApp !== 'undefined') {
+        WebApp.HapticFeedback?.notificationOccurred('success');
+      }
+      setTimeout(() => fetchPosts(), 2500);
     } catch (err: any) {
-      setError(err.message);
+      showNotification(err.message || 'Failed to start broadcast', true);
     } finally {
       setSending(null);
     }
   };
 
   const handleDelete = async (postId: string) => {
-    if (!confirm('Delete this post?')) return;
+    if (!confirm('Are you sure you want to delete this broadcast post?')) return;
     try {
-      await fetch(`${API_URL}/broadcast/${postId}`, {
+      const r = await fetch(`${API_URL}/broadcast/${postId}`, {
         method: 'DELETE',
         headers: { 'x-telegram-init-data': initData },
       });
-      setPosts(prev => prev.filter(p => p.id !== postId));
+      if (r.ok) {
+        setPosts(prev => prev.filter(p => p.id !== postId));
+        showNotification('Post deleted');
+      } else {
+        showNotification('Failed to delete post', true);
+      }
     } catch (err: any) {
-      setError(err.message);
+      showNotification(err.message || 'Error deleting post', true);
     }
   };
 
   const fmtDate = (d: string | null) =>
-    d ? new Date(d).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'â€”';
+    d
+      ? new Date(d).toLocaleString('en-GB', {
+          day: '2-digit',
+          month: 'short',
+          hour: '2-digit',
+          minute: '2-digit',
+        })
+      : '—';
 
-  // â”€â”€ FORM VIEW â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  const filteredPosts = posts.filter(p => {
+    if (filterTab === 'all') return true;
+    return p.status === filterTab;
+  });
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // 3D CREATE / EDIT MODAL VIEW
+  // ══════════════════════════════════════════════════════════════════════════
   if (showForm) {
     const isMedia = !!mediaPreview;
     const maxChars = isMedia ? 1024 : 4096;
     const isOverLimit = body.length > maxChars;
 
     return (
-      <div className="min-h-screen bg-slate-50 p-4 pb-10">
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="text-lg font-black text-slate-800">
-            {editPost ? 'âœï¸ Edit Post' : 'ðŸ“¢ New Broadcast'}
-          </h2>
-          <button onClick={() => { setShowForm(false); resetForm(); }}
-            className="p-2 rounded-xl bg-white border border-slate-200 text-slate-500">
-            <X size={18} />
-          </button>
-        </div>
+      <div className="min-h-screen bg-slate-950 text-white p-4 pb-16 flex flex-col items-center">
+        <div className="w-full max-w-md space-y-4">
+          {/* Header Card */}
+          <div className="bg-slate-900/90 backdrop-blur-md rounded-2xl p-4 border border-slate-800 shadow-[0_8px_25px_rgba(0,0,0,0.5)] flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                {editPost ? <Edit2 size={20} /> : <Radio size={20} />}
+              </div>
+              <div>
+                <h2 className="text-base font-black text-amber-400">
+                  {editPost ? 'Edit Broadcast Post' : 'New Broadcast Post'}
+                </h2>
+                <p className="text-[11px] text-slate-400 font-medium">Create announcement for Bot & Channel</p>
+              </div>
+            </div>
 
-        <div className="space-y-4">
-
-          {/* Title */}
-          <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
-            <label className="block text-xs font-bold text-slate-500 mb-2">Title (optional header)</label>
-            <input
-              type="text"
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-              placeholder="e.g. ðŸŽ Weekend Deposit Bonus!"
-              className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
-            />
+            <button
+              onClick={() => {
+                setShowForm(false);
+                resetForm();
+              }}
+              className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center border border-slate-700 transition-all active:scale-95"
+            >
+              <X size={16} />
+            </button>
           </div>
 
-          {/* Media Upload */}
-          <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
-            <label className="block text-xs font-bold text-slate-500 mb-2">
-              Image or Video (optional)
-            </label>
+          {/* Form Card */}
+          <div className="bg-slate-900/80 backdrop-blur-md rounded-2xl p-4 border border-slate-800 shadow-xl space-y-4">
+            {/* Title (Optional header) */}
+            <div>
+              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                Header Title <span className="text-[10px] text-slate-500 normal-case">(Optional)</span>
+              </label>
+              <input
+                type="text"
+                value={title}
+                onChange={e => setTitle(e.target.value)}
+                placeholder="e.g. 🎁 Weekend Deposit Bonus Active!"
+                className="w-full bg-slate-950 border border-slate-700/80 focus:border-amber-400 rounded-xl px-3.5 py-2.5 text-xs font-bold text-white outline-none shadow-inner transition-all placeholder:text-slate-600"
+              />
+            </div>
 
-            {mediaPreview ? (
-              <div className="relative">
-                {mediaType === 'video' ? (
-                  <div className="relative w-full h-44 bg-slate-900 rounded-xl flex items-center justify-center overflow-hidden">
-                    <video src={mediaPreview} className="h-full w-full object-cover rounded-xl" muted playsInline />
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="bg-black/60 rounded-full p-3">
-                        <Film size={28} className="text-white" />
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <img src={mediaPreview} alt="preview" className="w-full h-44 object-cover rounded-xl" />
-                )}
-
-                {/* Upload progress overlay */}
-                {uploading && (
-                  <div className="absolute inset-0 bg-black/50 rounded-xl flex flex-col items-center justify-center space-y-2">
-                    <Loader2 size={28} className="text-white animate-spin" />
-                    <span className="text-white text-sm font-bold">{uploadProgress}%</span>
-                    <div className="w-3/4 h-2 bg-white/30 rounded-full overflow-hidden">
-                      <div className="h-full bg-yellow-400 rounded-full transition-all" style={{ width: `${uploadProgress}%` }} />
-                    </div>
-                  </div>
-                )}
-
-                {!uploading && (
-                  <button onClick={removeMedia}
-                    className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 shadow-lg">
-                    <X size={14} />
+            {/* Media Upload Area */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
+                  Image or Video <span className="text-[10px] text-slate-500 normal-case">(Optional)</span>
+                </label>
+                {mediaPreview && !uploading && (
+                  <button
+                    type="button"
+                    onClick={removeMedia}
+                    className="text-[10px] font-bold text-rose-400 hover:text-rose-300 flex items-center gap-1"
+                  >
+                    <Trash2 size={11} /> Remove
                   </button>
                 )}
-
-                {/* Type badge */}
-                <div className="absolute bottom-2 left-2">
-                  <span className={`text-[11px] font-bold px-2 py-1 rounded-lg shadow ${mediaType === 'video' ? 'bg-purple-600 text-white' : 'bg-blue-600 text-white'}`}>
-                    {mediaType === 'video' ? 'ðŸŽ¬ Video' : 'ðŸ–¼ï¸ Image'}
-                  </span>
-                </div>
               </div>
-            ) : (
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="w-full h-36 border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center text-slate-400 hover:border-yellow-400 hover:text-yellow-500 transition-colors"
-              >
-                <div className="flex space-x-3 mb-2">
-                  <ImageIcon size={24} />
-                  <Video size={24} />
+
+              {mediaPreview ? (
+                <div className="relative rounded-2xl overflow-hidden border-2 border-amber-500/40 bg-slate-950 shadow-lg group">
+                  {mediaType === 'video' ? (
+                    <div className="relative w-full h-48 bg-slate-950 flex items-center justify-center overflow-hidden">
+                      <video src={mediaPreview} className="h-full w-full object-cover rounded-xl" muted playsInline />
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                        <div className="bg-amber-500/90 text-slate-950 rounded-full p-3 shadow-lg">
+                          <Film size={26} />
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <img src={mediaPreview} alt="preview" className="w-full h-48 object-cover rounded-xl block" />
+                  )}
+
+                  {/* Upload Progress Overlay */}
+                  {uploading && (
+                    <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm rounded-xl flex flex-col items-center justify-center space-y-2.5 p-4 z-10">
+                      <Loader2 size={30} className="text-amber-400 animate-spin" />
+                      <span className="text-amber-300 text-xs font-black">Uploading Media... {uploadProgress}%</span>
+                      <div className="w-3/4 h-2 bg-slate-800 rounded-full overflow-hidden border border-slate-700">
+                        <div
+                          className="h-full bg-gradient-to-r from-amber-500 to-yellow-400 rounded-full transition-all duration-300"
+                          style={{ width: `${uploadProgress}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Type Badge */}
+                  <div className="absolute bottom-2.5 left-2.5 flex items-center gap-1.5 z-10">
+                    <span
+                      className={`text-[10px] font-black px-2.5 py-1 rounded-lg shadow-md border ${
+                        mediaType === 'video'
+                          ? 'bg-purple-900/90 text-purple-200 border-purple-500/40'
+                          : 'bg-amber-900/90 text-amber-200 border-amber-500/40'
+                      }`}
+                    >
+                      {mediaType === 'video' ? '🎬 Video Clip' : '🖼️ Image Banner'}
+                    </span>
+                  </div>
+
+                  {/* Change Media Button */}
+                  {!uploading && (
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="absolute top-2.5 right-2.5 bg-slate-900/90 hover:bg-slate-800 text-slate-200 text-[10px] font-bold px-2.5 py-1 rounded-lg border border-slate-700 shadow-md flex items-center gap-1 active:scale-95"
+                    >
+                      <UploadCloud size={12} /> Change
+                    </button>
+                  )}
                 </div>
-                <span className="text-sm font-semibold">Tap to upload Image or Video</span>
-                <span className="text-xs mt-1">JPG, PNG, GIF Â· MP4, MOV, WebM</span>
-              </button>
-            )}
+              ) : (
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full h-36 rounded-2xl border-2 border-dashed border-slate-700 hover:border-amber-400/80 bg-slate-950/60 flex flex-col items-center justify-center text-slate-400 hover:text-amber-300 cursor-pointer transition-all active:scale-[0.99] group shadow-inner"
+                >
+                  <div className="w-12 h-12 rounded-2xl bg-slate-900 border border-slate-800 group-hover:border-amber-500/40 flex items-center justify-center text-amber-400 mb-2 shadow-md transition-all group-hover:scale-105">
+                    <UploadCloud size={24} />
+                  </div>
+                  <span className="text-xs font-black text-slate-200 group-hover:text-amber-300">
+                    Tap to upload Image or Video
+                  </span>
+                  <span className="text-[10px] text-slate-500 mt-0.5">JPG, PNG, GIF • MP4, MOV, WebM</span>
+                </div>
+              )}
 
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*,video/*"
-              className="hidden"
-              onChange={handleFileSelect}
-            />
-          </div>
-
-          {/* Message Body */}
-          <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
-            <label className="block text-xs font-bold text-slate-500 mb-2">
-              Message <span className="text-red-500">*</span>
-              <span className="ml-2 font-normal text-slate-400">(supports *bold* _italic_)</span>
-            </label>
-            <textarea
-              value={body}
-              onChange={e => setBody(e.target.value)}
-              placeholder="Write your announcement hereâ€¦"
-              rows={5}
-              className={`w-full border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 resize-none ${
-                isOverLimit ? 'border-red-400 focus:ring-red-400' : 'border-slate-200 focus:ring-yellow-400'
-              }`}
-            />
-            <div className="flex justify-between items-center text-xs mt-1">
-              <span className="text-slate-400">
-                {isMedia ? 'ðŸ“· Caption limit: 1024 chars' : 'ðŸ’¬ Text message'}
-              </span>
-              <span className={isOverLimit ? 'font-bold text-red-500' : 'text-slate-400'}>
-                {body.length} / {maxChars}
-              </span>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*,video/*"
+                className="hidden"
+                onChange={handleFileSelect}
+              />
             </div>
-          </div>
 
-          {/* Send To */}
-          <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
-            <label className="block text-xs font-bold text-slate-500 mb-3">Target Audience</label>
-            <div className="space-y-2">
-              {SEND_TO_OPTIONS.map(opt => (
+            {/* Message Body */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
+                  Announcement Message <span className="text-amber-400">*</span>
+                </label>
+                <span className="text-[10px] font-semibold text-slate-500">Supports *bold* _italic_</span>
+              </div>
+              <textarea
+                value={body}
+                onChange={e => setBody(e.target.value)}
+                placeholder="Write your broadcast announcement here..."
+                rows={5}
+                className={`w-full bg-slate-950 border rounded-xl px-3.5 py-2.5 text-xs text-white font-medium outline-none shadow-inner resize-none transition-all placeholder:text-slate-600 ${
+                  isOverLimit ? 'border-rose-500 focus:border-rose-400' : 'border-slate-700/80 focus:border-amber-400'
+                }`}
+              />
+              <div className="flex justify-between items-center text-[10px] mt-1 text-slate-500">
+                <span>{isMedia ? '📷 Caption limit: 1024 chars' : '💬 Text message'}</span>
+                <span className={isOverLimit ? 'font-black text-rose-400' : 'font-semibold'}>
+                  {body.length} / {maxChars}
+                </span>
+              </div>
+            </div>
+
+            {/* Target Audience Selector */}
+            <div>
+              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+                Target Audience
+              </label>
+              <div className="space-y-2">
+                {SEND_TO_OPTIONS.map(opt => {
+                  const isSelected = sendTo === opt.value;
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setSendTo(opt.value)}
+                      className={`w-full flex items-center space-x-3 p-3 rounded-xl border text-left transition-all ${
+                        isSelected
+                          ? 'bg-gradient-to-r from-amber-500/20 to-yellow-500/10 border-amber-400 shadow-[0_3px_12px_rgba(245,158,11,0.2)]'
+                          : 'bg-slate-950/70 border-slate-800 hover:border-slate-700 text-slate-400'
+                      }`}
+                    >
+                      <span className="text-2xl shrink-0">{opt.icon}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-xs font-black ${isSelected ? 'text-amber-300' : 'text-slate-200'}`}>
+                          {opt.label}
+                        </p>
+                        <p className="text-[10px] text-slate-400 mt-0.5 truncate">{opt.desc}</p>
+                      </div>
+                      <div
+                        className={`w-5 h-5 rounded-full border flex items-center justify-center shrink-0 ${
+                          isSelected
+                            ? 'bg-amber-400 border-amber-400 text-slate-950'
+                            : 'border-slate-700 bg-slate-900 text-transparent'
+                        }`}
+                      >
+                        <Check size={12} strokeWidth={3} />
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Target Channel Input */}
+              {(sendTo === 'channel' || sendTo === 'both') && (
+                <div className="mt-3 p-3 rounded-xl bg-slate-950 border border-amber-500/30 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-black text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                      <AtSign size={13} />
+                      <span>Telegram Channel Username / Link</span>
+                    </label>
+                    <a
+                      href="https://t.me/ChoiceBingo"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-[10px] font-bold text-amber-400 underline hover:text-amber-300"
+                    >
+                      Open @ChoiceBingo
+                    </a>
+                  </div>
+                  <input
+                    type="text"
+                    value={channelId}
+                    onChange={e => setChannelId(e.target.value)}
+                    placeholder="@ChoiceBingo"
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs font-bold text-white outline-none focus:border-amber-400"
+                  />
+                  <p className="text-[10px] text-slate-400 leading-relaxed">
+                    Make sure <strong>@choicebingo_bot</strong> is an <strong>Administrator</strong> in @ChoiceBingo with
+                    permission to post messages.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Schedule Section */}
+            <div className="pt-2 border-t border-slate-800">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center space-x-2">
+                  <Calendar size={15} className="text-amber-400" />
+                  <span className="text-xs font-bold text-slate-300">Schedule Broadcast</span>
+                </div>
                 <button
-                  key={opt.value}
                   type="button"
-                  onClick={() => setSendTo(opt.value)}
-                  className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl border-2 transition-all text-left ${
-                    sendTo === opt.value
-                      ? 'border-yellow-400 bg-yellow-50 text-yellow-900 shadow-sm'
-                      : 'border-slate-100 bg-slate-50 text-slate-600 hover:border-slate-200'
+                  onClick={() => setScheduleEnabled(!scheduleEnabled)}
+                  className={`relative w-11 h-6 rounded-full transition-colors ${
+                    scheduleEnabled ? 'bg-amber-500' : 'bg-slate-800 border border-slate-700'
                   }`}
                 >
-                  <span className="text-2xl">{opt.icon}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-black">{opt.label}</p>
-                    <p className="text-xs text-slate-500">{opt.desc}</p>
-                  </div>
-                  {sendTo === opt.value && <CheckCircle size={18} className="text-yellow-600 shrink-0" />}
+                  <span
+                    className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                      scheduleEnabled ? 'translate-x-5' : ''
+                    }`}
+                  />
                 </button>
-              ))}
+              </div>
+
+              {scheduleEnabled ? (
+                <input
+                  type="datetime-local"
+                  value={scheduledAt}
+                  onChange={e => setScheduledAt(e.target.value)}
+                  min={new Date().toISOString().slice(0, 16)}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-xs font-bold text-white outline-none focus:border-amber-400"
+                />
+              ) : (
+                <p className="text-[10px] text-slate-500 font-medium">
+                  If unscheduled, you can save as draft and send manually anytime.
+                </p>
+              )}
             </div>
 
-            {/* Target Channel input if channel or both selected */}
-            {(sendTo === 'channel' || sendTo === 'both') && (
-              <div className="mt-3 pt-3 border-t border-slate-100 bg-yellow-50/50 p-3 rounded-xl border border-yellow-100">
-                <label className="block text-xs font-black text-slate-700 mb-1.5 flex items-center space-x-1.5">
-                  <AtSign size={14} className="text-yellow-600" />
-                  <span>Target Telegram Channel</span>
-                </label>
-                <input
-                  type="text"
-                  value={channelId}
-                  onChange={e => setChannelId(e.target.value)}
-                  placeholder="@ChoiceBingo"
-                  className="w-full border border-slate-200 bg-white rounded-xl px-3 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-yellow-400"
-                />
-                <p className="text-[11px] text-slate-500 mt-1.5">
-                  Default channel: <strong>@ChoiceBingo</strong> (<a href="https://t.me/ChoiceBingo" target="_blank" rel="noreferrer" className="text-yellow-600 font-bold underline">https://t.me/ChoiceBingo</a>).
-                  <br />Ensure your Telegram bot is added as an <strong>Administrator</strong> in @ChoiceBingo.
-                </p>
+            {/* Error Overlay */}
+            {error && (
+              <div className="flex items-center space-x-2 bg-rose-500/10 border border-rose-500/30 rounded-xl p-3 text-rose-300 text-xs">
+                <AlertCircle size={15} className="shrink-0" />
+                <span>{error}</span>
               </div>
             )}
-          </div>
 
-          {/* Schedule */}
-          <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <label className="text-xs font-bold text-slate-500 flex items-center space-x-1.5">
-                <Clock size={14} />
-                <span>Schedule Post</span>
-              </label>
+            {/* Form Actions (3D Buttons) */}
+            <div className="flex space-x-3 pt-2">
               <button
                 type="button"
-                onClick={() => setScheduleEnabled(!scheduleEnabled)}
-                className={`relative w-12 h-6 rounded-full transition-colors ${scheduleEnabled ? 'bg-yellow-400' : 'bg-slate-200'}`}
+                onClick={() => {
+                  setShowForm(false);
+                  resetForm();
+                }}
+                className="flex-1 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs border border-slate-700 active:scale-95 transition-all shadow-[0_3px_0_0_#1e293b] active:translate-y-0.5 active:shadow-none"
               >
-                <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${scheduleEnabled ? 'translate-x-6' : ''}`} />
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={saving || uploading}
+                className="flex-1 py-3 rounded-xl bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 text-slate-950 font-black text-xs flex items-center justify-center space-x-1.5 shadow-[0_4px_0_0_#b45309] active:translate-y-1 active:shadow-none transition-all disabled:opacity-50"
+              >
+                {saving ? (
+                  <Loader2 size={15} className="animate-spin" />
+                ) : scheduleEnabled ? (
+                  <Calendar size={15} />
+                ) : (
+                  <Sparkles size={15} />
+                )}
+                <span>
+                  {saving ? 'Saving...' : scheduleEnabled ? 'Schedule Post' : editPost ? 'Update Post' : 'Save Broadcast'}
+                </span>
               </button>
             </div>
-            {scheduleEnabled ? (
-              <input
-                type="datetime-local"
-                value={scheduledAt}
-                onChange={e => setScheduledAt(e.target.value)}
-                min={new Date().toISOString().slice(0, 16)}
-                className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
-              />
-            ) : (
-              <p className="text-xs text-slate-400">Post saved as draft. Press "Send Now" to broadcast immediately.</p>
-            )}
-          </div>
-
-          {error && (
-            <div className="flex items-center space-x-2 bg-red-50 border border-red-200 rounded-xl p-3 text-red-700 text-sm">
-              <AlertCircle size={16} className="shrink-0" />
-              <span>{error}</span>
-            </div>
-          )}
-
-          {/* Actions */}
-          <div className="flex space-x-3">
-            <button
-              type="button"
-              onClick={() => { setShowForm(false); resetForm(); }}
-              className="flex-1 py-3.5 rounded-xl border border-slate-200 bg-white text-slate-600 font-bold text-sm active:scale-95 transition-all"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={saving || uploading}
-              className="flex-1 py-3.5 rounded-xl bg-yellow-400 text-slate-900 font-black text-sm flex items-center justify-center space-x-2 disabled:opacity-60 active:scale-95 transition-all shadow-sm"
-            >
-              {saving && <Loader2 size={16} className="animate-spin" />}
-              <span>{scheduleEnabled ? 'ðŸ“… Schedule' : 'ðŸ’¾ Save Draft'}</span>
-            </button>
           </div>
         </div>
       </div>
     );
   }
 
-  // â”€â”€ LIST VIEW â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ══════════════════════════════════════════════════════════════════════════
+  // 3D MAIN BROADCAST LIST VIEW
+  // ══════════════════════════════════════════════════════════════════════════
   return (
-    <div className="min-h-screen bg-slate-50 p-4 pb-10">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-5">
-        <div>
-          <h1 className="text-xl font-black text-slate-800 flex items-center space-x-2">
-            <Radio className="text-yellow-500" size={22} />
-            <span>Broadcast</span>
-          </h1>
-          <p className="text-xs text-slate-400 mt-0.5">Send posts to all players &amp; channel @ChoiceBingo</p>
+    <div className="min-h-screen bg-slate-950 text-white p-4 pb-20 flex flex-col items-center">
+      <div className="w-full max-w-md space-y-4">
+        {/* Toast Overlay */}
+        {successMsg && (
+          <div className="fixed top-4 left-4 right-4 z-50 flex items-center justify-center space-x-2 px-4 py-3 rounded-xl font-black text-xs shadow-xl bg-amber-400 text-slate-950 animate-fade-in border border-amber-300">
+            <CheckCircle2 size={16} />
+            <span>{successMsg}</span>
+          </div>
+        )}
+
+        {/* Top Header Card */}
+        <div className="bg-slate-900/90 backdrop-blur-md rounded-2xl p-4 border border-slate-800 shadow-[0_8px_25px_rgba(0,0,0,0.5)]">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <Link
+                to="/admin"
+                className="w-9 h-9 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 flex items-center justify-center text-slate-200 active:scale-95 transition-all shadow-[0_2px_0_0_#334155]"
+              >
+                <ArrowLeft size={18} />
+              </Link>
+              <div>
+                <h1 className="text-base font-black flex items-center gap-1.5 text-amber-400">
+                  <Radio size={18} className="animate-pulse text-amber-400" />
+                  <span>Broadcast Center</span>
+                </h1>
+                <p className="text-[10px] text-slate-400 font-medium">Push to players &amp; channel @ChoiceBingo</p>
+              </div>
+            </div>
+
+            {/* 3D New Post Button */}
+            <button
+              onClick={openCreateForm}
+              className="flex items-center space-x-1.5 px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 text-slate-950 font-black text-xs shadow-[0_3px_0_0_#b45309] active:translate-y-0.5 active:shadow-none transition-all"
+            >
+              <Plus size={16} strokeWidth={3} />
+              <span>New Post</span>
+            </button>
+          </div>
+
+          {/* Quick Filter Tabs */}
+          <div className="grid grid-cols-5 gap-1.5 mt-3 pt-3 border-t border-slate-800/80 text-[10px] font-black">
+            {[
+              { id: 'all', label: 'All', count: posts.length },
+              { id: 'sent', label: 'Sent', count: posts.filter(p => p.status === 'sent').length },
+              { id: 'scheduled', label: 'Queued', count: posts.filter(p => p.status === 'scheduled').length },
+              { id: 'draft', label: 'Draft', count: posts.filter(p => p.status === 'draft').length },
+              { id: 'failed', label: 'Failed', count: posts.filter(p => p.status === 'failed').length },
+            ].map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setFilterTab(tab.id as any)}
+                className={`py-1.5 px-1 rounded-lg text-center transition-all ${
+                  filterTab === tab.id
+                    ? 'bg-amber-400 text-slate-950 shadow-md font-black'
+                    : 'bg-slate-950/60 text-slate-400 hover:text-white border border-slate-800/60'
+                }`}
+              >
+                <span>{tab.label}</span>
+                <span className="block text-[9px] opacity-80">{tab.count}</span>
+              </button>
+            ))}
+          </div>
         </div>
-        <button
-          onClick={openCreateForm}
-          className="flex items-center space-x-2 bg-yellow-400 text-slate-900 font-black text-sm px-4 py-2.5 rounded-xl shadow-sm active:scale-95 transition-all"
-        >
-          <Plus size={16} />
-          <span>New Post</span>
-        </button>
-      </div>
 
-      {error && (
-        <div className="flex items-center space-x-2 bg-red-50 border border-red-200 rounded-xl p-3 text-red-700 text-sm mb-4">
-          <AlertCircle size={16} className="shrink-0" />
-          <span className="flex-1">{error}</span>
-          <button onClick={() => setError('')}><X size={14} /></button>
-        </div>
-      )}
+        {/* Global Error Banner */}
+        {error && (
+          <div className="flex items-center space-x-2 bg-rose-500/10 border border-rose-500/30 rounded-xl p-3 text-rose-300 text-xs shadow-md">
+            <AlertCircle size={16} className="shrink-0" />
+            <span className="flex-1">{error}</span>
+            <button onClick={() => setError('')}>
+              <X size={14} />
+            </button>
+          </div>
+        )}
 
-      {loading ? (
-        <div className="flex justify-center pt-16">
-          <Loader2 size={32} className="animate-spin text-yellow-400" />
-        </div>
-      ) : posts.length === 0 ? (
-        <div className="flex flex-col items-center justify-center pt-20 text-slate-400 space-y-3">
-          <MessageSquare size={48} strokeWidth={1.5} />
-          <p className="font-semibold text-sm">No posts yet</p>
-          <button onClick={openCreateForm} className="text-yellow-600 font-bold text-sm underline">
-            Create your first post â†’
-          </button>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {posts.map(post => {
-            const badge = STATUS_BADGE[post.status];
-            const isSendable = post.status === 'draft' || post.status === 'scheduled' || post.status === 'failed';
-            const isEditable = post.status === 'draft' || post.status === 'scheduled' || post.status === 'failed';
-            const isSending = sending === post.id;
-            const targetChannelName = post.channel_id || defaultChannel || '@ChoiceBingo';
+        {/* Posts List */}
+        {loading ? (
+          <div className="flex flex-col items-center justify-center pt-20 space-y-3">
+            <Loader2 size={36} className="animate-spin text-amber-400" />
+            <p className="text-xs text-slate-400 font-bold">Loading broadcasts...</p>
+          </div>
+        ) : filteredPosts.length === 0 ? (
+          <div className="bg-slate-900/60 rounded-2xl border border-slate-800 p-8 flex flex-col items-center justify-center text-center space-y-3 shadow-inner">
+            <div className="w-16 h-16 rounded-2xl bg-slate-800/80 border border-slate-700 flex items-center justify-center text-slate-500">
+              <MessageSquare size={32} />
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm font-black text-slate-300">
+                {filterTab === 'all' ? 'No broadcast posts yet' : `No ${filterTab} posts`}
+              </p>
+              <p className="text-xs text-slate-500 max-w-xs">
+                Announce bonuses, jackpots, or game updates directly to all active players.
+              </p>
+            </div>
+            <button
+              onClick={openCreateForm}
+              className="mt-2 text-xs font-black text-amber-400 hover:text-amber-300 flex items-center gap-1.5 underline"
+            >
+              <Plus size={14} /> Create your first broadcast post
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {filteredPosts.map(post => {
+              const statusCfg = STATUS_CONFIG[post.status];
+              const isSendable =
+                post.status === 'draft' || post.status === 'scheduled' || post.status === 'failed';
+              const isEditable =
+                post.status === 'draft' || post.status === 'scheduled' || post.status === 'failed';
+              const isSending = sending === post.id;
+              const targetChannelName = post.channel_id || defaultChannel || '@ChoiceBingo';
 
-            return (
-              <div key={post.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                {/* Media preview */}
-                {post.media_url && post.media_type === 'image' && (
-                  <img src={post.media_url} alt="post" className="w-full h-36 object-cover" />
-                )}
-                {post.media_url && post.media_type === 'video' && (
-                  <div className="relative w-full h-36 bg-slate-900 flex items-center justify-center overflow-hidden">
-                    <video src={post.media_url} className="h-full w-full object-cover" muted playsInline />
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                      <div className="bg-black/70 rounded-full p-3">
-                        <Film size={24} className="text-white" />
-                      </div>
-                    </div>
-                    <span className="absolute bottom-2 left-2 text-[11px] font-bold px-2 py-0.5 rounded-lg bg-purple-600 text-white">ðŸŽ¬ Video</span>
-                  </div>
-                )}
-
-                <div className="p-4">
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex-1 min-w-0">
-                      {post.title && (
-                        <p className="font-black text-slate-800 text-sm truncate">{post.title}</p>
-                      )}
-                      <p className="text-slate-600 text-sm line-clamp-2 mt-0.5">{post.body}</p>
-                    </div>
-                    <span className={`ml-2 shrink-0 text-[10px] font-black px-2 py-1 rounded-lg ${badge.cls}`}>
-                      {badge.label}
-                    </span>
-                  </div>
-
-                  {/* Target audience badge */}
-                  <div className="flex flex-wrap gap-1.5 text-[11px] mb-2">
-                    <span className="bg-slate-100 text-slate-700 font-bold px-2 py-0.5 rounded-md">
-                      {post.send_to === 'bot' && 'ðŸ¤– Bot (All Players)'}
-                      {post.send_to === 'channel' && `ðŸ“¢ Channel (${targetChannelName})`}
-                      {post.send_to === 'both' && `ðŸ“¡ Bot + Channel (${targetChannelName})`}
-                    </span>
-                    {post.scheduled_at && post.status === 'scheduled' && (
-                      <span className="bg-blue-50 text-blue-700 font-medium px-2 py-0.5 rounded-md">
-                        ðŸ“… {fmtDate(post.scheduled_at)}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Delivery status */}
-                  <div className="flex flex-wrap gap-2 text-[11px] text-slate-400 mb-3">
-                    {post.status === 'sent' && (
-                      <span className="text-green-600 font-bold">
-                        âœ… {post.sent_count} delivered {post.failed_count > 0 ? `Â· ${post.failed_count} failed` : ''} Â· {fmtDate(post.sent_at)}
-                      </span>
-                    )}
-                    {post.status === 'failed' && (
-                      <span className="text-red-600 font-bold">
-                        âŒ Failed ({post.failed_count} errors)
-                      </span>
-                    )}
-                    {!post.scheduled_at && post.status === 'draft' && (
-                      <span>Created {fmtDate(post.created_at)}</span>
-                    )}
-                  </div>
-
-                  {/* Error warning if any */}
-                  {post.error_message && (
-                    <div className="text-[11px] text-red-600 bg-red-50 p-2.5 rounded-lg mb-3 border border-red-100 leading-relaxed">
-                      âš ï¸ {post.error_message}
+              return (
+                <div
+                  key={post.id}
+                  className="bg-slate-900/90 backdrop-blur-md rounded-2xl border border-slate-800 shadow-[0_6px_20px_rgba(0,0,0,0.4)] overflow-hidden transition-all hover:border-slate-700"
+                >
+                  {/* Media Banner */}
+                  {post.media_url && post.media_type === 'image' && (
+                    <div className="relative w-full h-40 bg-slate-950 overflow-hidden">
+                      <img src={post.media_url} alt="post" className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent" />
                     </div>
                   )}
 
-                  {/* Action buttons */}
-                  <div className="flex space-x-2">
-                    {isSendable && (
-                      <button
-                        onClick={() => handleSend(post.id)}
-                        disabled={isSending}
-                        className="flex-1 flex items-center justify-center space-x-1.5 bg-green-500 hover:bg-green-600 text-white font-bold text-xs py-2.5 rounded-xl active:scale-95 transition-all disabled:opacity-60 shadow-sm"
+                  {post.media_url && post.media_type === 'video' && (
+                    <div className="relative w-full h-40 bg-slate-950 flex items-center justify-center overflow-hidden">
+                      <video src={post.media_url} className="h-full w-full object-cover" muted playsInline />
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                        <div className="bg-amber-500 text-slate-950 rounded-full p-2.5 shadow-lg">
+                          <Film size={22} />
+                        </div>
+                      </div>
+                      <span className="absolute bottom-2 left-2 text-[10px] font-black px-2 py-0.5 rounded-md bg-purple-900/90 text-purple-200 border border-purple-500/40">
+                        🎬 Video
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="p-4 space-y-3">
+                    {/* Header Row */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        {post.title ? (
+                          <p className="font-black text-amber-300 text-sm truncate">{post.title}</p>
+                        ) : null}
+                        <p className="text-slate-300 text-xs line-clamp-3 leading-relaxed mt-0.5 font-medium whitespace-pre-wrap">
+                          {post.body}
+                        </p>
+                      </div>
+
+                      {/* Status Badge */}
+                      <span
+                        className={`text-[10px] font-black px-2.5 py-1 rounded-lg border flex items-center gap-1.5 shrink-0 ${statusCfg.badgeCls}`}
                       >
-                        {isSending ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
-                        <span>{isSending ? 'Sendingâ€¦' : 'Send Now'}</span>
-                      </button>
+                        <span className={`w-1.5 h-1.5 rounded-full ${statusCfg.dotCls}`} />
+                        <span>{statusCfg.label}</span>
+                      </span>
+                    </div>
+
+                    {/* Metadata Badges */}
+                    <div className="flex flex-wrap gap-1.5 text-[10px] font-bold">
+                      <span className="bg-slate-950 text-slate-300 border border-slate-800 px-2 py-0.5 rounded-md flex items-center gap-1">
+                        {post.send_to === 'bot' && '🤖 Bot Only'}
+                        {post.send_to === 'channel' && `📢 Channel (${targetChannelName})`}
+                        {post.send_to === 'both' && `📡 Bot + Channel (${targetChannelName})`}
+                      </span>
+
+                      {post.scheduled_at && post.status === 'scheduled' && (
+                        <span className="bg-blue-500/10 text-blue-300 border border-blue-500/30 px-2 py-0.5 rounded-md flex items-center gap-1">
+                          <Clock size={11} /> {fmtDate(post.scheduled_at)}
+                        </span>
+                      )}
+
+                      {!post.scheduled_at && (
+                        <span className="text-slate-500 px-1 py-0.5">Created {fmtDate(post.created_at)}</span>
+                      )}
+                    </div>
+
+                    {/* Delivery Stats */}
+                    {post.status === 'sent' && (
+                      <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-bold text-emerald-400 flex items-center justify-between">
+                        <span className="flex items-center gap-1">
+                          <CheckCircle2 size={13} /> Delivered to {post.sent_count} targets
+                        </span>
+                        <span>{fmtDate(post.sent_at)}</span>
+                      </div>
                     )}
-                    {isEditable && (
+
+                    {post.error_message && (
+                      <div className="p-2 rounded-xl bg-rose-500/10 border border-rose-500/20 text-[10px] text-rose-300 font-medium leading-relaxed">
+                        ⚠️ {post.error_message}
+                      </div>
+                    )}
+
+                    {/* 3D Action Buttons */}
+                    <div className="flex items-center space-x-2 pt-1 border-t border-slate-800/80">
+                      {isSendable && (
+                        <button
+                          onClick={() => handleSend(post.id)}
+                          disabled={isSending}
+                          className="flex-1 py-2.5 px-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-black text-xs flex items-center justify-center space-x-1.5 shadow-[0_3px_0_0_#065f46] active:translate-y-0.5 active:shadow-none transition-all disabled:opacity-50"
+                        >
+                          {isSending ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
+                          <span>{isSending ? 'Sending...' : 'Send Now'}</span>
+                        </button>
+                      )}
+
+                      {isEditable && (
+                        <button
+                          onClick={() => openEditForm(post)}
+                          className="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs border border-slate-700 flex items-center justify-center space-x-1 shadow-[0_3px_0_0_#1e293b] active:translate-y-0.5 active:shadow-none transition-all"
+                        >
+                          <Edit2 size={12} />
+                          <span>Edit</span>
+                        </button>
+                      )}
+
                       <button
-                        onClick={() => openEditForm(post)}
-                        className="flex items-center justify-center space-x-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs px-3 py-2.5 rounded-xl active:scale-95 transition-all"
+                        onClick={() => handleDelete(post.id)}
+                        className="p-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center justify-center active:scale-95 transition-all"
+                        title="Delete Post"
                       >
-                        <Edit2 size={13} />
-                        <span>Edit</span>
+                        <Trash2 size={14} />
                       </button>
-                    )}
-                    <button
-                      onClick={() => handleDelete(post.id)}
-                      className="flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-500 px-3 py-2.5 rounded-xl active:scale-95 transition-all"
-                    >
-                      <Trash2 size={13} />
-                    </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

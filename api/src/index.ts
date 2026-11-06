@@ -22,7 +22,8 @@ const app = express();
 const PORT = process.env.PORT || 3002;
 
 app.use(corsMiddleware);
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.get('/health', (_, res) => res.json({ status: 'ok', service: 'ChoiceBingo-api' }));
 app.use('/api/auth', authRouter);
 app.use('/api/player', playerRouter);

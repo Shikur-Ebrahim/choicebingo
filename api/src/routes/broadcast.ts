@@ -15,7 +15,7 @@
 import { Router, Response, NextFunction } from 'express';
 import { AuthRequest, validateTelegramAuth } from '../middleware/auth';
 import { supabase } from '../services/supabase';
-import { getPresignedUploadUrl, deleteFromR2 } from '../services/r2';
+import { getPresignedUploadUrl, deleteFromR2, uploadToR2 } from '../services/r2';
 import crypto from 'crypto';
 
 const router = Router();
@@ -152,7 +152,49 @@ async function sendTelegramMessage(
 
   let result: { ok: boolean; error?: string };
 
-  if (mediaUrl && mediaType === 'video') {
+  // Handle base64 Data URLs directly via multipart FormData
+  if (mediaUrl && mediaUrl.startsWith('data:')) {
+    try {
+      const match = mediaUrl.match(/^data:([^;]+);base64,(.+)$/);
+      if (match) {
+        const mime = match[1];
+        const buffer = Buffer.from(match[2], 'base64');
+        const isVid = mime.startsWith('video/') || mediaType === 'video';
+        const ext = mime.split('/')[1] || (isVid ? 'mp4' : 'png');
+        const filename = `media.${ext}`;
+
+        const formData = new FormData();
+        formData.append('chat_id', chatId);
+        if (caption) formData.append('caption', caption);
+        formData.append('parse_mode', 'Markdown');
+
+        if (isVid) {
+          formData.append('video', new Blob([buffer], { type: mime }), filename);
+          formData.append('supports_streaming', 'true');
+          const r = await fetch(`${base}/sendVideo`, { method: 'POST', body: formData });
+          if (!r.ok) {
+            const errJson = await r.json().catch(() => null) as any;
+            result = { ok: false, error: errJson?.description || r.statusText };
+          } else {
+            result = { ok: true };
+          }
+        } else {
+          formData.append('photo', new Blob([buffer], { type: mime }), filename);
+          const r = await fetch(`${base}/sendPhoto`, { method: 'POST', body: formData });
+          if (!r.ok) {
+            const errJson = await r.json().catch(() => null) as any;
+            result = { ok: false, error: errJson?.description || r.statusText };
+          } else {
+            result = { ok: true };
+          }
+        }
+      } else {
+        result = { ok: false, error: 'Invalid base64 media data' };
+      }
+    } catch (e: any) {
+      result = { ok: false, error: e.message };
+    }
+  } else if (mediaUrl && mediaType === 'video') {
     result = await sendTelegramRequest(base, 'sendVideo', {
       chat_id: chatId,
       video: mediaUrl,
@@ -356,6 +398,44 @@ router.get('/', validateTelegramAuth, requireAdmin, async (_req, res) => {
 });
 
 // â”€â”€ POST /api/broadcast/presign â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// POST /api/broadcast/upload-media (Direct server-side upload to R2 - 0 CORS failure)
+router.post('/upload-media', validateTelegramAuth, requireAdmin, async (req: AuthRequest, res) => {
+  const { filename, contentType, base64 } = req.body;
+  if (!filename || !contentType || !base64) {
+    res.status(400).json({ error: 'filename, contentType, and base64 are required' });
+    return;
+  }
+
+  const allowedImages = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+  const allowedVideos = ['video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/webm'];
+  const allowed = [...allowedImages, ...allowedVideos];
+
+  if (!allowed.includes(contentType)) {
+    res.status(400).json({ error: 'Only image or video files are allowed' });
+    return;
+  }
+
+  const isVideo = allowedVideos.includes(contentType);
+  const ext = filename.split('.').pop() || (isVideo ? 'mp4' : 'jpg');
+  const folder = isVideo ? 'post-videos' : 'post-images';
+  const key = `${folder}/${Date.now()}-${crypto.randomBytes(6).toString('hex')}.${ext}`;
+
+  try {
+    const base64Data = base64.includes(';base64,') ? base64.split(';base64,')[1] : base64;
+    const buffer = Buffer.from(base64Data, 'base64');
+    const publicUrl = await uploadToR2(key, buffer, contentType);
+    res.json({
+      success: true,
+      publicUrl,
+      key,
+      mediaType: isVideo ? 'video' : 'image',
+    });
+  } catch (err: any) {
+    console.error('[Broadcast Upload Error]:', err);
+    res.status(500).json({ error: err.message || 'Media upload failed' });
+  }
+});
+
 router.post('/presign', validateTelegramAuth, requireAdmin, async (req: AuthRequest, res) => {
   const { filename, contentType } = req.body;
   if (!filename || !contentType) {
