@@ -142,7 +142,8 @@ async function sendTelegramMessage(
   chatId: string,
   body: string,
   mediaUrl?: string | null,
-  mediaType?: string | null
+  mediaType?: string | null,
+  isChannel = false
 ): Promise<{ ok: boolean; error?: string }> {
   const base = `https://api.telegram.org/bot${botToken}`;
 
@@ -169,6 +170,20 @@ async function sendTelegramMessage(
     }
   }
 
+  // Attractive "Play Now" inline action button for channel posts and bot broadcasts
+  const botUsername = 'choicebingo_bot';
+  const startParam = isChannel ? 'channel' : 'broadcast';
+  const replyMarkup = {
+    inline_keyboard: [
+      [
+        {
+          text: '🎮 PLAY CHOICE BINGO NOW 🎯',
+          url: `https://t.me/${botUsername}?start=${startParam}`,
+        },
+      ],
+    ],
+  };
+
   if (mediaUrl && mediaType === 'video') {
     result = await sendTelegramRequest(base, 'sendVideo', {
       chat_id: chatId,
@@ -176,6 +191,7 @@ async function sendTelegramMessage(
       caption: caption || undefined,
       parse_mode: 'Markdown',
       supports_streaming: true,
+      reply_markup: replyMarkup,
     });
   } else if (mediaUrl && mediaType === 'image') {
     result = await sendTelegramRequest(base, 'sendPhoto', {
@@ -183,12 +199,14 @@ async function sendTelegramMessage(
       photo: mediaUrl,
       caption: caption || undefined,
       parse_mode: 'Markdown',
+      reply_markup: replyMarkup,
     });
   } else {
     result = await sendTelegramRequest(base, 'sendMessage', {
       chat_id: chatId,
       text: body,
       parse_mode: 'Markdown',
+      reply_markup: replyMarkup,
     });
   }
 
@@ -198,6 +216,7 @@ async function sendTelegramMessage(
       chat_id: chatId,
       text: body,
       parse_mode: 'Markdown',
+      reply_markup: replyMarkup,
     });
   }
 
@@ -248,7 +267,7 @@ async function executeBroadcast(postId: string): Promise<void> {
   if (sendToChannel) {
     const channelId = await resolveChannelId(post.channel_id);
     console.log(`[Broadcast] Sending to Telegram channel: ${channelId} (post.id: ${postId})`);
-    const res = await sendTelegramMessage(botToken, channelId, messageText, mediaUrl, mediaType);
+    const res = await sendTelegramMessage(botToken, channelId, messageText, mediaUrl, mediaType, true);
     if (res.ok) {
       sentCount++;
       console.log(`[Broadcast] âœ… Successfully posted to channel ${channelId}`);
@@ -298,7 +317,7 @@ async function executeBroadcast(postId: string): Promise<void> {
 
       for (const u of eligible) {
         await new Promise(r => setTimeout(r, 35)); // ~28 msg/sec Telegram rate limit
-        const res = await sendTelegramMessage(botToken, u.telegram_id, messageText, mediaUrl, mediaType);
+        const res = await sendTelegramMessage(botToken, u.telegram_id, messageText, mediaUrl, mediaType, false);
         if (res.ok) {
           sentCount++;
         } else {

@@ -707,6 +707,26 @@ export default function AdminBroadcast() {
                   </p>
                 </div>
               )}
+
+              {/* Interactive Action Button Info */}
+              <div className="mt-3 p-3 rounded-xl bg-slate-950 border border-amber-500/30 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-black text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <Sparkles size={13} />
+                    <span>Channel &amp; Bot Interactive Button</span>
+                  </span>
+                  <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                    ✓ Auto-Attached
+                  </span>
+                </div>
+                <p className="text-[10px] text-slate-400 leading-relaxed">
+                  Every post sent to <strong>@ChoiceBingo</strong> or players automatically includes this attractive 1-tap button:
+                </p>
+                <div className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 text-slate-950 font-black text-xs flex items-center justify-center space-x-1.5 shadow-[0_3px_0_0_#b45309]">
+                  <span className="text-sm">🎮</span>
+                  <span>PLAY CHOICE BINGO NOW 🎯</span>
+                </div>
+              </div>
             </div>
 
             {/* Schedule Section */}
@@ -972,6 +992,14 @@ export default function AdminBroadcast() {
                       {!post.scheduled_at && (
                         <span className="text-slate-500 px-1 py-0.5">Created {fmtDate(post.created_at)}</span>
                       )}
+                    </div>
+
+                    {/* Interactive Play Now Button Preview */}
+                    <div className="pt-0.5">
+                      <div className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 text-slate-950 font-black text-xs flex items-center justify-center space-x-1.5 shadow-[0_2px_0_0_#b45309] pointer-events-none select-none">
+                        <span>🎮</span>
+                        <span>PLAY CHOICE BINGO NOW 🎯</span>
+                      </div>
                     </div>
 
                     {/* Delivery Stats */}
