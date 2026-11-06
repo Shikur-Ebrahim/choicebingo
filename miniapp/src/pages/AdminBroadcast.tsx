@@ -1125,21 +1125,6 @@ export default function AdminBroadcast() {
 
                     {/* 3D Action Buttons */}
                     <div className="flex items-center space-x-2 pt-1 border-t border-slate-800/80">
-                      {/* Test to Me Button */}
-                      <button
-                        onClick={() => handleTestSend(post.id)}
-                        disabled={testingPostId === post.id}
-                        className="py-2.5 px-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black text-xs flex items-center justify-center space-x-1.5 shadow-[0_3px_0_0_#1e3a8a] active:translate-y-0.5 active:shadow-none transition-all disabled:opacity-50 shrink-0"
-                        title="Send instant preview directly to your Telegram chat"
-                      >
-                        {testingPostId === post.id ? (
-                          <Loader2 size={13} className="animate-spin" />
-                        ) : (
-                          <Sparkles size={13} />
-                        )}
-                        <span>{testingPostId === post.id ? 'Testing...' : 'Test to Me'}</span>
-                      </button>
-
                       {isSendable && (
                         <button
                           onClick={() => handleSend(post.id)}
