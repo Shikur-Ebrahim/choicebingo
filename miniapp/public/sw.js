@@ -1,11 +1,13 @@
 // Choice Bingo PWA Service Worker
-const CACHE_NAME = 'choicebingo-pwa-v1';
+const CACHE_NAME = 'choicebingo-pwa-v2';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
   '/icon-192.png',
   '/icon-512.png',
+  '/icon-maskable-512.png',
+  '/apple-touch-icon.png',
   '/choicebingo-logo.png'
 ];
 

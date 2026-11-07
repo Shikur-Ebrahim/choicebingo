@@ -112,8 +112,9 @@ function RoleRouter() {
   // Show spinner while user is loading (prevents blank flash)
   if (!user && loading) {
     return (
-      <div className="h-screen flex items-center justify-center bg-slate-50">
-        <div className="w-10 h-10 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin"></div>
+      <div className="h-screen flex flex-col items-center justify-center bg-white">
+        <img src="/choicebingo-logo.png" alt="Choice Bingo" className="h-12 mb-4 object-contain animate-pulse" />
+        <div className="w-8 h-8 border-3 border-amber-400 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }

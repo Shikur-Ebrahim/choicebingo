@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <meta name="theme-color" content="#f59e0b" />
+    <meta name="theme-color" content="#ffffff" />
     <meta name="description" content="Choice Bingo - Play live online Ethiopian Bingo and win cash prizes!" />
     <title>Choice Bingo</title>
 
@@ -13,7 +13,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Choice Bingo" />
 
     <!-- Preconnect to external resources for speed -->
@@ -38,14 +38,34 @@
       }
     </script>
 
-    <!-- Prevent flash of unstyled content -->
+    <!-- Clean bright white initial loader -->
     <style>
-      body { margin: 0; background: #f8fafc; }
-      #root { min-height: 100vh; }
+      body { margin: 0; background: #ffffff; color: #0f172a; font-family: system-ui, -apple-system, sans-serif; }
+      #root { min-height: 100vh; background: #ffffff; }
+      .app-initial-loader {
+        position: fixed; inset: 0; display: flex; flex-direction: column;
+        align-items: center; justify-content: center; background: #ffffff; z-index: 9999;
+      }
+      .app-loader-logo {
+        height: 60px; max-width: 200px; object-fit: contain; margin-bottom: 24px;
+        animation: appPulse 1.5s infinite ease-in-out;
+      }
+      .app-loader-spinner {
+        width: 36px; height: 36px; border: 3.5px solid #fef08a;
+        border-top-color: #f59e0b; border-radius: 50%;
+        animation: appSpin 0.75s linear infinite;
+      }
+      @keyframes appSpin { to { transform: rotate(360deg); } }
+      @keyframes appPulse { 0%, 100% { opacity: 0.9; transform: scale(1); } 50% { opacity: 1; transform: scale(1.04); } }
     </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div class="app-initial-loader">
+        <img src="/choicebingo-logo.png" alt="Choice Bingo" class="app-loader-logo" />
+        <div class="app-loader-spinner"></div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
