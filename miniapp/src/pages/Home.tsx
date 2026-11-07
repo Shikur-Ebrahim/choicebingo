@@ -114,8 +114,6 @@ export default function Home() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'deposits' }, () => fetchNotifications())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'withdrawals' }, () => fetchNotifications())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'broadcast_posts' }, () => fetchNotifications())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_notifications' }, () => fetchNotifications())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'settings' }, () => fetchNotifications())
       .subscribe();
 
     return () => {

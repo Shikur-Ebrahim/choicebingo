@@ -1,13 +1,12 @@
 import { Router, Response } from 'express';
 import { AuthRequest, optionalTelegramAuth } from '../middleware/auth';
 import { supabase } from '../services/supabase';
-import { getUserNotifications } from '../services/notifications';
 
 const router = Router();
 
 export interface NotificationItem {
   id: string;
-  type: 'broadcast' | 'deposit' | 'withdrawal' | 'win' | 'reward' | 'refund' | 'transfer';
+  type: 'broadcast' | 'deposit' | 'withdrawal' | 'win' | 'reward';
   title: string;
   title_am?: string;
   message: string;
@@ -16,6 +15,7 @@ export interface NotificationItem {
   status: 'success' | 'warning' | 'danger' | 'info' | 'gold' | 'purple';
   amount?: number;
   media_url?: string;
+  media_type?: 'image' | 'video' | string;
   action_url?: string;
   action_text?: string;
 }
@@ -45,6 +45,7 @@ router.get('/', optionalTelegramAuth, async (req: AuthRequest, res: Response) =>
 
       if (!bErr && broadcasts) {
         for (const b of broadcasts) {
+          const isVideo = b.media_type === 'video' || Boolean(b.media_url && /\.(mp4|webm|mov|m4v)(\?.*)?$/i.test(b.media_url));
           addNotif({
             id: `broadcast_${b.id}`,
             type: 'broadcast',
@@ -55,6 +56,7 @@ router.get('/', optionalTelegramAuth, async (req: AuthRequest, res: Response) =>
             created_at: b.sent_at || b.created_at,
             status: 'info',
             media_url: b.media_url || undefined,
+            media_type: isVideo ? 'video' : (b.media_url ? 'image' : undefined),
           });
         }
       }
@@ -74,27 +76,7 @@ router.get('/', optionalTelegramAuth, async (req: AuthRequest, res: Response) =>
     if (rawId.startsWith('9') || rawId.startsWith('7')) userIds.push(`0${rawId}`);
     if (rawId.startsWith('0')) userIds.push(rawId.slice(1));
 
-    // 2. Fetch recorded user notifications (Game cancellations/refunds, transfers, withdrawal rejections)
-    try {
-      const recorded = await getUserNotifications(userIds);
-      for (const r of recorded) {
-        addNotif({
-          id: r.id || `rec_${Date.now()}_${Math.random()}`,
-          type: r.type,
-          title: r.title,
-          title_am: r.title_am || r.title,
-          message: r.message,
-          message_am: r.message_am || r.message,
-          created_at: r.created_at || new Date().toISOString(),
-          status: r.status,
-          amount: r.amount ? Number(r.amount) : undefined,
-        });
-      }
-    } catch (recErr) {
-      console.error('[Notifications] Error fetching recorded notifications:', recErr);
-    }
-
-    // 3. Fetch User Deposits (Approved, Rejected, Pending)
+    // 2. Fetch User Deposits (Approved, Rejected, Pending)
     try {
       const { data: deposits } = await supabase
         .from('deposits')
@@ -149,7 +131,7 @@ router.get('/', optionalTelegramAuth, async (req: AuthRequest, res: Response) =>
       console.error('[Notifications] Error fetching deposits:', dErr);
     }
 
-    // 4. Fetch User Withdrawals (Approved/Sent, Rejected, Pending)
+    // 3. Fetch User Withdrawals (Approved/Sent, Rejected, Pending)
     try {
       const { data: withdrawals } = await supabase
         .from('withdrawals')
@@ -204,7 +186,7 @@ router.get('/', optionalTelegramAuth, async (req: AuthRequest, res: Response) =>
       console.error('[Notifications] Error fetching withdrawals:', wErr);
     }
 
-    // 5. Fetch Bingo Game Wins
+    // 4. Fetch Bingo Game Wins
     try {
       const { data: wins } = await supabase
         .from('bingo_games')
@@ -232,7 +214,7 @@ router.get('/', optionalTelegramAuth, async (req: AuthRequest, res: Response) =>
       console.error('[Notifications] Error fetching game wins:', gErr);
     }
 
-    // 6. Fetch Reward Claims (Gursha / Milestones)
+    // 5. Fetch Reward Claims (Gursha / Milestones)
     try {
       const { data: claims } = await supabase
         .from('reward_claims')

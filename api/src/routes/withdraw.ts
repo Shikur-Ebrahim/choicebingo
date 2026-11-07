@@ -1,7 +1,6 @@
 import { Router } from 'express';
 import { AuthRequest, validateTelegramAuth } from '../middleware/auth';
 import { supabase } from '../services/supabase';
-import { recordNotification } from '../services/notifications';
 
 const router = Router();
 
@@ -107,18 +106,6 @@ router.post('/request', async (req: AuthRequest, res) => {
     res.status(500).json({ error: insertErr.message });
     return;
   }
-
-  // Record in-app notification for the user
-  recordNotification({
-    telegram_id: telegramId,
-    type: 'withdrawal',
-    title: `Withdrawal Requested (${Number(amount).toLocaleString('en-US')} ETB)`,
-    title_am: `የወጪ ጥያቄ ቀርቧል (${Number(amount).toLocaleString('en-US')} ብር)`,
-    message: `Your withdrawal request of ${Number(amount).toLocaleString('en-US')} ETB via ${(method?.type || 'Bank Transfer').toUpperCase()} is under review by operators.`,
-    message_am: `በ${(method?.type || 'Bank Transfer').toUpperCase()} የጠየቁት የ ${Number(amount).toLocaleString('en-US')} ብር የወጪ ጥያቄ በሰራተኞች በመረጋገጥ ላይ ነው።`,
-    amount: Number(amount),
-    status: 'warning',
-  }).catch(console.error);
 
   // 5. Notify workers via Telegram
   try {

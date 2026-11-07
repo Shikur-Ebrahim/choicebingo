@@ -23,7 +23,7 @@ const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 export interface NotificationItem {
   id: string;
-  type: 'broadcast' | 'deposit' | 'withdrawal' | 'win' | 'reward' | 'refund' | 'transfer';
+  type: 'broadcast' | 'deposit' | 'withdrawal' | 'win' | 'reward';
   title: string;
   title_am?: string;
   message: string;
@@ -32,6 +32,7 @@ export interface NotificationItem {
   status: 'success' | 'warning' | 'danger' | 'info' | 'gold' | 'purple';
   amount?: number;
   media_url?: string;
+  media_type?: 'image' | 'video' | string;
   action_url?: string;
   action_text?: string;
 }
@@ -99,7 +100,7 @@ export default function NotificationModal({
     return notifications.filter(n => {
       const isUnread = !readIds.has(n.id);
       if (filter === 'unread') return isUnread;
-      if (filter === 'cash') return n.type === 'deposit' || n.type === 'withdrawal' || n.type === 'transfer' || n.type === 'refund';
+      if (filter === 'cash') return n.type === 'deposit' || n.type === 'withdrawal';
       if (filter === 'wins') return n.type === 'win' || n.type === 'reward';
       if (filter === 'broadcast') return n.type === 'broadcast';
       return true;
@@ -109,21 +110,6 @@ export default function NotificationModal({
   if (!isOpen) return null;
 
   const renderIcon = (item: NotificationItem) => {
-    if (item.type === 'refund') {
-      return (
-        <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-950/70 border border-amber-300 dark:border-amber-700 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 shadow-xs">
-          <RefreshCw size={20} />
-        </div>
-      );
-    }
-    if (item.type === 'transfer') {
-      return (
-        <div className="w-10 h-10 rounded-xl bg-teal-100 dark:bg-teal-950/70 border border-teal-300 dark:border-teal-700 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0 shadow-xs">
-          <ArrowRightLeft size={20} />
-        </div>
-      );
-    }
-
     switch (item.status) {
       case 'success':
         return (
@@ -228,7 +214,7 @@ export default function NotificationModal({
           {[
             { id: 'all', label: isAm ? 'ሁሉም' : 'All', count: notifications.length },
             { id: 'unread', label: isAm ? 'ያልታዩ' : 'Unread', count: unreadCount },
-            { id: 'cash', label: isAm ? 'ክፍያዎች' : 'Cash', count: notifications.filter(n => n.type === 'deposit' || n.type === 'withdrawal' || n.type === 'transfer' || n.type === 'refund').length },
+            { id: 'cash', label: isAm ? 'ክፍያዎች' : 'Cash', count: notifications.filter(n => n.type === 'deposit' || n.type === 'withdrawal').length },
             { id: 'wins', label: isAm ? 'አሸናፊነት' : 'Wins', count: notifications.filter(n => n.type === 'win' || n.type === 'reward').length },
             { id: 'broadcast', label: isAm ? 'ማስታወቂያ' : 'News', count: notifications.filter(n => n.type === 'broadcast').length },
           ].map(tab => (
@@ -318,15 +304,25 @@ export default function NotificationModal({
                       {displayMessage}
                     </p>
 
-                    {/* Media Thumbnail (if broadcast has image) */}
+                    {/* Media Thumbnail or Video (broadcast attachment) */}
                     {item.media_url && (
-                      <div className="mt-2 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 max-h-36 bg-slate-900 flex items-center justify-center">
-                        <img
-                          src={item.media_url}
-                          alt="Broadcast attachment"
-                          className="w-full h-full object-cover"
-                          loading="lazy"
-                        />
+                      <div className="mt-2 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-black flex items-center justify-center max-h-56">
+                        {item.media_type === 'video' || /\.(mp4|webm|mov|m4v)(\?.*)?$/i.test(item.media_url) ? (
+                          <video
+                            src={item.media_url}
+                            controls
+                            playsInline
+                            className="w-full max-h-56 rounded-xl object-contain bg-black"
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        ) : (
+                          <img
+                            src={item.media_url}
+                            alt="Broadcast attachment"
+                            className="w-full h-full object-cover max-h-56"
+                            loading="lazy"
+                          />
+                        )}
                       </div>
                     )}
 
