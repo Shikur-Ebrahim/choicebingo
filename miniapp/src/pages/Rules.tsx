@@ -1,11 +1,14 @@
-import { ArrowLeft, Trophy, Clock, Users, Coins, Star, AlertCircle, CheckCircle2, Zap, Gift } from 'lucide-react';
+import { useState } from 'react';
+import { ArrowLeft, Trophy, Clock, Users, Coins, Star, AlertCircle, CheckCircle2, Zap, Gift, Play } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useGameStore } from '../store/gameStore';
 import { t } from '../lib/translations';
+import VideoGuideModal from '../components/VideoGuideModal';
 
 export default function Rules() {
   const navigate = useNavigate();
   const { language } = useGameStore();
+  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
   
   const rules = [
     {
@@ -89,18 +92,34 @@ export default function Rules() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-[#070b14] text-slate-800 dark:text-slate-100 transition-colors duration-200 pb-12">
+      {/* ── HOW TO PLAY VIDEO GUIDE MODAL ── */}
+      <VideoGuideModal
+        isOpen={isVideoModalOpen}
+        onClose={() => setIsVideoModalOpen(false)}
+        category="how_to_play"
+      />
 
       {/* ── 3D HEADER ── */}
       <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md sticky top-0 z-20 px-4 pt-5 pb-4 border-b border-slate-200/80 dark:border-slate-800 shadow-[0_4px_20px_rgba(0,0,0,0.03)] dark:shadow-[0_4px_25px_rgba(0,0,0,0.4)] transition-colors">
-        <div className="flex items-center gap-3">
-          <button onClick={() => navigate(-1)}
-            className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 active:scale-90 transition-all border border-slate-200/60 dark:border-slate-700 shadow-sm flex items-center justify-center shrink-0">
-            <ArrowLeft size={18} />
-          </button>
-          <div>
-            <h1 className="text-lg font-black text-slate-800 dark:text-white leading-tight">{t[language].rules.title}</h1>
-            <p className="text-xs text-slate-400 dark:text-slate-400 font-medium">{t[language].rules.subtitle}</p>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <button onClick={() => navigate(-1)}
+              className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 active:scale-90 transition-all border border-slate-200/60 dark:border-slate-700 shadow-sm flex items-center justify-center shrink-0">
+              <ArrowLeft size={18} />
+            </button>
+            <div>
+              <h1 className="text-lg font-black text-slate-800 dark:text-white leading-tight">{t[language].rules.title}</h1>
+              <p className="text-xs text-slate-400 dark:text-slate-400 font-medium">{t[language].rules.subtitle}</p>
+            </div>
           </div>
+
+          <button
+            onClick={() => setIsVideoModalOpen(true)}
+            className="bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white text-[11px] font-black px-3 py-1.5 rounded-full shadow-md shadow-amber-500/20 flex items-center gap-1 active:scale-95 transition-all shrink-0 ml-2"
+          >
+            <Play size={11} className="fill-white" />
+            <span>Video Guide</span>
+          </button>
         </div>
       </div>
 

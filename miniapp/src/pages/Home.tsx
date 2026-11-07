@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { t } from '../lib/translations';
-import { Gift, ArrowDownToLine, Share2, PlusCircle, Info, MessageCircle, Zap, Trophy, Clock, X, Sparkles } from 'lucide-react';
+import { Gift, ArrowDownToLine, Share2, PlusCircle, Info, MessageCircle, Zap, Trophy, Clock, X, Sparkles, Play } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import WebApp from '@twa-dev/sdk';
 import { supabase } from '../lib/supabase';
+import VideoGuideModal, { useAutoVideoGuide } from '../components/VideoGuideModal';
 
 export default function Home() {
   const { user, language } = useGameStore();
@@ -16,6 +17,10 @@ export default function Home() {
   const [announcement, setAnnouncement] = useState<{ message: string; maxViews: number } | null>(null);
   const [showAnnouncement, setShowAnnouncement] = useState(false);
   const announcementShownRef = useRef(false);
+
+  // 🌟 How to Use Video Guide (Auto-opens on first visit to the MiniApp)
+  const [isVideoGuideOpen, setIsVideoGuideOpen] = useState(false);
+  useAutoVideoGuide('how_to_use', setIsVideoGuideOpen, user?.telegram_id);
 
   // 🌟 Active Rewards Alert Banner State
   const [rewardAlert, setRewardAlert] = useState<{
@@ -253,6 +258,13 @@ export default function Home() {
 
   return (
     <div className="flex flex-col min-h-screen pb-24 space-y-3 select-none bg-slate-50 dark:bg-[#070b14] transition-colors">
+      {/* ── HOW TO USE VIDEO GUIDE MODAL (AUTO-OPENS ON 1ST VISIT) ── */}
+      <VideoGuideModal
+        isOpen={isVideoGuideOpen}
+        onClose={() => setIsVideoGuideOpen(false)}
+        category="how_to_use"
+      />
+
       {/* ANNOUNCEMENT POPUP */}
       {showAnnouncement && announcement && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/60 backdrop-blur-sm" onClick={() => setShowAnnouncement(false)}>
@@ -445,10 +457,19 @@ export default function Home() {
       <div className="px-4">
         <div className="flex items-center justify-between mb-1.5">
           <h2 className="font-bold text-slate-500 dark:text-slate-400 tracking-wider text-xs uppercase">{t[language].home.activeGames}</h2>
-          <button onClick={handleHelp} className="text-blue-500 flex items-center space-x-1 text-xs font-semibold hover:underline">
-            <Info size={14} />
-            <span>{t[language].home.help}</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsVideoGuideOpen(true)}
+              className="bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white text-[10.5px] font-black px-2.5 py-1 rounded-full shadow-xs flex items-center gap-1 active:scale-95 transition-all"
+            >
+              <Play size={10} className="fill-white" />
+              <span>{language === 'am' ? 'ቪዲዮ መመሪያ' : 'Video Guide'}</span>
+            </button>
+            <button onClick={handleHelp} className="text-blue-500 flex items-center space-x-1 text-xs font-semibold hover:underline">
+              <Info size={14} />
+              <span>{t[language].home.help}</span>
+            </button>
+          </div>
         </div>
         
         {/* Live Games Marquee Banner */}
