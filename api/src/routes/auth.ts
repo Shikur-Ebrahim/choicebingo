@@ -222,6 +222,67 @@ router.post('/pwa-login', async (req, res) => {
   }
 });
 
+// ── PWA USER RESET / CHANGE PASSWORD ──
+router.post('/pwa-change-password', async (req, res) => {
+  try {
+    const { phone, current_password, new_password } = req.body;
+    const authPhone = (req.headers['x-pwa-phone'] as string || '').trim();
+    const targetPhone = normalizePhone9(phone || authPhone);
+
+    if (!targetPhone) {
+      res.status(400).json({ error: 'ስልክ ቁጥር አልተገኘም (Phone number is required).' });
+      return;
+    }
+
+    if (!current_password || typeof current_password !== 'string') {
+      res.status(400).json({ error: 'የቀድሞው የይለፍ ቃል ያስፈልጋል (Current password is required).' });
+      return;
+    }
+
+    if (!new_password || typeof new_password !== 'string' || new_password.trim().length < 4) {
+      res.status(400).json({ error: 'አዲሱ የይለፍ ቃል ቢያንስ 4 ፊደል ወይም ቁጥር መሆን አለበት (New password must be at least 4 characters).' });
+      return;
+    }
+
+    // Look up user by 9-digit or legacy 10-digit
+    let { data: user } = await supabase.from('users').select('*').eq('telegram_id', targetPhone).maybeSingle();
+    if (!user) {
+      const { data: legacy } = await supabase.from('users').select('*').eq('telegram_id', '0' + targetPhone).maybeSingle();
+      if (legacy) user = legacy;
+    }
+
+    if (!user) {
+      res.status(404).json({ error: 'ተጠቃሚው አልተገኘም (User not found).' });
+      return;
+    }
+
+    const currentHash = hashPassword(current_password);
+    const storedHash = user.permissions?.password_hash;
+
+    if (storedHash && storedHash !== currentHash) {
+      res.status(400).json({ error: 'የቀድሞው የይለፍ ቃል የተሳሳተ ነው (Current password is incorrect).' });
+      return;
+    }
+
+    const newHash = hashPassword(new_password);
+    const updatedPermissions = { ...(user.permissions || {}), password_hash: newHash };
+
+    const { error: updateErr } = await supabase
+      .from('users')
+      .update({ permissions: updatedPermissions })
+      .eq('id', user.id);
+
+    if (updateErr) {
+      res.status(500).json({ error: updateErr.message });
+      return;
+    }
+
+    res.json({ success: true, message: 'የይለፍ ቃልዎ በተሳካ ሁኔታ ተቀይሯል! (Password changed successfully!)' });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to change password' });
+  }
+});
+
 // PWA Direct Phone Registration & Login Endpoint
 router.post('/pwa-phone', async (req, res) => {
   try {

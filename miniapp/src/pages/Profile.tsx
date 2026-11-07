@@ -4,11 +4,12 @@ import { t } from '../lib/translations';
 import { 
   Wallet, Gift, PlusCircle, ArrowDownToLine, Share2, 
   ArrowRightLeft, History, Users, Globe, Headphones, Megaphone,
-  ChevronRight, X, Moon, BarChart2, Copy, Check, BookOpen, Download, Smartphone
+  ChevronRight, X, Moon, BarChart2, Copy, Check, BookOpen, Download, Smartphone, KeyRound
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import WebApp from '@twa-dev/sdk';
 import { usePwaPrompt } from '../components/PwaInstallBanner';
+import PwaResetPasswordModal from '../components/PwaResetPasswordModal';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -19,6 +20,7 @@ export default function Profile() {
   const [channelLink, setChannelLink] = useState('https://t.me/ChoiceBingo');
   const [copied, setCopied] = useState(false);
   const { isStandalone, triggerInstall } = usePwaPrompt();
+  const [showResetPasswordModal, setShowResetPasswordModal] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -306,6 +308,29 @@ export default function Profile() {
               </button>
             )}
 
+            {/* PWA Reset / Change Password Button (Visible only in PWA for connected phone users) */}
+            {typeof window !== 'undefined' && !WebApp.initDataUnsafe?.user?.id && localStorage.getItem('cb_pwa_phone') && (
+              <button
+                onClick={() => {
+                  setShowResetPasswordModal(true);
+                }}
+                className={row}
+              >
+                <div className={icon('bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400')}>
+                  <KeyRound size={12} />
+                </div>
+                <div className="flex-1 text-left">
+                  <span className="font-bold text-slate-700 dark:text-slate-200 text-[10px] block">
+                    {language === 'am' ? 'የይለፍ ቃል ቀይር (Reset Password)' : 'Reset Password'}
+                  </span>
+                  <span className="text-[8px] text-slate-400 block">
+                    {language === 'am' ? 'የአካውንትዎን የይለፍ ቃል ይቀይሩ' : 'Change your account password'}
+                  </span>
+                </div>
+                <ChevronRight size={11} className="text-slate-300" />
+              </button>
+            )}
+
             <button onClick={handleSupport} className={row}>
               <div className={icon('bg-orange-50 text-orange-500')}><Headphones size={12} /></div>
               <span className="flex-1 font-bold text-slate-700 dark:text-slate-200 text-[10px]">{t[language].profile.support}</span>
@@ -321,6 +346,10 @@ export default function Profile() {
           </div>
         </div>
       </div>
+      <PwaResetPasswordModal
+        isOpen={showResetPasswordModal}
+        onClose={() => setShowResetPasswordModal(false)}
+      />
     </>
   );
 }
