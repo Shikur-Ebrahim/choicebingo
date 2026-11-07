@@ -2288,15 +2288,15 @@ export default function BingoGame() {
         {showCallingBoard ? renderCallingBoard() : renderCartelaPicker()}
       </div>
 
-      {/* Winner Celebration (Fantastic 3D Luxury Casino Celebration Card) */}
+      {/* Winner Celebration (Fantastic 3D Luxury White Casino Celebration Card) */}
       {celebration && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/90 backdrop-blur-md overflow-y-auto animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-slate-950/60 backdrop-blur-md overflow-y-auto animate-in fade-in duration-200">
           <div
-            className="rounded-3xl p-5 text-center max-w-sm w-full relative select-none flex flex-col items-center animate-in zoom-in-95 duration-300"
+            className="rounded-3xl p-5 text-center max-w-sm w-full relative select-none flex flex-col items-center animate-in zoom-in-95 duration-300 shadow-[0_25px_60px_rgba(0,0,0,0.35)]"
             style={{
-              background: 'radial-gradient(ellipse at 50% -10%, #311042 0%, #150928 45%, #080314 100%)',
-              border: '2px solid rgba(245, 158, 11, 0.75)',
-              boxShadow: '0 25px 60px rgba(0,0,0,0.95), 0 0 50px rgba(245, 158, 11, 0.35), inset 0 2px 4px rgba(255,255,255,0.25)',
+              background: 'linear-gradient(180deg, #ffffff 0%, #f8fafc 55%, #f1f5f9 100%)',
+              border: '2.5px solid #f59e0b',
+              boxShadow: '0 25px 60px rgba(0,0,0,0.35), 0 0 35px rgba(245, 158, 11, 0.35), inset 0 2px 0 #ffffff, 0 8px 0 #b45309',
             }}
           >
             {/* Close button */}
@@ -2310,7 +2310,7 @@ export default function BingoGame() {
                 fetchState();
                 refreshUser();
               }}
-              className="absolute top-3.5 right-3.5 w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 text-white/70 hover:text-white flex items-center justify-center border border-white/20 active:scale-90 transition-all text-xs font-black z-20"
+              className="absolute top-3.5 right-3.5 w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-400 hover:text-slate-700 flex items-center justify-center border border-slate-200 shadow-sm active:scale-90 transition-all text-xs font-black z-20"
             >
               ✕
             </button>
@@ -2318,25 +2318,26 @@ export default function BingoGame() {
             {/* ── REMATCH ── */}
             {celebration.winner_name === 'REMATCH' ? (
               <>
-                <div className="text-5xl mb-2 animate-spin filter drop-shadow-[0_8px_16px_rgba(249,115,22,0.5)]">🔄</div>
-                <h2 className="text-3xl font-black text-orange-400 mb-2 drop-shadow-sm">{t[language].bingo.rematch}</h2>
+                <div className="text-5xl mb-2 animate-spin filter drop-shadow-[0_8px_16px_rgba(249,115,22,0.4)]">🔄</div>
+                <h2 className="text-3xl font-black text-orange-600 mb-2 drop-shadow-sm">{t[language].bingo.rematch}</h2>
                 <div
                   className="rounded-2xl p-3.5 mb-3 w-full border"
                   style={{
-                    background: 'linear-gradient(180deg, rgba(249,115,22,0.15) 0%, rgba(249,115,22,0.05) 100%)',
-                    borderColor: 'rgba(249,115,22,0.4)',
+                    background: 'linear-gradient(180deg, #fff7ed 0%, #ffedd5 100%)',
+                    borderColor: 'rgba(249, 115, 22, 0.4)',
+                    boxShadow: '0 4px 12px rgba(249, 115, 22, 0.1)',
                   }}
                 >
-                  <p className="text-orange-300 font-black text-sm mb-1">{t[language].bingo.tieDesc}</p>
-                  <p className="text-white/70 text-xs font-medium">{t[language].bingo.stakeRefunded}</p>
-                  <p className="text-white/50 text-xs mt-1">{t[language].bingo.newGameStarts}</p>
+                  <p className="text-orange-950 font-black text-sm mb-1">{t[language].bingo.tieDesc}</p>
+                  <p className="text-slate-600 text-xs font-semibold">{t[language].bingo.stakeRefunded}</p>
+                  <p className="text-slate-500 text-xs mt-1 font-medium">{t[language].bingo.newGameStarts}</p>
                 </div>
                 <div
-                  className="py-1.5 px-4 rounded-full text-[11px] font-black flex items-center gap-1.5 shadow-md mt-1"
+                  className="py-1.5 px-4 rounded-full text-[11px] font-black flex items-center gap-1.5 shadow-sm mt-1"
                   style={{
-                    background: 'linear-gradient(180deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.04) 100%)',
-                    border: '1px solid rgba(249,115,22,0.4)',
-                    color: '#fdba74',
+                    background: 'linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%)',
+                    border: '1px solid rgba(249, 115, 22, 0.4)',
+                    color: '#9a3412',
                   }}
                 >
                   <span className="animate-spin text-[10px]">⏳</span>
@@ -2347,13 +2348,13 @@ export default function BingoGame() {
               <>
                 {/* ── 2-WAY TIE ── */}
                 <div className="flex flex-col items-center mb-2.5">
-                  <div className="text-5xl mb-1 filter drop-shadow-[0_8px_16px_rgba(245,158,11,0.6)] animate-bounce">🏆</div>
-                  <h2 className="text-xl font-black text-amber-300 mb-1 drop-shadow-sm">{t[language].bingo.tieTitle}</h2>
+                  <div className="text-5xl mb-1 filter drop-shadow-[0_8px_16px_rgba(245,158,11,0.5)] animate-bounce">🏆</div>
+                  <h2 className="text-xl font-black text-amber-600 mb-1 drop-shadow-sm">{t[language].bingo.tieTitle}</h2>
                   <div
                     className="px-5 py-1.5 rounded-full font-black text-sm text-white flex items-center gap-1.5 shadow-md"
                     style={{
                       background: 'linear-gradient(180deg, #10b981 0%, #059669 100%)',
-                      boxShadow: '0 3px 0 0 #047857, 0 6px 15px rgba(16, 185, 129, 0.45)',
+                      boxShadow: '0 3px 0 0 #047857, 0 6px 15px rgba(16, 185, 129, 0.35)',
                     }}
                   >
                     <span>🎉</span>
@@ -2369,24 +2370,20 @@ export default function BingoGame() {
                       return (
                         <div
                           key={idx}
-                          className="flex-shrink-0 w-[140px] rounded-2xl p-2.5 flex flex-col items-center shadow-lg"
-                          style={{
-                            background: 'linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%)',
-                            border: '1.5px solid rgba(245, 158, 11, 0.4)',
-                          }}
+                          className="flex-shrink-0 w-[140px] rounded-2xl p-2.5 flex flex-col items-center shadow-md bg-white border-2 border-amber-400"
                         >
-                          <p className="text-white font-black text-sm truncate w-full">{w.first_name}</p>
+                          <p className="text-slate-900 font-black text-sm truncate w-full">{w.first_name}</p>
                           <div className="flex items-center justify-between w-full mb-1.5">
-                            <p className="text-yellow-400 font-bold text-[9px]">{t[language].bingo.cartelaNum}{w.cartela_number}</p>
-                            <span className="text-emerald-400 text-[8px] font-black">{winTitle.replace(' BINGO!', '')}</span>
+                            <p className="text-amber-700 font-bold text-[9px]">{t[language].bingo.cartelaNum}{w.cartela_number}</p>
+                            <span className="text-emerald-700 text-[8px] font-black">{winTitle.replace(' BINGO!', '')}</span>
                           </div>
-                          <div className="w-full rounded-xl overflow-hidden border border-amber-400/40">
+                          <div className="w-full rounded-xl overflow-hidden border border-amber-300">
                             <div className="grid grid-cols-5">
                               {['B', 'I', 'N', 'G', 'O'].map(l => (
                                 <div key={l} className="flex items-center justify-center py-0.5 font-black text-white text-[9px]" style={{ background: l === 'B' ? '#3b82f6' : l === 'I' ? '#8b5cf6' : l === 'N' ? '#ec4899' : l === 'G' ? '#22c55e' : '#3b82f6' }}>{l}</div>
                               ))}
                             </div>
-                            <div className="grid grid-cols-5 gap-[1px] p-[1px] bg-slate-900">
+                            <div className="grid grid-cols-5 gap-[1px] p-[1px] bg-slate-200">
                               {w.card_matrix.map((row, r) =>
                                 row.map((num, c) => {
                                   const isFree = num === 0;
@@ -2399,7 +2396,7 @@ export default function BingoGame() {
                                         isFree
                                           ? 'bg-amber-400 text-yellow-950 font-black'
                                           : isWin
-                                          ? 'bg-emerald-500 text-white shadow-[0_0_4px_rgba(16,185,129,0.9)] ring-1 ring-yellow-300 font-black'
+                                          ? 'bg-emerald-500 text-white shadow-[0_0_4px_rgba(16,185,129,0.9)] ring-1 ring-yellow-400 font-black'
                                           : isCalled
                                           ? 'bg-amber-100 text-slate-800'
                                           : 'bg-white text-slate-800'
@@ -2417,17 +2414,17 @@ export default function BingoGame() {
                     })}
                   </div>
                 ) : (
-                  <div className="bg-white/5 rounded-2xl p-3 mb-3 w-full border border-white/10">
-                    <p className="text-white font-black text-lg">{celebration.winner_name}</p>
+                  <div className="bg-slate-50 rounded-2xl p-3 mb-3 w-full border border-slate-200">
+                    <p className="text-slate-900 font-black text-lg">{celebration.winner_name}</p>
                   </div>
                 )}
 
                 <div
-                  className="py-1.5 px-4 rounded-full text-[11px] font-black flex items-center gap-1.5 shadow-md mt-1"
+                  className="py-1.5 px-4 rounded-full text-[11px] font-black flex items-center gap-1.5 shadow-sm mt-1"
                   style={{
-                    background: 'linear-gradient(180deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.04) 100%)',
-                    border: '1px solid rgba(245, 158, 11, 0.35)',
-                    color: '#fef08a',
+                    background: 'linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%)',
+                    border: '1.5px solid rgba(245, 158, 11, 0.45)',
+                    color: '#78350f',
                   }}
                 >
                   <span className="animate-spin text-[10px]">⏳</span>
@@ -2436,44 +2433,46 @@ export default function BingoGame() {
               </>
             ) : (
               <>
-                {/* ── FANTASTIC 3D SINGLE WINNER CELEBRATION ── */}
+                {/* ── FANTASTIC 3D SINGLE WINNER CELEBRATION (WHITE LUXURY THEME) ── */}
                 <div className="flex flex-col items-center mb-2.5">
-                  <div className="text-5xl mb-1 filter drop-shadow-[0_8px_16px_rgba(245,158,11,0.6)] animate-bounce">
+                  <div className="text-5xl mb-1 filter drop-shadow-[0_8px_16px_rgba(245,158,11,0.5)] animate-bounce">
                     🏆
                   </div>
                   <div
                     className="px-8 py-1.5 rounded-full font-black text-2xl tracking-widest text-slate-950 uppercase select-none"
                     style={{
                       background: 'linear-gradient(180deg, #fef08a 0%, #f59e0b 50%, #b45309 100%)',
-                      boxShadow: '0 4px 0 0 #78350f, 0 8px 20px rgba(245, 158, 11, 0.6), inset 0 2px 2px rgba(255,255,255,0.8)',
-                      textShadow: '0 1px 0 rgba(255,255,255,0.6)',
+                      boxShadow: '0 4px 0 0 #78350f, 0 8px 20px rgba(245, 158, 11, 0.45), inset 0 2px 2px rgba(255,255,255,0.85)',
+                      textShadow: '0 1px 0 rgba(255,255,255,0.5)',
                     }}
                   >
                     BINGO!
                   </div>
                 </div>
 
-                {/* 3D Winner Info Card */}
+                {/* 3D White Winner Info Card */}
                 <div
-                  className="w-full rounded-2xl p-3 mb-3 flex flex-col items-center"
+                  className="w-full rounded-2xl p-3.5 mb-3 flex flex-col items-center"
                   style={{
-                    background: 'linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%)',
-                    border: '1px solid rgba(245, 158, 11, 0.35)',
-                    boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.15)',
+                    background: 'linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)',
+                    border: '1.5px solid rgba(245, 158, 11, 0.35)',
+                    boxShadow: '0 4px 15px rgba(0,0,0,0.05), inset 0 1px 0 #ffffff',
                   }}
                 >
-                  <p className="text-amber-300 font-black text-[10px] uppercase tracking-widest mb-0.5">
+                  <p className="text-amber-600 font-black text-[11px] uppercase tracking-widest mb-0.5">
                     {celebration.iWon ? '🎉 YOU ARE THE WINNER!' : '🏆 BINGO WINNER'}
                   </p>
-                  <p className="text-white font-black text-xl leading-tight drop-shadow-sm">{celebration.winner_name}</p>
+                  <p className="text-slate-900 font-black text-2xl leading-tight drop-shadow-sm">{celebration.winner_name}</p>
                   {celebration.winner_cartela > 0 && (
-                    <p className="text-yellow-400 font-bold text-xs mt-0.5">{t[language].bingo.cartelaNum}{celebration.winner_cartela}</p>
+                    <span className="mt-1 px-3 py-0.5 rounded-full text-xs font-black text-amber-800 bg-amber-50 border border-amber-200 shadow-sm">
+                      {t[language].bingo.cartelaNum}{celebration.winner_cartela}
+                    </span>
                   )}
                   <div
                     className="mt-2.5 px-6 py-1.5 rounded-full font-black text-lg text-white flex items-center gap-1.5 shadow-md"
                     style={{
                       background: 'linear-gradient(180deg, #10b981 0%, #059669 100%)',
-                      boxShadow: '0 3px 0 0 #047857, 0 6px 15px rgba(16, 185, 129, 0.45)',
+                      boxShadow: '0 3.5px 0 0 #047857, 0 6px 15px rgba(16, 185, 129, 0.35), inset 0 1px 1px rgba(255,255,255,0.4)',
                     }}
                   >
                     <span>🎉</span>
@@ -2481,17 +2480,17 @@ export default function BingoGame() {
                   </div>
                 </div>
 
-                {/* Winner Card 3D Display */}
+                {/* Winner Card 3D Display (White Theme) */}
                 {celebration.winner_matrix ? (
                   (() => {
                     const winCells = getWinningCells(celebration.winner_matrix, celebration.called);
                     const winTitle = getWinningPatternTitle(celebration.winner_matrix, celebration.called);
                     return (
                       <div
-                        className="w-full rounded-2xl overflow-hidden mb-3"
+                        className="w-full rounded-2xl overflow-hidden mb-3 bg-white"
                         style={{
-                          border: '2px solid rgba(245, 158, 11, 0.7)',
-                          boxShadow: '0 10px 25px rgba(0,0,0,0.6), 0 0 20px rgba(245, 158, 11, 0.25)',
+                          border: '2px solid rgba(245, 158, 11, 0.75)',
+                          boxShadow: '0 10px 25px rgba(0,0,0,0.08), 0 0 15px rgba(245, 158, 11, 0.2)',
                         }}
                       >
                         {/* BINGO Header */}
@@ -2501,7 +2500,7 @@ export default function BingoGame() {
                           ))}
                         </div>
                         {/* Card Grid */}
-                        <div className="grid grid-cols-5 gap-[2px] p-[2px] bg-slate-900">
+                        <div className="grid grid-cols-5 gap-[2px] p-[2px] bg-slate-200">
                           {Array.from({ length: 5 }).flatMap((_, r) =>
                             Array.from({ length: 5 }).map((_, c) => {
                               const num = celebration.winner_matrix![r][c];
@@ -2513,12 +2512,12 @@ export default function BingoGame() {
                                   key={`${r}-${c}`}
                                   className={`aspect-square flex items-center justify-center font-black text-xs rounded transition-all ${
                                     isFree
-                                      ? 'bg-amber-400 text-yellow-950 font-black shadow-inner'
+                                      ? 'bg-gradient-to-b from-amber-300 to-amber-500 text-amber-950 font-black shadow-inner'
                                       : isWin
-                                      ? 'bg-gradient-to-br from-emerald-400 to-emerald-600 text-white font-black shadow-[0_0_10px_rgba(16,185,129,0.95)] ring-2 ring-yellow-300 scale-105 z-10'
+                                      ? 'bg-gradient-to-br from-emerald-400 to-emerald-600 text-white font-black shadow-[0_0_10px_rgba(16,185,129,0.95)] ring-2 ring-yellow-400 scale-105 z-10'
                                       : isCalled
-                                      ? 'bg-amber-100 text-slate-800'
-                                      : 'bg-white text-slate-800'
+                                      ? 'bg-amber-100 text-amber-950 font-bold'
+                                      : 'bg-white text-slate-800 font-bold'
                                   }`}
                                 >
                                   {isFree ? '★' : num}
@@ -2528,11 +2527,11 @@ export default function BingoGame() {
                           )}
                         </div>
                         {/* Cartela Label + Winning Pattern Tag */}
-                        <div className="py-2 px-3 flex items-center justify-between bg-slate-950 border-t border-white/10">
-                          <p className="text-yellow-400 font-black text-[11px] tracking-wider uppercase">
+                        <div className="py-2 px-3 flex items-center justify-between bg-white border-t border-slate-200">
+                          <p className="text-slate-800 font-black text-[11px] tracking-wider uppercase">
                             CARTELA # {celebration.winner_cartela}
                           </p>
-                          <span className="text-emerald-400 text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 px-2.5 py-0.5 rounded-full border border-emerald-500/40 shadow-[0_0_6px_rgba(16,185,129,0.3)]">
+                          <span className="text-emerald-700 text-[10px] font-black uppercase tracking-wider bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-300 shadow-sm">
                             {winTitle}
                           </span>
                         </div>
@@ -2540,19 +2539,20 @@ export default function BingoGame() {
                     );
                   })()
                 ) : (
-                  <div className="w-full bg-white/5 rounded-2xl p-4 mb-3 border border-white/10 flex flex-col items-center">
+                  <div className="w-full bg-slate-50 rounded-2xl p-4 mb-3 border border-slate-200 flex flex-col items-center">
                     <div className="animate-spin text-2xl mb-1">⏳</div>
-                    <p className="text-white/60 text-xs font-bold">Loading winning cartela...</p>
+                    <p className="text-slate-500 text-xs font-bold">Loading winning cartela...</p>
                   </div>
                 )}
 
                 {/* 3D Countdown Return Pill */}
                 <div
-                  className="py-1.5 px-4 rounded-full text-[11px] font-black flex items-center gap-1.5 shadow-md mt-0.5"
+                  className="py-1.5 px-4 rounded-full text-[11px] font-black flex items-center gap-1.5 shadow-sm mt-0.5"
                   style={{
-                    background: 'linear-gradient(180deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.04) 100%)',
-                    border: '1px solid rgba(245, 158, 11, 0.35)',
-                    color: '#fef08a',
+                    background: 'linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%)',
+                    border: '1.5px solid rgba(245, 158, 11, 0.45)',
+                    color: '#78350f',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.05), inset 0 1px 0 #ffffff',
                   }}
                 >
                   <span className="animate-spin text-[10px]">⏳</span>
