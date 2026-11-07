@@ -159,7 +159,7 @@ export default function Profile() {
         </div>
 
         {/* â”€â”€ SCROLLABLE CONTENT â”€â”€ */}
-        <div className="px-3 pt-2.5 pb-2 flex flex-col gap-2 flex-1 min-h-0">
+        <div className="px-3 pt-2.5 pb-24 flex flex-col gap-2 flex-1 overflow-y-auto overscroll-contain">
 
           {/* Action buttons 2Ã—2 */}
           <div className="grid grid-cols-2 gap-1.5 shrink-0">
@@ -182,7 +182,7 @@ export default function Profile() {
           </div>
 
           {/* List items â€” flex-1 fills all remaining height, justify-around spreads evenly */}
-          <div className="bg-white dark:bg-slate-800 rounded-2xl px-1.5 shadow-sm border border-gray-100 dark:border-slate-700 flex flex-col flex-1 justify-around py-1">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl px-1.5 shadow-sm border border-gray-100 dark:border-slate-700 flex flex-col py-1 space-y-0.5">
 
             <button onClick={() => navigateTo('/deposit-history')} className={row}>
               <div className={icon('bg-blue-50 text-blue-500')}><History size={12} /></div>
