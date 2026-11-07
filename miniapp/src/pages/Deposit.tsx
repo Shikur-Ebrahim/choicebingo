@@ -219,10 +219,15 @@ export default function Deposit() {
   const fetchInitialData = async () => {
     try {
       const initData = typeof WebApp !== 'undefined' ? WebApp.initData : '';
+      const pwaPhone = typeof window !== 'undefined' ? localStorage.getItem('cb_pwa_phone') || '' : '';
+      const authHeaders = {
+        'x-telegram-init-data': initData,
+        'x-pwa-phone': pwaPhone,
+      };
       const [methodsRes, historyRes, supportRes] = await Promise.all([
-        fetch(`${API_URL}/deposit/methods`, { headers: { 'x-telegram-init-data': initData } }).catch(() => null),
-        fetch(`${API_URL}/deposit/history`, { headers: { 'x-telegram-init-data': initData } }).catch(() => null),
-        fetch(`${API_URL}/player/support-contact`, { headers: { 'x-telegram-init-data': initData } }).catch(() => null)
+        fetch(`${API_URL}/deposit/methods`, { headers: authHeaders }).catch(() => null),
+        fetch(`${API_URL}/deposit/history`, { headers: authHeaders }).catch(() => null),
+        fetch(`${API_URL}/player/support-contact`, { headers: authHeaders }).catch(() => null)
       ]);
 
       if (methodsRes && methodsRes.ok) {

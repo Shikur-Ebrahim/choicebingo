@@ -385,11 +385,7 @@ export default function Home() {
         <button
           type="button"
           onClick={() => {
-            if (isPwaGuest) {
-              setIsPhoneModalOpen(true);
-            } else {
-              navigate('/deposit');
-            }
+            navigate('/deposit');
           }}
           className="flex items-center justify-center space-x-1.5 py-2.5 rounded-xl font-bold text-xs select-none active:translate-y-1 transition-all"
           style={{

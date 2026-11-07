@@ -119,7 +119,7 @@ function formatCountdown(totalSec: number): string {
 
 export default function Rewards() {
   const navigate = useNavigate();
-  const { user, fetchUser, language } = useGameStore();
+  const { user, fetchUser, language, setIsPhoneModalOpen } = useGameStore();
 
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [userStats, setUserStats] = useState<UserStats | null>(null);
@@ -139,10 +139,14 @@ export default function Rewards() {
     spot: number;
   }>({ open: false, title: '', amount: 0, spot: 0 });
 
-  const getHeaders = useCallback(() => ({
-    'Content-Type': 'application/json',
-    'x-telegram-init-data': typeof WebApp !== 'undefined' ? WebApp.initData : '',
-  }), []);
+  const getHeaders = useCallback(() => {
+    const pwaPhone = typeof window !== 'undefined' ? localStorage.getItem('cb_pwa_phone') || '' : '';
+    return {
+      'Content-Type': 'application/json',
+      'x-telegram-init-data': typeof WebApp !== 'undefined' ? WebApp.initData : '',
+      'x-pwa-phone': pwaPhone,
+    };
+  }, []);
 
   const fetchRewards = useCallback(async () => {
     try {
@@ -184,6 +188,13 @@ export default function Rewards() {
   }, []);
 
   const handleClaim = async (campaign: Campaign) => {
+    const isTelegramUser = typeof WebApp !== 'undefined' && Boolean(WebApp.initDataUnsafe?.user?.id);
+    const hasPwaPhone = typeof window !== 'undefined' && Boolean(localStorage.getItem('cb_pwa_phone'));
+    if (!isTelegramUser && !hasPwaPhone) {
+      setIsPhoneModalOpen(true);
+      return;
+    }
+
     if (!campaign.is_eligible || claimingId) return;
 
     if (typeof WebApp !== 'undefined') {

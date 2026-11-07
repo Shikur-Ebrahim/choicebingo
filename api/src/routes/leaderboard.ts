@@ -1,14 +1,13 @@
 import { Router } from 'express';
-import { AuthRequest, validateTelegramAuth } from '../middleware/auth';
+import { AuthRequest, optionalTelegramAuth } from '../middleware/auth';
 import { supabase } from '../services/supabase';
 
 const router = Router();
-router.use(validateTelegramAuth);
 
 // GET /api/leaderboard/players?period=all|daily|weekly|monthly
-router.get('/players', async (req: AuthRequest, res) => {
+router.get('/players', optionalTelegramAuth, async (req: AuthRequest, res) => {
   const period = (req.query.period as string) || 'all';
-  const telegramId = req.telegramUser!.id.toString();
+  const telegramId = req.telegramUser?.id ? req.telegramUser.id.toString() : null;
 
   // Build date filter using UTC so server timezone doesn't skew results
   let fromDate: string | null = null;
@@ -114,14 +113,14 @@ router.get('/players', async (req: AuthRequest, res) => {
     }));
 
   // Find current user's rank
-  const myRank = topPlayers.findIndex(p => p.telegram_id === telegramId) + 1;
+  const myRank = telegramId ? (topPlayers.findIndex(p => p.telegram_id === telegramId) + 1 || null) : null;
 
-  res.json({ players: topPlayers, my_rank: myRank || null });
+  res.json({ players: topPlayers, my_rank: myRank });
 });
 
 // GET /api/leaderboard/inviters — top users by number of invited users who deposited
-router.get('/inviters', async (req: AuthRequest, res) => {
-  const telegramId = req.telegramUser!.id.toString();
+router.get('/inviters', optionalTelegramAuth, async (req: AuthRequest, res) => {
+  const telegramId = req.telegramUser?.id ? req.telegramUser.id.toString() : null;
 
   // Get all users with inviter_id set
   const { data: invited } = await supabase
@@ -165,9 +164,9 @@ router.get('/inviters', async (req: AuthRequest, res) => {
     invites: countMap[id] || 0,
   }));
 
-  const myRank = inviters.findIndex(p => p.telegram_id === telegramId) + 1;
+  const myRank = telegramId ? (inviters.findIndex(p => p.telegram_id === telegramId) + 1 || null) : null;
 
-  res.json({ inviters, my_rank: myRank || null });
+  res.json({ inviters, my_rank: myRank });
 });
 
 export default router;

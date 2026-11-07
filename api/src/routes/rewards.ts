@@ -1,5 +1,5 @@
 import { Router, Response } from 'express';
-import { AuthRequest, validateTelegramAuth } from '../middleware/auth';
+import { AuthRequest, validateTelegramAuth, optionalTelegramAuth } from '../middleware/auth';
 import { supabase } from '../services/supabase';
 
 const router = Router();
@@ -65,34 +65,46 @@ async function getOrSeedCampaigns() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 1. GET /api/rewards — Fetch campaigns, user progress, and eligibility
+// 1. GET /api/rewards — Fetch campaigns, user progress, and eligibility (public read)
 // ─────────────────────────────────────────────────────────────────────────────
-router.get('/', validateTelegramAuth, async (req: AuthRequest, res: Response) => {
+router.get('/', optionalTelegramAuth, async (req: AuthRequest, res: Response) => {
   try {
-    const telegramId = req.telegramUser!.id.toString();
+    const telegramId = req.telegramUser?.id ? req.telegramUser.id.toString() : null;
 
     // 1. Fetch user data (total_games, total_stake, invited_reward, bonus_balance)
-    const { data: user } = await supabase
-      .from('users')
-      .select('telegram_id, username, first_name, total_games, total_stake, invited_reward, bonus_balance')
-      .eq('telegram_id', telegramId)
-      .single();
+    let totalGames = 0;
+    let totalStake = 0;
+    let invitedReward = 0;
+    let bonusBalance = 0;
 
-    const totalGames = Number(user?.total_games || 0);
-    const totalStake = Number(user?.total_stake || 0);
-    const invitedReward = Number(user?.invited_reward || 0);
+    if (telegramId) {
+      const { data: user } = await supabase
+        .from('users')
+        .select('telegram_id, username, first_name, total_games, total_stake, invited_reward, bonus_balance')
+        .eq('telegram_id', telegramId)
+        .single();
+
+      totalGames = Number(user?.total_games || 0);
+      totalStake = Number(user?.total_stake || 0);
+      invitedReward = Number(user?.invited_reward || 0);
+      bonusBalance = Number(user?.bonus_balance || 0);
+    }
 
     // 2. Fetch campaigns
     const campaigns = await getOrSeedCampaigns();
 
     // 3. Fetch user claims for these campaigns
-    const { data: userClaims } = await supabase
-      .from('reward_claims')
-      .select('*')
-      .eq('telegram_id', telegramId);
+    let userClaims: any[] = [];
+    if (telegramId) {
+      const { data } = await supabase
+        .from('reward_claims')
+        .select('*')
+        .eq('telegram_id', telegramId);
+      userClaims = data || [];
+    }
 
     const claimsMap: Record<string, any> = {};
-    for (const cl of userClaims || []) {
+    for (const cl of userClaims) {
       claimsMap[`${cl.campaign_id}_${cl.round_number}`] = cl;
     }
 
@@ -156,7 +168,7 @@ router.get('/', validateTelegramAuth, async (req: AuthRequest, res: Response) =>
         total_games: totalGames,
         total_stake: totalStake,
         invited_reward: invitedReward,
-        bonus_balance: Number(user?.bonus_balance || 0),
+        bonus_balance: bonusBalance,
       },
       recent_claimers: recentClaims || [],
     });

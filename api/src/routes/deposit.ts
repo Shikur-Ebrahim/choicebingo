@@ -1,12 +1,10 @@
 import { Router } from 'express';
-import { AuthRequest, validateTelegramAuth } from '../middleware/auth';
+import { AuthRequest, validateTelegramAuth, optionalTelegramAuth } from '../middleware/auth';
 import { supabase } from '../services/supabase';
 
 const router = Router();
 
-router.use(validateTelegramAuth);
-
-// GET /api/deposit/methods — all active deposit methods for users
+// GET /api/deposit/methods — all active deposit methods for users (public)
 router.get('/methods', async (_req, res) => {
   const { data, error } = await supabase
     .from('deposit_methods')
@@ -19,7 +17,7 @@ router.get('/methods', async (_req, res) => {
 });
 
 // POST /api/deposit/request — submit a deposit request
-router.post('/request', async (req: AuthRequest, res) => {
+router.post('/request', validateTelegramAuth, async (req: AuthRequest, res) => {
   const telegramId = req.telegramUser!.id.toString();
   const { method_id, amount, screenshot_url, sms_message } = req.body;
 
@@ -114,9 +112,14 @@ router.post('/request', async (req: AuthRequest, res) => {
   res.json({ success: true, deposit: data });
 });
 
-// GET /api/deposit/history — user's deposit history
-router.get('/history', async (req: AuthRequest, res) => {
-  const telegramId = req.telegramUser!.id.toString();
+// GET /api/deposit/history — user's deposit history (optional auth for guest)
+router.get('/history', optionalTelegramAuth, async (req: AuthRequest, res) => {
+  const telegramId = req.telegramUser?.id ? req.telegramUser.id.toString() : null;
+  if (!telegramId) {
+    res.json([]);
+    return;
+  }
+
   const { data, error } = await supabase
     .from('deposits')
     .select('*, deposit_methods(type, name)')

@@ -72,10 +72,14 @@ export default function Leaderboard() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const headers = useCallback(() => ({
-    'Content-Type': 'application/json',
-    'x-telegram-init-data': typeof WebApp !== 'undefined' ? WebApp.initData : '',
-  }), []);
+  const headers = useCallback(() => {
+    const savedPwaPhone = typeof window !== 'undefined' ? localStorage.getItem('cb_pwa_phone') || '' : '';
+    return {
+      'Content-Type': 'application/json',
+      'x-telegram-init-data': typeof WebApp !== 'undefined' ? WebApp.initData : '',
+      'x-pwa-phone': savedPwaPhone,
+    };
+  }, []);
 
   const fetchPlayers = useCallback(async (p: Period) => {
     const res = await fetch(`${API_URL}/leaderboard/players?period=${p}`, { headers: headers() });
