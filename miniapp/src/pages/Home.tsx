@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { t } from '../lib/translations';
-import { Gift, ArrowDownToLine, Share2, PlusCircle, Info, MessageCircle, Zap, Trophy, Clock, X, Sparkles, Play } from 'lucide-react';
+import { Gift, ArrowDownToLine, Share2, PlusCircle, Info, MessageCircle, Zap, Trophy, Clock, X, Sparkles, Play, Gamepad2 } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import WebApp from '@twa-dev/sdk';
 import { supabase } from '../lib/supabase';
@@ -18,9 +18,13 @@ export default function Home() {
   const [showAnnouncement, setShowAnnouncement] = useState(false);
   const announcementShownRef = useRef(false);
 
-  // 🌟 How to Use Video Guide (Auto-opens on first visit to the MiniApp)
-  const [isVideoGuideOpen, setIsVideoGuideOpen] = useState(false);
-  useAutoVideoGuide('how_to_use', setIsVideoGuideOpen, user?.telegram_id);
+  // 🌟 Video Guides State (How to Use & How to Play)
+  const [activeVideoCategory, setActiveVideoCategory] = useState<'how_to_use' | 'how_to_play' | null>(null);
+
+  // Auto-open "How to Use" video guide on user's first time opening the MiniApp
+  useAutoVideoGuide('how_to_use', (open) => {
+    if (open) setActiveVideoCategory('how_to_use');
+  }, user?.telegram_id);
 
   // 🌟 Active Rewards Alert Banner State
   const [rewardAlert, setRewardAlert] = useState<{
@@ -258,12 +262,14 @@ export default function Home() {
 
   return (
     <div className="flex flex-col min-h-screen pb-24 space-y-3 select-none bg-slate-50 dark:bg-[#070b14] transition-colors">
-      {/* ── HOW TO USE VIDEO GUIDE MODAL (AUTO-OPENS ON 1ST VISIT) ── */}
-      <VideoGuideModal
-        isOpen={isVideoGuideOpen}
-        onClose={() => setIsVideoGuideOpen(false)}
-        category="how_to_use"
-      />
+      {/* ── VIDEO GUIDE MODAL (HOW TO PLAY / HOW TO USE) ── */}
+      {activeVideoCategory && (
+        <VideoGuideModal
+          isOpen={true}
+          onClose={() => setActiveVideoCategory(null)}
+          category={activeVideoCategory}
+        />
+      )}
 
       {/* ANNOUNCEMENT POPUP */}
       {showAnnouncement && announcement && (
@@ -455,18 +461,32 @@ export default function Home() {
 
       {/* ACTIVE GAMES SECTION */}
       <div className="px-4">
-        <div className="flex items-center justify-between mb-1.5">
+        <div className="flex items-center justify-between mb-1.5 flex-wrap gap-1">
           <h2 className="font-bold text-slate-500 dark:text-slate-400 tracking-wider text-xs uppercase">{t[language].home.activeGames}</h2>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
+            {/* 🎮 How to Play Video Guide (Directly in the circled red spot!) */}
             <button
-              onClick={() => setIsVideoGuideOpen(true)}
+              onClick={() => setActiveVideoCategory('how_to_play')}
+              className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white text-[10.5px] font-black px-2.5 py-1 rounded-full shadow-xs flex items-center gap-1 active:scale-95 transition-all"
+              title="How to Play Tutorial"
+            >
+              <Gamepad2 size={11} className="text-yellow-300" />
+              <span>{language === 'am' ? 'አጨዋወት' : 'How to Play'}</span>
+            </button>
+
+            {/* ▶ How to Use Video Guide */}
+            <button
+              onClick={() => setActiveVideoCategory('how_to_use')}
               className="bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white text-[10.5px] font-black px-2.5 py-1 rounded-full shadow-xs flex items-center gap-1 active:scale-95 transition-all"
+              title="How to Use Tutorial"
             >
               <Play size={10} className="fill-white" />
-              <span>{language === 'am' ? 'ቪዲዮ መመሪያ' : 'Video Guide'}</span>
+              <span>{language === 'am' ? 'አጠቃቀም' : 'How to Use'}</span>
             </button>
-            <button onClick={handleHelp} className="text-blue-500 flex items-center space-x-1 text-xs font-semibold hover:underline">
-              <Info size={14} />
+
+            {/* ⓘ Help */}
+            <button onClick={handleHelp} className="text-blue-500 flex items-center space-x-1 text-xs font-semibold hover:underline ml-0.5">
+              <Info size={13} />
               <span>{t[language].home.help}</span>
             </button>
           </div>
