@@ -140,7 +140,7 @@ const getWinningPatternTitle = (matrix: number[][], called: number[]): string =>
 export default function BingoGame() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { user, fetchUser: refreshUser, subscribeToBalance, language } = useGameStore();
+  const { user, fetchUser: refreshUser, subscribeToBalance, language, setProfileOpen } = useGameStore();
 
   const urlStake = searchParams.get("stake");
   const [selectedStake, setSelectedStake] = useState<number | null>(urlStake ? Number(urlStake) : null);
@@ -1068,9 +1068,16 @@ export default function BingoGame() {
         boxShadow: '0 4px 10px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.12)',
       }}
     >
-      <div className="flex items-center space-x-2.5">
+      <div
+        onClick={() => {
+          try { WebApp.HapticFeedback?.impactOccurred('light'); } catch (_) {}
+          setProfileOpen(true);
+        }}
+        className="flex items-center space-x-2.5 cursor-pointer active:scale-95 transition-transform group"
+        title={language === 'am' ? 'መገለጫ' : 'Profile'}
+      >
         <div
-          className="w-10 h-10 rounded-full flex items-center justify-center text-white font-black text-lg"
+          className="w-10 h-10 rounded-full flex items-center justify-center text-white font-black text-lg group-hover:opacity-95 transition-opacity"
           style={{
             background: 'radial-gradient(circle at 35% 25%, #34d399 0%, #10b981 50%, #047857 100%)',
             boxShadow: '0 3px 0 #064e3b, 0 3px 8px rgba(0,0,0,0.4), inset 0 1px 2px rgba(255,255,255,0.7)',
@@ -1080,7 +1087,7 @@ export default function BingoGame() {
           {initial}
         </div>
         <div>
-          <p className="font-black text-sm uppercase tracking-wider text-slate-100 drop-shadow-sm leading-tight">
+          <p className="font-black text-sm uppercase tracking-wider text-slate-100 drop-shadow-sm leading-tight group-hover:text-amber-400 transition-colors">
             {user?.first_name || "USER"}
           </p>
           <span className="text-[8.5px] font-bold text-emerald-400 bg-emerald-500/15 px-1.5 py-0.5 rounded border border-emerald-500/30">

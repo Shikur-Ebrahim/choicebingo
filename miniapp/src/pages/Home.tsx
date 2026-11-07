@@ -10,7 +10,7 @@ import PwaInstallBanner, { isRunningInPwa, isRunningInTelegram } from '../compon
 import NotificationModal, { NotificationItem } from '../components/NotificationModal';
 
 export default function Home() {
-  const { user, language, setIsPhoneModalOpen } = useGameStore();
+  const { user, language, setIsPhoneModalOpen, setProfileOpen } = useGameStore();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -426,10 +426,16 @@ export default function Home() {
 
       {/* 3D WHITE / DARK HEADER SECTION */}
       <div className="bg-white dark:bg-slate-900 px-4 py-4 rounded-b-2xl shadow-[0_4px_12px_rgba(0,0,0,0.04)] dark:shadow-[0_4px_15px_rgba(0,0,0,0.4)] border-b border-gray-100 dark:border-slate-800 flex items-center justify-between transition-colors">
-        <div className="flex items-center space-x-3">
+        <div
+          onClick={() => {
+            try { WebApp.HapticFeedback?.impactOccurred('light'); } catch (_) {}
+            setProfileOpen(true);
+          }}
+          className="flex items-center space-x-3 cursor-pointer select-none active:scale-95 transition-transform group"
+          title={language === 'am' ? 'መገለጫ' : 'Profile'}
+        >
           <div
-            onClick={() => { if (isPwaGuest) setIsPhoneModalOpen(true); }}
-            className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg select-none ${isPwaGuest ? 'cursor-pointer active:scale-95' : ''}`}
+            className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg select-none group-hover:opacity-95 transition-opacity"
             style={{
               background: 'radial-gradient(circle at 35% 25%, #34d399 0%, #10b981 50%, #047857 100%)',
               boxShadow: '0 3px 0 #064e3b, 0 3px 6px rgba(0,0,0,0.15)',
@@ -440,11 +446,16 @@ export default function Home() {
           </div>
           <div>
             <div className="flex items-center gap-1.5 flex-wrap">
-              <p className="font-bold text-sm uppercase tracking-wider text-slate-700 dark:text-slate-200">{user?.first_name || 'USER'}</p>
+              <p className="font-bold text-sm uppercase tracking-wider text-slate-700 dark:text-slate-200 group-hover:text-amber-500 transition-colors">
+                {user?.first_name || 'USER'}
+              </p>
               {isPwaGuest && (
                 <button
                   type="button"
-                  onClick={() => setIsPhoneModalOpen(true)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsPhoneModalOpen(true);
+                  }}
                   className="flex items-center gap-1 text-[10px] font-black text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/70 border border-amber-300 dark:border-amber-700 px-2 py-0.5 rounded-full active:scale-95 transition-all shadow-xs"
                 >
                   <span>📱 {language === 'am' ? 'ስልክ ቁጥር ያስገቡ' : 'Enter Phone'}</span>
