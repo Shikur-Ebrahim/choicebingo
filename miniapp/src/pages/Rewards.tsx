@@ -220,46 +220,35 @@ export default function Rewards() {
           </div>
         )}
 
-        {/* ── 🌟 ULTRA-PREMIUM 3D GOLD VIP BALANCE CARD ── */}
-        <div className="px-4 pt-3.5">
-          <div className="bg-gradient-to-br from-amber-400 via-amber-500 to-orange-500 rounded-3xl p-5 text-white shadow-[0_12px_30px_rgba(245,158,11,0.28)] border-t border-white/40 relative overflow-hidden">
-            {/* Shimmer & Lens Flare Effect */}
-            <div className="absolute -top-10 -right-10 w-44 h-44 bg-white/20 rounded-full blur-2xl pointer-events-none" />
-            <div className="absolute -bottom-10 -left-10 w-36 h-36 bg-orange-700/20 rounded-full blur-xl pointer-events-none" />
+        {/* ── 🌟 FULL-WIDTH SLIM COMPACT ORANGE BONUS BANNER (NO SIDE BORDER, COMPACT HEIGHT) ── */}
+        <div className="w-full bg-gradient-to-r from-amber-500 via-amber-500 to-orange-500 text-white px-4 py-3 shadow-md relative overflow-hidden border-b border-amber-600/30">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-white/15 rounded-full blur-xl pointer-events-none" />
 
-            {/* Header pill */}
-            <div className="flex items-center justify-between mb-1.5 relative z-10">
-              <span className="bg-white/25 backdrop-blur-md text-white text-[10px] font-black px-3 py-1 rounded-full border border-white/30 shadow-xs flex items-center gap-1.5">
-                <Sparkles size={12} className="text-amber-100 animate-pulse" />
-                <span>{isAmharic ? 'የቦነስ ሂሳብ' : 'VIP BONUS WALLET'}</span>
+          <div className="flex items-center justify-between relative z-10">
+            <div>
+              <span className="text-amber-100 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
+                <Sparkles size={11} className="text-amber-200 animate-pulse" />
+                {isAmharic ? 'ያለዎት የቦነስ ሂሳብ' : 'Bonus Balance'}
               </span>
-
-              <span className="text-white/80 text-[10px] font-bold">
-                Choice Bingo
-              </span>
-            </div>
-
-            {/* Big 3D Typography */}
-            <div className="relative z-10 my-1 text-center py-1">
-              <p className="text-3xl font-black text-white leading-tight tracking-tight drop-shadow-md">
+              <p className="text-2xl font-black text-white leading-tight mt-0.5 drop-shadow-sm">
                 {Number(userStats?.bonus_balance ?? user?.bonus_balance ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                <span className="text-base font-bold text-amber-100 ml-1.5">ETB</span>
+                <span className="text-xs font-bold text-amber-100 ml-1">ETB</span>
               </p>
             </div>
 
-            {/* 3 Translucent Frosted Glass Metric Capsules */}
-            <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-white/25 text-center relative z-10">
-              <div className="bg-black/15 backdrop-blur-md rounded-2xl p-2 border border-white/15">
-                <p className="text-[8px] font-bold uppercase tracking-wider text-amber-100">{isAmharic ? 'ጨዋታዎች' : 'Games'}</p>
-                <p className="text-xs font-black text-white mt-0.5">🎮 {userStats?.total_games ?? user?.total_games ?? 0}</p>
+            {/* 3 Compact metrics in an inline row */}
+            <div className="flex items-center gap-1.5">
+              <div className="bg-black/15 backdrop-blur-xs rounded-xl px-2.5 py-1 text-center border border-white/10 shadow-xs">
+                <p className="text-[7.5px] font-bold uppercase text-amber-100 leading-none">{isAmharic ? 'ጨዋታ' : 'Games'}</p>
+                <p className="text-[11px] font-black text-white mt-0.5 leading-none">🎮 {userStats?.total_games ?? user?.total_games ?? 0}</p>
               </div>
-              <div className="bg-black/15 backdrop-blur-md rounded-2xl p-2 border border-white/15">
-                <p className="text-[8px] font-bold uppercase tracking-wider text-amber-100">{isAmharic ? 'ውርርድ' : 'Stake'}</p>
-                <p className="text-xs font-black text-white mt-0.5">{Number(userStats?.total_stake ?? user?.total_stake ?? 0).toLocaleString()} <span className="text-[7.5px]">ETB</span></p>
+              <div className="bg-black/15 backdrop-blur-xs rounded-xl px-2.5 py-1 text-center border border-white/10 shadow-xs">
+                <p className="text-[7.5px] font-bold uppercase text-amber-100 leading-none">{isAmharic ? 'ውርርድ' : 'Stake'}</p>
+                <p className="text-[11px] font-black text-white mt-0.5 leading-none">{Number(userStats?.total_stake ?? user?.total_stake ?? 0).toLocaleString()} <span className="text-[7px]">ETB</span></p>
               </div>
-              <div className="bg-black/15 backdrop-blur-md rounded-2xl p-2 border border-white/15">
-                <p className="text-[8px] font-bold uppercase tracking-wider text-amber-100">{isAmharic ? 'ግብዣ' : 'Referral'}</p>
-                <p className="text-xs font-black text-white mt-0.5">{Number(userStats?.invited_reward ?? user?.invited_reward ?? 0).toLocaleString()} <span className="text-[7.5px]">ETB</span></p>
+              <div className="bg-black/15 backdrop-blur-xs rounded-xl px-2.5 py-1 text-center border border-white/10 shadow-xs">
+                <p className="text-[7.5px] font-bold uppercase text-amber-100 leading-none">{isAmharic ? 'ግብዣ' : 'Invite'}</p>
+                <p className="text-[11px] font-black text-white mt-0.5 leading-none">{Number(userStats?.invited_reward ?? user?.invited_reward ?? 0).toLocaleString()} <span className="text-[7px]">ETB</span></p>
               </div>
             </div>
           </div>
