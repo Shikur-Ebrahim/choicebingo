@@ -125,9 +125,14 @@ router.get('/', validateTelegramAuth, async (req: AuthRequest, res: Response) =>
         potentialReward = Number(c.reward_value || 10);
       }
 
+      const now = Date.now();
+      const scheduledTime = c.scheduled_at ? new Date(c.scheduled_at).getTime() : null;
+      const isScheduledFuture = !!scheduledTime && !isNaN(scheduledTime) && scheduledTime > now;
+      const scheduledCountdownSeconds = isScheduledFuture ? Math.max(0, Math.floor((scheduledTime! - now) / 1000)) : 0;
+
       const isCriteriaMet = userProgress >= targetValue;
       const isSlotsFull = Number(c.current_claims || 0) >= Number(c.max_winners || 1);
-      const isEligible = c.is_active && !hasClaimed && !isSlotsFull && isCriteriaMet;
+      const isEligible = c.is_active && !isScheduledFuture && !hasClaimed && !isSlotsFull && isCriteriaMet;
 
       return {
         ...c,
@@ -138,6 +143,8 @@ router.get('/', validateTelegramAuth, async (req: AuthRequest, res: Response) =>
         claim_info: existingClaim || null,
         is_eligible: isEligible,
         is_slots_full: isSlotsFull,
+        is_scheduled: isScheduledFuture,
+        scheduled_countdown_seconds: scheduledCountdownSeconds,
         spots_left: Math.max(0, Number(c.max_winners || 0) - Number(c.current_claims || 0)),
       };
     });
@@ -199,6 +206,21 @@ router.post('/claim', validateTelegramAuth, async (req: AuthRequest, res: Respon
     if (!campaign.is_active) {
       res.status(400).json({ error: 'This reward campaign is currently closed.' });
       return;
+    }
+
+    // Check if campaign is scheduled for the future
+    if (campaign.scheduled_at) {
+      const scheduledTime = new Date(campaign.scheduled_at).getTime();
+      if (!isNaN(scheduledTime) && scheduledTime > Date.now()) {
+        const remainingSeconds = Math.ceil((scheduledTime - Date.now()) / 1000);
+        const hours = Math.floor(remainingSeconds / 3600);
+        const minutes = Math.floor((remainingSeconds % 3600) / 60);
+        const timeStr = new Date(campaign.scheduled_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+        res.status(400).json({
+          error: `This reward is scheduled to activate at ${timeStr} (in ${hours}h ${minutes}m). Please wait until it starts!`,
+        });
+        return;
+      }
     }
 
     const maxWinners = Number(campaign.max_winners || 0);
@@ -365,20 +387,42 @@ router.put('/admin/campaign/:id', validateTelegramAuth, async (req: AuthRequest,
     }
 
     const { id } = req.params;
-    const { target_value, reward_value, max_winners, is_active } = req.body;
+    const { target_value, reward_value, max_winners, is_active, scheduled_at } = req.body;
 
     const updates: any = { updated_at: new Date().toISOString() };
     if (target_value !== undefined) updates.target_value = Number(target_value);
     if (reward_value !== undefined) updates.reward_value = Number(reward_value);
     if (max_winners !== undefined) updates.max_winners = Number(max_winners);
     if (is_active !== undefined) updates.is_active = Boolean(is_active);
+    if (scheduled_at !== undefined) updates.scheduled_at = scheduled_at ? new Date(scheduled_at).toISOString() : null;
 
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('reward_campaigns')
       .update(updates)
       .eq('id', id)
       .select()
       .single();
+
+    // Fallback if scheduled_at column does not exist yet in Supabase
+    if (error && error.message.includes('scheduled_at')) {
+      delete updates.scheduled_at;
+      const fallback = await supabase
+        .from('reward_campaigns')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+      if (fallback.error) {
+        res.status(500).json({ error: fallback.error.message });
+        return;
+      }
+      res.json({
+        success: true,
+        campaign: fallback.data,
+        warning: 'scheduled_at column not found in database. Run: ALTER TABLE reward_campaigns ADD COLUMN IF NOT EXISTS scheduled_at timestamp with time zone;',
+      });
+      return;
+    }
 
     if (error) {
       res.status(500).json({ error: error.message });

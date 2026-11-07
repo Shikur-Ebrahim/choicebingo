@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { t } from '../lib/translations';
-import { Gift, ArrowDownToLine, Share2, PlusCircle, Info, MessageCircle } from 'lucide-react';
+import { Gift, ArrowDownToLine, Share2, PlusCircle, Info, MessageCircle, Zap, Trophy, Clock, X, Sparkles } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import WebApp from '@twa-dev/sdk';
 import { supabase } from '../lib/supabase';
@@ -16,6 +16,98 @@ export default function Home() {
   const [announcement, setAnnouncement] = useState<{ message: string; maxViews: number } | null>(null);
   const [showAnnouncement, setShowAnnouncement] = useState(false);
   const announcementShownRef = useRef(false);
+
+  // 🌟 Active Rewards Alert Banner State
+  const [rewardAlert, setRewardAlert] = useState<{
+    type: 'gursha_live' | 'gursha_scheduled' | 'milestone_ready';
+    title: string;
+    subtitle: string;
+    actionText: string;
+    badge: string;
+    campaignId: string;
+  } | null>(null);
+  const [dismissedRewardAlert, setDismissedRewardAlert] = useState(false);
+
+  // Check for active or upcoming rewards to notify the user
+  useEffect(() => {
+    let isMounted = true;
+    const API = import.meta.env.VITE_API_URL || '/api';
+    const initData = typeof WebApp !== 'undefined' ? WebApp.initData : '';
+
+    const checkRewardsAlert = async () => {
+      try {
+        const res = await fetch(`${API}/rewards`, {
+          headers: {
+            'Content-Type': 'application/json',
+            'x-telegram-init-data': initData,
+          },
+        });
+        if (!res.ok || !isMounted) return;
+        const data = await res.json();
+        const campaigns: any[] = data.campaigns || [];
+
+        // Check 1: User has an eligible Gursha flash reward ready to claim!
+        const eligibleGursha = campaigns.find(c => c.id === 'gursha' && c.is_eligible);
+        if (eligibleGursha) {
+          setRewardAlert({
+            type: 'gursha_live',
+            title: language === 'am' ? '⚡ የማህበረሰብ ጉርሻ ክፍት ነው!' : '⚡ Community Gursha is LIVE!',
+            subtitle: language === 'am'
+              ? `የመጀመሪያዎቹ 100 ተጠቃሚዎች 10 ብር ፈጣን ቦነስ ይውሰዱ (${eligibleGursha.spots_left} ቦታዎች ቀርተዋል)!`
+              : `First 100 players claim 10 ETB instant bonus (${eligibleGursha.spots_left} spots left)!`,
+            badge: language === 'am' ? '🔥 አሁን ክፍት ነው' : '🔥 LIVE NOW',
+            actionText: language === 'am' ? 'ቦነስ ውሰድ 🎁' : 'Claim 10 ETB 🎁',
+            campaignId: 'gursha',
+          });
+          return;
+        }
+
+        // Check 2: User has an unlocked milestone ready to claim!
+        const eligibleMilestone = campaigns.find(c => (c.id === 'total_games' || c.id === 'invitation_reward') && c.is_eligible);
+        if (eligibleMilestone) {
+          const name = language === 'am' && eligibleMilestone.title_am ? eligibleMilestone.title_am : eligibleMilestone.title;
+          setRewardAlert({
+            type: 'milestone_ready',
+            title: language === 'am' ? '🏆 የቦነስ ማይልስቶን ደርሰዋል!' : '🏆 Milestone Reward Unlocked!',
+            subtitle: language === 'am'
+              ? `${name} ቦነስዎን ለመውሰድ ዝግጁ ነው! አሁኑኑ ይውሰዱ።`
+              : `Your ${eligibleMilestone.title} reward is unlocked and waiting to be claimed!`,
+            badge: language === 'am' ? '🎉 ዝግጁ' : '🎉 READY',
+            actionText: language === 'am' ? 'ሽልማት ውሰድ 🎁' : 'Claim Reward 🎁',
+            campaignId: eligibleMilestone.id,
+          });
+          return;
+        }
+
+        // Check 3: Gursha is scheduled to start soon!
+        const scheduledGursha = campaigns.find(c => c.id === 'gursha' && c.is_scheduled);
+        if (scheduledGursha) {
+          const timeStr = scheduledGursha.scheduled_at
+            ? new Date(scheduledGursha.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })
+            : '';
+          setRewardAlert({
+            type: 'gursha_scheduled',
+            title: language === 'am' ? '⏰ የማህበረሰብ ጉርሻ በቅርቡ!' : '⏰ Upcoming Gursha Flash!',
+            subtitle: language === 'am'
+              ? `ዛሬ በ ${timeStr} (24h) ይጀምራል — ፈጣን ቦነስዎን ለመውሰድ ይዘጋጁ!`
+              : `Starts today at ${timeStr} (24h) — Get ready to claim your instant cash!`,
+            badge: language === 'am' ? '⏳ በቅርቡ' : '⏳ UPCOMING',
+            actionText: language === 'am' ? 'ይመልከቱ 🎁' : 'View Rewards 🎁',
+            campaignId: 'gursha',
+          });
+          return;
+        }
+
+        setRewardAlert(null);
+      } catch (err) {
+        // Non-blocking
+      }
+    };
+
+    checkRewardsAlert();
+
+    return () => { isMounted = false; };
+  }, [language]);
 
   useEffect(() => {
     let isMounted = true;
@@ -276,6 +368,78 @@ export default function Home() {
           <span>{t[language].home.invite}</span>
         </button>
       </div>
+
+      {/* ── 🌟 ATTRACTIVE ACTIVE REWARD NOTIFICATION BANNER ── */}
+      {rewardAlert && !dismissedRewardAlert && (
+        <div className="px-4 animate-slide-down">
+          <div
+            onClick={() => {
+              if (typeof WebApp !== 'undefined') {
+                try { WebApp.HapticFeedback.impactOccurred('medium'); } catch (_) {}
+              }
+              navigate('/rewards');
+            }}
+            className={`relative overflow-hidden rounded-2xl p-3.5 text-white shadow-lg cursor-pointer active:scale-[0.98] transition-all border ${
+              rewardAlert.type === 'gursha_live'
+                ? 'bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 shadow-[0_8px_25px_rgba(245,158,11,0.35)] border-amber-300/40'
+                : rewardAlert.type === 'milestone_ready'
+                ? 'bg-gradient-to-r from-emerald-500 via-teal-600 to-emerald-700 shadow-[0_8px_25px_rgba(16,185,129,0.35)] border-emerald-300/40'
+                : 'bg-gradient-to-r from-indigo-600 via-purple-600 to-amber-600 shadow-[0_8px_25px_rgba(99,102,241,0.35)] border-indigo-300/40'
+            }`}
+          >
+            {/* Shimmer overlay */}
+            <div className="absolute top-0 right-0 w-32 h-32 bg-white/20 rounded-full blur-xl pointer-events-none" />
+
+            <div className="flex items-center gap-3 relative z-10">
+              {/* Pulsing Icon */}
+              <div className="w-11 h-11 rounded-2xl bg-white/20 backdrop-blur-xs flex items-center justify-center shrink-0 border border-white/30 shadow-inner">
+                {rewardAlert.type === 'gursha_live' ? (
+                  <Zap size={22} className="text-yellow-200 animate-bounce" />
+                ) : rewardAlert.type === 'milestone_ready' ? (
+                  <Trophy size={22} className="text-yellow-200 animate-pulse" />
+                ) : (
+                  <Clock size={22} className="text-yellow-200 animate-pulse" />
+                )}
+              </div>
+
+              {/* Text Info */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  <span className="text-[9px] font-black uppercase tracking-wider bg-black/25 px-2 py-0.5 rounded-full border border-white/20 text-yellow-200">
+                    {rewardAlert.badge}
+                  </span>
+                </div>
+                <h3 className="text-xs font-black text-white leading-tight truncate">
+                  {rewardAlert.title}
+                </h3>
+                <p className="text-[10px] text-white/90 font-semibold leading-tight line-clamp-1 mt-0.5">
+                  {rewardAlert.subtitle}
+                </p>
+              </div>
+
+              {/* Action Button & Dismiss */}
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  className="px-2.5 py-1.5 rounded-xl bg-white text-slate-900 font-black text-[11px] shadow-sm flex items-center gap-1 active:scale-95"
+                >
+                  <span>{rewardAlert.actionText}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDismissedRewardAlert(true);
+                  }}
+                  className="w-6 h-6 rounded-full bg-black/20 hover:bg-black/30 flex items-center justify-center text-white/80 active:scale-90"
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ACTIVE GAMES SECTION */}
       <div className="px-4">

@@ -47,6 +47,9 @@ interface Campaign {
   is_eligible: boolean;
   is_slots_full: boolean;
   spots_left: number;
+  scheduled_at?: string | null;
+  is_scheduled?: boolean;
+  scheduled_countdown_seconds?: number;
 }
 
 interface UserStats {
@@ -106,6 +109,14 @@ function formatCompact(num: number | string | undefined | null, isCurrency = fal
     : n.toLocaleString('en-US');
 }
 
+function formatCountdown(totalSec: number): string {
+  if (totalSec <= 0) return '00:00:00';
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+}
+
 export default function Rewards() {
   const navigate = useNavigate();
   const { user, fetchUser, language } = useGameStore();
@@ -152,6 +163,25 @@ export default function Rewards() {
   useEffect(() => {
     fetchRewards();
   }, [fetchRewards]);
+
+  // Live countdown ticker for scheduled campaigns (e.g. Gursha 24h timer)
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCampaigns((prev) =>
+        prev.map((c) => {
+          if (c.is_scheduled && c.scheduled_countdown_seconds !== undefined && c.scheduled_countdown_seconds > 0) {
+            const nextSec = c.scheduled_countdown_seconds - 1;
+            if (nextSec <= 0) {
+              return { ...c, is_scheduled: false, scheduled_countdown_seconds: 0, is_eligible: true };
+            }
+            return { ...c, scheduled_countdown_seconds: nextSec };
+          }
+          return c;
+        })
+      );
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const handleClaim = async (campaign: Campaign) => {
     if (!campaign.is_eligible || claimingId) return;
@@ -424,6 +454,8 @@ export default function Rewards() {
                     <span className={`text-[10px] font-black px-2.5 py-1 rounded-full border shrink-0 ${cardTheme.badge}`}>
                       {camp.is_slots_full
                         ? (isAmharic ? 'ቦታው ተሞልቷል' : 'Full')
+                        : camp.is_scheduled
+                        ? (isAmharic ? `⏰ በቅርቡ (${camp.spots_left} ቦታዎች)` : `⏰ Starts soon (${camp.spots_left} spots)`)
                         : `${camp.spots_left} / ${camp.max_winners} ${isAmharic ? 'ቦታዎች' : 'left'}`}
                     </span>
                   </div>
@@ -455,6 +487,10 @@ export default function Rewards() {
                           <span className="text-xs font-black text-rose-500 flex items-center gap-1 justify-end">
                             <Lock size={13} /> {isAmharic ? 'ተዘግቷል' : 'Closed'}
                           </span>
+                        ) : camp.is_scheduled ? (
+                          <span className="text-xs font-black text-amber-500 flex items-center gap-1 justify-end">
+                            <Clock size={13} className="animate-spin" /> {isAmharic ? 'በቅርቡ' : 'Scheduled'}
+                          </span>
                         ) : camp.is_eligible ? (
                           <span className="text-xs font-black text-amber-500 flex items-center gap-1 justify-end animate-pulse">
                             <Sparkles size={13} /> {isAmharic ? 'ዝግጁ ነው!' : 'Ready!'}
@@ -467,6 +503,22 @@ export default function Rewards() {
                       </div>
                     </div>
                   </div>
+
+                  {/* Scheduled Countdown Banner (If scheduled) */}
+                  {camp.is_scheduled && (
+                    <div className="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/10 border border-amber-400/30 dark:border-amber-500/30 rounded-2xl p-3 mb-3 text-center">
+                      <div className="flex items-center justify-center gap-1.5 text-[11px] font-black text-amber-700 dark:text-amber-400 mb-1">
+                        <Clock size={14} className="animate-pulse" />
+                        <span>{isAmharic ? 'የተያዘለት ሰዓት ሲደርስ ክፍት ይሆናል' : 'Scheduled Launch Countdown'}</span>
+                      </div>
+                      <p className="font-mono text-2xl font-black text-amber-600 dark:text-amber-400 tracking-wider">
+                        {formatCountdown(camp.scheduled_countdown_seconds || 0)}
+                      </p>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                        {camp.scheduled_at && `${new Date(camp.scheduled_at).toLocaleDateString([], { month: 'short', day: 'numeric' })} at ${new Date(camp.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })} (24h)`}
+                      </p>
+                    </div>
+                  )}
 
                   {/* Progress Bar (Only for milestone targets, NOT Gursha!) */}
                   {!isGursha && camp.target_value > 0 && (
@@ -505,6 +557,18 @@ export default function Rewards() {
                     >
                       <Lock size={15} />
                       <span>{isAmharic ? 'ሁሉም ቦታዎች ተሞልተዋል' : 'All Spots Claimed'}</span>
+                    </button>
+                  ) : camp.is_scheduled ? (
+                    <button
+                      disabled
+                      className="w-full py-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300/60 dark:border-amber-700/60 text-amber-700 dark:text-amber-300 font-black text-xs flex items-center justify-center gap-2 shadow-xs cursor-not-allowed"
+                    >
+                      <Clock size={16} className="animate-spin text-amber-500" />
+                      <span>
+                        {isAmharic 
+                          ? `በቅርቡ ይጀምራል · ቀሪ ${formatCountdown(camp.scheduled_countdown_seconds || 0)}` 
+                          : `Scheduled · Starts in ${formatCountdown(camp.scheduled_countdown_seconds || 0)}`}
+                      </span>
                     </button>
                   ) : camp.is_eligible ? (
                     <button
