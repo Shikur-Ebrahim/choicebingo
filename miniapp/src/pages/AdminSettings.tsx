@@ -99,18 +99,18 @@ const COMMUNITY_FIELDS: SettingField[] = [
     color: 'text-orange-500', 
     bg: 'bg-orange-500/10 border-orange-500/20', 
     btnGradient: 'from-orange-500 to-amber-600',
-    defaultValue: 'ChoiceBingo_admin' 
+    defaultValue: 'Choicebingosupport' 
   },
   { 
     key: 'channel_link', 
-    label: 'Official Telegram Channel', 
-    description: 'Public channel link displayed across the app',
-    icon: <Megaphone size={18} />, 
+    label: 'Official Telegram Group', 
+    description: 'Public group link displayed across the app and bot',
+    icon: <Users size={18} />, 
     type: 'text', 
     color: 'text-indigo-500', 
     bg: 'bg-indigo-500/10 border-indigo-500/20', 
     btnGradient: 'from-indigo-600 to-blue-600',
-    defaultValue: 'https://t.me/ChoiceBingo' 
+    defaultValue: 'https://t.me/choicebingo' 
   },
 ];
 
@@ -542,7 +542,7 @@ export default function AdminSettings() {
               <div className="px-1 flex items-center justify-between">
                 <span className="text-[11px] font-black text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
                   <Share2 size={14} className="text-indigo-500" />
-                  Support & Channel Links
+                  Support & Group Links
                 </span>
               </div>
               <div className="space-y-2.5">

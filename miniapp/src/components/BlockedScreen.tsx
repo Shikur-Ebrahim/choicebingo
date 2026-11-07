@@ -52,7 +52,7 @@ export default function BlockedScreen() {
       const cleanUser = supportUsername.replace('@', '');
       WebApp.openTelegramLink(`https://t.me/${cleanUser}`);
     } else {
-      WebApp.openTelegramLink('https://t.me/ChoiceBingo_admin');
+      WebApp.openTelegramLink('https://t.me/Choicebingosupport');
     }
   };
 

@@ -171,8 +171,8 @@ async function sendTelegramMessage(
   }
 
   // Fetch dynamic links for channel & support
-  let channelUrl = 'https://t.me/ChoiceBingo';
-  let supportUrl = 'https://t.me/choicebingo_admin';
+  let channelUrl = 'https://t.me/choicebingo';
+  let supportUrl = 'https://t.me/Choicebingosupport';
   try {
     const { data: rows } = await supabase
       .from('settings')

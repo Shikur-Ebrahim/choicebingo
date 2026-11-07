@@ -17,8 +17,8 @@ const API_URL = import.meta.env.VITE_API_URL || '/api';
 export default function Profile() {
   const { user, isProfileOpen, setProfileOpen, isDarkMode, toggleDarkMode, language, setLanguage } = useGameStore();
   const [showLangDropdown, setShowLangDropdown] = useState(false);
-  const [supportUsername, setSupportUsername] = useState('ChoiceBingo_admin');
-  const [channelLink, setChannelLink] = useState('https://t.me/ChoiceBingo');
+  const [supportUsername, setSupportUsername] = useState('Choicebingosupport');
+  const [channelLink, setChannelLink] = useState('https://t.me/choicebingo');
   const [copied, setCopied] = useState(false);
   const { isStandalone, triggerInstall } = usePwaPrompt();
   const [showResetPasswordModal, setShowResetPasswordModal] = useState(false);
@@ -297,9 +297,9 @@ export default function Profile() {
               <ChevronRight size={11} className="text-slate-300" />
             </button>
 
-            {/* Official Channel */}
+            {/* Official Group */}
             <button onClick={handleChannel} className={row}>
-              <div className={icon('bg-indigo-50 text-indigo-500')}><Megaphone size={12} /></div>
+              <div className={icon('bg-indigo-50 text-indigo-500')}><Users size={12} /></div>
               <span className="flex-1 font-bold text-slate-700 dark:text-slate-200 text-[10px]">{t[language].profile.channel}</span>
               <ChevronRight size={11} className="text-slate-300" />
             </button>

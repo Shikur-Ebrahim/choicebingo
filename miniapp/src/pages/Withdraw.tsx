@@ -214,7 +214,7 @@ export default function Withdraw() {
       
       if (contactRes.ok) {
         const support = await contactRes.json();
-        setSupportContact(support.username || 'ChoiceBingo_admin');
+        setSupportContact(support.username || 'Choicebingosupport');
       }
     } catch (err) {
       console.error(err);

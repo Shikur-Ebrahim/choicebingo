@@ -70,8 +70,9 @@ router.get('/support-contact', validateTelegramAuth, async (req: AuthRequest, re
   };
 
   res.json({
-    username: getSetting('support_username', 'ChoiceBingo_admin'),
-    channel: getSetting('channel_link', 'https://t.me/ChoiceBingo'),
+    username: getSetting('support_username', 'Choicebingosupport'),
+    channel: getSetting('group_link', getSetting('channel_link', 'https://t.me/choicebingo')),
+    group: getSetting('group_link', getSetting('channel_link', 'https://t.me/choicebingo')),
     announcement_message: getSetting('announcement_message', ''),
     announcement_max_views: parseInt(getSetting('announcement_max_views', '2'), 10)
   });

@@ -359,7 +359,7 @@ export default function Home() {
         headers: { 'Content-Type': 'application/json', 'x-telegram-init-data': initData }
       });
       const data = await res.json();
-      const username = data.username || 'ChoiceBingo_admin';
+      const username = data.username || 'Choicebingosupport';
       const url = `https://t.me/${username.replace('@', '')}`;
       if (typeof WebApp !== 'undefined' && WebApp.openTelegramLink) {
         WebApp.openTelegramLink(url);

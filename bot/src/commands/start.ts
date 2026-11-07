@@ -31,19 +31,22 @@ export async function startCommand(ctx: Context) {
   const miniAppUrl = process.env.MINI_APP_URL || 'https://choicebingo.vercel.app';
   
   // Fetch dynamic links from Supabase settings
-  let supportUsername = 'choicebingo_admin';
-  let channelLink = 'https://t.me/choicebingo';
+  let supportUsername = 'Choicebingosupport';
+  let groupLink = 'https://t.me/choicebingo';
   try {
     const { supabase } = await import('../services/supabase');
     const { data: supportData } = await supabase.from('settings').select('value').eq('key', 'support_username').single();
-    const { data: channelData } = await supabase.from('settings').select('value').eq('key', 'channel_link').single();
-    if (supportData) supportUsername = supportData.value;
-    if (channelData) channelLink = channelData.value;
+    const { data: groupData } = await supabase.from('settings').select('key, value').in('key', ['group_link', 'channel_link']);
+    if (supportData?.value) supportUsername = supportData.value;
+    if (groupData && groupData.length > 0) {
+      const g = groupData.find(x => x.key === 'group_link')?.value || groupData.find(x => x.key === 'channel_link')?.value;
+      if (g) groupLink = g;
+    }
   } catch (err) {
     console.error('Failed to fetch settings in bot:', err);
   }
 
-  const channelUrl = channelLink;
+  const groupUrl = groupLink;
   const supportUrl = `https://t.me/${supportUsername.replace('@', '')}`;
   const botUsername = 'choicebingo_bot';
   const inviteLink = `https://t.me/${botUsername}?start=ref_${user.id}`;
@@ -54,7 +57,7 @@ export async function startCommand(ctx: Context) {
       [{ text: '🎯 START PLAYING!', web_app: { url: miniAppUrl } }],
       [
         { text: '💬 Get Support', url: supportUrl },
-        { text: '📢 Join Channel', url: channelUrl },
+        { text: '👥 Join Group', url: groupUrl },
       ],
       [
         { text: '👥 Invite Friend', url: shareUrl },
