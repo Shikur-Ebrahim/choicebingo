@@ -140,6 +140,7 @@ import AdminUsers from './pages/AdminUsers';
 import AdminWorkers from './pages/AdminWorkers';
 import AdminBroadcast from './pages/AdminBroadcast';
 import AdminRewards from './pages/AdminRewards';
+import AdminSupportVideos from './pages/AdminSupportVideos';
 import AdminQrCode from './pages/AdminQrCode';
 
 import DepositHistory from './pages/DepositHistory';
@@ -203,6 +204,7 @@ function App() {
           <Route path="/admin/withdrawals" element={<AdminWithdrawals />} />
           <Route path="/admin/settings" element={<AdminSettings />} />
           <Route path="/admin/rewards" element={<AdminRewards />} />
+          <Route path="/admin/support-videos" element={<AdminSupportVideos />} />
           <Route path="/admin/tx-report" element={<AdminTxReport />} />
           <Route path="/admin/users" element={<AdminUsers />} />
           <Route path="/admin/workers" element={<AdminWorkers />} />
