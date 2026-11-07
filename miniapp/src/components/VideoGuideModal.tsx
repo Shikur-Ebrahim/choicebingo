@@ -134,6 +134,41 @@ function getYouTubeEmbedUrl(url: string): string | null {
   return ytMatch ? `https://www.youtube-nocookie.com/embed/${ytMatch[1]}?autoplay=1&rel=0` : null;
 }
 
+/**
+ * Custom hook to automatically open the Video Guide on the user's first time visiting a page/section.
+ * Remembers in localStorage so it only opens once automatically, while keeping manual clicks working anytime.
+ */
+export function useAutoVideoGuide(
+  category: VideoCategory,
+  setIsOpen: (open: boolean) => void,
+  userId?: string
+) {
+  useEffect(() => {
+    try {
+      const userKey = userId ? `cb_seen_video_${category}_${userId}` : null;
+      const deviceKey = `cb_seen_video_${category}`;
+
+      if (
+        localStorage.getItem(deviceKey) === 'true' ||
+        (userKey && localStorage.getItem(userKey) === 'true')
+      ) {
+        return;
+      }
+
+      // First time visit: auto-open smoothly after 400ms
+      const timer = setTimeout(() => {
+        setIsOpen(true);
+        localStorage.setItem(deviceKey, 'true');
+        if (userKey) localStorage.setItem(userKey, 'true');
+      }, 400);
+
+      return () => clearTimeout(timer);
+    } catch {
+      // Ignore localStorage exceptions in restrictive/private browsing mode
+    }
+  }, [category, setIsOpen, userId]);
+}
+
 export default function VideoGuideModal({ isOpen, onClose, category }: VideoGuideModalProps) {
   const { language } = useGameStore();
   const [videos, setVideos] = useState<SupportVideoItem[]>([]);

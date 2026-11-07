@@ -19,7 +19,7 @@ import WebApp from '@twa-dev/sdk';
 import { useGameStore } from '../store/gameStore';
 import { t } from '../lib/translations';
 import { supabase } from '../lib/supabase';
-import VideoGuideModal from '../components/VideoGuideModal';
+import VideoGuideModal, { useAutoVideoGuide } from '../components/VideoGuideModal';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -94,6 +94,9 @@ export default function Withdraw() {
   const [pendingAmount, setPendingAmount] = useState<number | null>(null);
   const [supportContact, setSupportContact] = useState<string>('');
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
+
+  // Auto-open video guide on user's first visit to Withdrawal
+  useAutoVideoGuide('withdraw', setIsVideoModalOpen, user?.telegram_id);
 
   // Form state
   const [amount, setAmount] = useState('');

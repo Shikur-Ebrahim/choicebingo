@@ -24,7 +24,7 @@ import { useGameStore } from '../store/gameStore';
 import { t } from '../lib/translations';
 import { uploadImage } from '../lib/upload';
 import { supabase } from '../lib/supabase';
-import VideoGuideModal from '../components/VideoGuideModal';
+import VideoGuideModal, { useAutoVideoGuide } from '../components/VideoGuideModal';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -100,6 +100,9 @@ export default function Deposit() {
   const [step, setStep] = useState<Step>('list');
   const [supportUsername, setSupportUsername] = useState<string | null>(null);
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
+
+  // Auto-open video guide on user's first visit to Deposit
+  useAutoVideoGuide('deposit', setIsVideoModalOpen, user?.telegram_id);
 
   // Pending Deposit State
   const [pendingDeposit, setPendingDeposit] = useState<PendingDeposit | null>(null);

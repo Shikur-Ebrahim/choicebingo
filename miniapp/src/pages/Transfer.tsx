@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useGameStore } from '../store/gameStore';
 import { t } from '../lib/translations';
 import WebApp from '@twa-dev/sdk';
-import VideoGuideModal from '../components/VideoGuideModal';
+import VideoGuideModal, { useAutoVideoGuide } from '../components/VideoGuideModal';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -21,6 +21,10 @@ export default function Transfer() {
   const [loading, setLoading] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
+
+  // Auto-open video guide on user's first visit to Transfer
+  useAutoVideoGuide('transfer', setIsVideoModalOpen, user?.telegram_id);
+
   const navigate = useNavigate();
 
   const handleBack = () => {

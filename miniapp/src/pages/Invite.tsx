@@ -4,12 +4,16 @@ import { useNavigate } from 'react-router-dom';
 import { useGameStore } from '../store/gameStore';
 import { t } from '../lib/translations';
 import WebApp from '@twa-dev/sdk';
-import VideoGuideModal from '../components/VideoGuideModal';
+import VideoGuideModal, { useAutoVideoGuide } from '../components/VideoGuideModal';
 
 export default function Invite() {
   const { user, setProfileOpen, language } = useGameStore();
   const [copied, setCopied] = useState(false);
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
+
+  // Auto-open video guide on user's first visit to Invite
+  useAutoVideoGuide('invite', setIsVideoModalOpen, user?.telegram_id);
+
   const navigate = useNavigate();
 
   const botUsername = import.meta.env.VITE_BOT_USERNAME || 'ChoiceBingo_bot';
