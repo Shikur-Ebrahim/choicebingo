@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { AuthRequest, validateTelegramAuth } from '../middleware/auth';
 import { supabase } from '../services/supabase';
+import { recordNotification } from '../services/notifications';
 
 const router = Router();
 
@@ -202,6 +203,30 @@ router.post('/transfer', validateTelegramAuth, async (req: AuthRequest, res) => 
         })
       });
     }
+
+    // Record in-app notification for Recipient
+    recordNotification({
+      telegram_id: recipient_telegram_id,
+      type: 'transfer',
+      title: `Transfer Received (+${transferAmount.toLocaleString('en-US')} ETB)`,
+      title_am: `ገንዘብ ደርሶዎታል (+${transferAmount.toLocaleString('en-US')} ብር)`,
+      message: `You received a transfer of ${transferAmount.toLocaleString('en-US')} ETB from ${sender.username ? '@' + sender.username : (sender.first_name || senderTelegramId)}. Added to your Main Balance.`,
+      message_am: `ከ ${sender.username ? '@' + sender.username : (sender.first_name || senderTelegramId)} የ ${transferAmount.toLocaleString('en-US')} ብር ተላልፎልዎታል። ወደ ዋና ሂሳብዎ ገብቷል።`,
+      amount: transferAmount,
+      status: 'success'
+    }).catch(console.error);
+
+    // Record in-app notification for Sender
+    recordNotification({
+      telegram_id: senderTelegramId,
+      type: 'transfer',
+      title: `Transfer Sent (-${transferAmount.toLocaleString('en-US')} ETB)`,
+      title_am: `ገንዘብ ተላልፏል (-${transferAmount.toLocaleString('en-US')} ብር)`,
+      message: `You transferred ${transferAmount.toLocaleString('en-US')} ETB to ${recipient.username ? '@' + recipient.username : (recipient.first_name || recipient_telegram_id)}. Deducted from your Main Balance.`,
+      message_am: `የ ${transferAmount.toLocaleString('en-US')} ብር ለ ${recipient.username ? '@' + recipient.username : (recipient.first_name || recipient_telegram_id)} አስተላልፈዋል። ከዋና ሂሳብዎ ተቀንሷል።`,
+      amount: transferAmount,
+      status: 'warning'
+    }).catch(console.error);
   } catch (e) { console.error('Notify error:', e); }
 
   res.json({

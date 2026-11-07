@@ -12,7 +12,9 @@ import {
   ArrowUpRight,
   Sparkles,
   Wallet,
-  Coins
+  Coins,
+  RefreshCw,
+  ArrowRightLeft
 } from 'lucide-react';
 import WebApp from '@twa-dev/sdk';
 import { useGameStore } from '../store/gameStore';
@@ -21,7 +23,7 @@ const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 export interface NotificationItem {
   id: string;
-  type: 'broadcast' | 'deposit' | 'withdrawal' | 'win' | 'reward';
+  type: 'broadcast' | 'deposit' | 'withdrawal' | 'win' | 'reward' | 'refund' | 'transfer';
   title: string;
   title_am?: string;
   message: string;
@@ -97,7 +99,7 @@ export default function NotificationModal({
     return notifications.filter(n => {
       const isUnread = !readIds.has(n.id);
       if (filter === 'unread') return isUnread;
-      if (filter === 'cash') return n.type === 'deposit' || n.type === 'withdrawal';
+      if (filter === 'cash') return n.type === 'deposit' || n.type === 'withdrawal' || n.type === 'transfer' || n.type === 'refund';
       if (filter === 'wins') return n.type === 'win' || n.type === 'reward';
       if (filter === 'broadcast') return n.type === 'broadcast';
       return true;
@@ -107,6 +109,21 @@ export default function NotificationModal({
   if (!isOpen) return null;
 
   const renderIcon = (item: NotificationItem) => {
+    if (item.type === 'refund') {
+      return (
+        <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-950/70 border border-amber-300 dark:border-amber-700 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 shadow-xs">
+          <RefreshCw size={20} />
+        </div>
+      );
+    }
+    if (item.type === 'transfer') {
+      return (
+        <div className="w-10 h-10 rounded-xl bg-teal-100 dark:bg-teal-950/70 border border-teal-300 dark:border-teal-700 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0 shadow-xs">
+          <ArrowRightLeft size={20} />
+        </div>
+      );
+    }
+
     switch (item.status) {
       case 'success':
         return (
@@ -211,7 +228,7 @@ export default function NotificationModal({
           {[
             { id: 'all', label: isAm ? 'ሁሉም' : 'All', count: notifications.length },
             { id: 'unread', label: isAm ? 'ያልታዩ' : 'Unread', count: unreadCount },
-            { id: 'cash', label: isAm ? 'ክፍያዎች' : 'Cash', count: notifications.filter(n => n.type === 'deposit' || n.type === 'withdrawal').length },
+            { id: 'cash', label: isAm ? 'ክፍያዎች' : 'Cash', count: notifications.filter(n => n.type === 'deposit' || n.type === 'withdrawal' || n.type === 'transfer' || n.type === 'refund').length },
             { id: 'wins', label: isAm ? 'አሸናፊነት' : 'Wins', count: notifications.filter(n => n.type === 'win' || n.type === 'reward').length },
             { id: 'broadcast', label: isAm ? 'ማስታወቂያ' : 'News', count: notifications.filter(n => n.type === 'broadcast').length },
           ].map(tab => (

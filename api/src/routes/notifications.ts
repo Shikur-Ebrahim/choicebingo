@@ -1,12 +1,13 @@
 import { Router, Response } from 'express';
 import { AuthRequest, optionalTelegramAuth } from '../middleware/auth';
 import { supabase } from '../services/supabase';
+import { getUserNotifications } from '../services/notifications';
 
 const router = Router();
 
 export interface NotificationItem {
   id: string;
-  type: 'broadcast' | 'deposit' | 'withdrawal' | 'win' | 'reward';
+  type: 'broadcast' | 'deposit' | 'withdrawal' | 'win' | 'reward' | 'refund' | 'transfer';
   title: string;
   title_am?: string;
   message: string;
@@ -22,50 +23,83 @@ export interface NotificationItem {
 // GET /api/notifications — fetch aggregated notifications for user + broadcasts
 router.get('/', optionalTelegramAuth, async (req: AuthRequest, res: Response) => {
   try {
-    const telegramId = req.telegramUser?.id ? req.telegramUser.id.toString() : null;
+    const rawId = req.telegramUser?.id ? req.telegramUser.id.toString().trim() : null;
     const notifications: NotificationItem[] = [];
+    const seenIds = new Set<string>();
 
-    // 1. Always fetch public published broadcasts (admin announcements to bot/channel)
+    const addNotif = (item: NotificationItem) => {
+      if (!seenIds.has(item.id)) {
+        seenIds.add(item.id);
+        notifications.push(item);
+      }
+    };
+
+    // 1. Always fetch published / sent admin broadcasts (to bot, channel, or both)
     try {
-      const { data: broadcasts } = await supabase
+      const { data: broadcasts, error: bErr } = await supabase
         .from('broadcast_posts')
-        .select('id, title, content, media_url, button_text, button_url, status, created_at, scheduled_at')
-        .in('status', ['published', 'sent'])
+        .select('id, title, body, media_url, media_type, send_to, status, created_at, sent_at')
+        .in('status', ['sent', 'sending', 'published'])
         .order('created_at', { ascending: false })
-        .limit(10);
+        .limit(20);
 
-      for (const b of broadcasts || []) {
-        notifications.push({
-          id: `broadcast_${b.id}`,
-          type: 'broadcast',
-          title: b.title || 'Choice Bingo Notice 📢',
-          title_am: b.title || 'የ Choice Bingo ማስታወቂያ 📢',
-          message: b.content || '',
-          message_am: b.content || '',
-          created_at: b.scheduled_at || b.created_at,
-          status: 'info',
-          media_url: b.media_url || undefined,
-          action_url: b.button_url || undefined,
-          action_text: b.button_text || undefined,
-        });
+      if (!bErr && broadcasts) {
+        for (const b of broadcasts) {
+          addNotif({
+            id: `broadcast_${b.id}`,
+            type: 'broadcast',
+            title: b.title && b.title.trim() ? b.title.trim() : 'Choice Bingo Notice 📢',
+            title_am: b.title && b.title.trim() ? b.title.trim() : 'የ Choice Bingo ማስታወቂያ 📢',
+            message: b.body || '',
+            message_am: b.body || '',
+            created_at: b.sent_at || b.created_at,
+            status: 'info',
+            media_url: b.media_url || undefined,
+          });
+        }
       }
     } catch (bErr) {
       console.error('[Notifications] Error fetching broadcasts:', bErr);
     }
 
-    // If unauthenticated guest, return broadcasts
-    if (!telegramId) {
+    // If unauthenticated guest, return broadcasts immediately
+    if (!rawId) {
       notifications.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       res.json({ success: true, notifications });
       return;
     }
 
-    // 2. Fetch User Deposits (Approved, Rejected, Pending)
+    // Build user ID variations (e.g. 0912121212, 912121212) so both formats match
+    const userIds = [rawId];
+    if (rawId.startsWith('9') || rawId.startsWith('7')) userIds.push(`0${rawId}`);
+    if (rawId.startsWith('0')) userIds.push(rawId.slice(1));
+
+    // 2. Fetch recorded user notifications (Game cancellations/refunds, transfers, withdrawal rejections)
+    try {
+      const recorded = await getUserNotifications(userIds);
+      for (const r of recorded) {
+        addNotif({
+          id: r.id || `rec_${Date.now()}_${Math.random()}`,
+          type: r.type,
+          title: r.title,
+          title_am: r.title_am || r.title,
+          message: r.message,
+          message_am: r.message_am || r.message,
+          created_at: r.created_at || new Date().toISOString(),
+          status: r.status,
+          amount: r.amount ? Number(r.amount) : undefined,
+        });
+      }
+    } catch (recErr) {
+      console.error('[Notifications] Error fetching recorded notifications:', recErr);
+    }
+
+    // 3. Fetch User Deposits (Approved, Rejected, Pending)
     try {
       const { data: deposits } = await supabase
         .from('deposits')
         .select('id, amount, status, created_at, updated_at, deposit_methods(name, type)')
-        .eq('telegram_id', telegramId)
+        .in('telegram_id', userIds)
         .order('created_at', { ascending: false })
         .limit(15);
 
@@ -74,7 +108,7 @@ router.get('/', optionalTelegramAuth, async (req: AuthRequest, res: Response) =>
         const formattedAmount = Number(d.amount || 0).toLocaleString('en-US');
 
         if (d.status === 'approved') {
-          notifications.push({
+          addNotif({
             id: `deposit_${d.id}_approved`,
             type: 'deposit',
             title: `Deposit Approved (+${formattedAmount} ETB)`,
@@ -86,7 +120,7 @@ router.get('/', optionalTelegramAuth, async (req: AuthRequest, res: Response) =>
             amount: Number(d.amount),
           });
         } else if (d.status === 'rejected') {
-          notifications.push({
+          addNotif({
             id: `deposit_${d.id}_rejected`,
             type: 'deposit',
             title: `Deposit Rejected (${formattedAmount} ETB)`,
@@ -98,7 +132,7 @@ router.get('/', optionalTelegramAuth, async (req: AuthRequest, res: Response) =>
             amount: Number(d.amount),
           });
         } else if (d.status === 'pending') {
-          notifications.push({
+          addNotif({
             id: `deposit_${d.id}_pending`,
             type: 'deposit',
             title: `Deposit Under Review (${formattedAmount} ETB)`,
@@ -115,12 +149,12 @@ router.get('/', optionalTelegramAuth, async (req: AuthRequest, res: Response) =>
       console.error('[Notifications] Error fetching deposits:', dErr);
     }
 
-    // 3. Fetch User Withdrawals (Approved/Sent, Rejected, Pending)
+    // 4. Fetch User Withdrawals (Approved/Sent, Rejected, Pending)
     try {
       const { data: withdrawals } = await supabase
         .from('withdrawals')
         .select('id, amount, status, account_number, created_at, updated_at, withdrawal_methods(name, type)')
-        .eq('telegram_id', telegramId)
+        .in('telegram_id', userIds)
         .order('created_at', { ascending: false })
         .limit(15);
 
@@ -129,7 +163,7 @@ router.get('/', optionalTelegramAuth, async (req: AuthRequest, res: Response) =>
         const formattedAmount = Number(w.amount || 0).toLocaleString('en-US');
 
         if (w.status === 'approved' || w.status === 'sent') {
-          notifications.push({
+          addNotif({
             id: `withdrawal_${w.id}_approved`,
             type: 'withdrawal',
             title: `Withdrawal Sent (${formattedAmount} ETB)`,
@@ -141,7 +175,7 @@ router.get('/', optionalTelegramAuth, async (req: AuthRequest, res: Response) =>
             amount: Number(w.amount),
           });
         } else if (w.status === 'rejected') {
-          notifications.push({
+          addNotif({
             id: `withdrawal_${w.id}_rejected`,
             type: 'withdrawal',
             title: `Withdrawal Rejected (${formattedAmount} ETB)`,
@@ -153,7 +187,7 @@ router.get('/', optionalTelegramAuth, async (req: AuthRequest, res: Response) =>
             amount: Number(w.amount),
           });
         } else if (w.status === 'pending') {
-          notifications.push({
+          addNotif({
             id: `withdrawal_${w.id}_pending`,
             type: 'withdrawal',
             title: `Withdrawal In Queue (${formattedAmount} ETB)`,
@@ -170,19 +204,19 @@ router.get('/', optionalTelegramAuth, async (req: AuthRequest, res: Response) =>
       console.error('[Notifications] Error fetching withdrawals:', wErr);
     }
 
-    // 4. Fetch Bingo Game Wins
+    // 5. Fetch Bingo Game Wins
     try {
       const { data: wins } = await supabase
         .from('bingo_games')
         .select('id, stake, winner_prize, finished_at, created_at')
-        .eq('winner_telegram_id', telegramId)
+        .in('winner_telegram_id', userIds)
         .eq('status', 'finished')
         .order('finished_at', { ascending: false })
         .limit(10);
 
       for (const g of wins || []) {
         const prizeAmount = Number(g.winner_prize || 0).toLocaleString('en-US');
-        notifications.push({
+        addNotif({
           id: `win_${g.id}`,
           type: 'win',
           title: `🎉 BINGO WINNER! (+${prizeAmount} ETB)`,
@@ -198,12 +232,12 @@ router.get('/', optionalTelegramAuth, async (req: AuthRequest, res: Response) =>
       console.error('[Notifications] Error fetching game wins:', gErr);
     }
 
-    // 5. Fetch Reward Claims (Gursha / Milestones)
+    // 6. Fetch Reward Claims (Gursha / Milestones)
     try {
       const { data: claims } = await supabase
         .from('reward_claims')
         .select('id, campaign_id, claim_amount, claim_order, claimed_at')
-        .eq('telegram_id', telegramId)
+        .in('telegram_id', userIds)
         .order('claimed_at', { ascending: false })
         .limit(10);
 
@@ -212,7 +246,7 @@ router.get('/', optionalTelegramAuth, async (req: AuthRequest, res: Response) =>
         const campaignName = r.campaign_id === 'gursha' ? 'Community Gursha' : 'Milestone Reward';
         const campaignNameAm = r.campaign_id === 'gursha' ? 'የማህበረሰብ ጉርሻ' : 'የማይልስቶን ቦነስ';
 
-        notifications.push({
+        addNotif({
           id: `reward_${r.id}`,
           type: 'reward',
           title: `🎁 ${campaignName} (+${claimAmount} ETB)`,

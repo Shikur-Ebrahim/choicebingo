@@ -1,6 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { AuthRequest, validateTelegramAuth } from '../middleware/auth';
 import { supabase } from '../services/supabase';
+import { recordNotification } from '../services/notifications';
 
 const router = Router();
 
@@ -608,6 +609,17 @@ router.post('/withdrawals/:id/approve', async (req, res) => {
     });
   } catch (err) { console.error('Failed to notify user:', err); }
 
+  recordNotification({
+    telegram_id: withdrawal.telegram_id,
+    type: 'withdrawal',
+    title: `Withdrawal Approved & Sent (${Number(withdrawal.amount).toLocaleString('en-US')} ETB)`,
+    title_am: `ገንዘብ ወጪ ተልኳል (${Number(withdrawal.amount).toLocaleString('en-US')} ብር)`,
+    message: `Your withdrawal of ${Number(withdrawal.amount).toLocaleString('en-US')} ETB has been approved and sent to your account.`,
+    message_am: `የ ${Number(withdrawal.amount).toLocaleString('en-US')} ብር የወጪ ጥያቄዎ ጸድቆ ወደ ሂሳብዎ ተልኳል።`,
+    amount: Number(withdrawal.amount),
+    status: 'success',
+  }).catch(console.error);
+
   res.json({ success: true });
 });
 
@@ -635,6 +647,17 @@ router.delete('/withdrawals/:id/reject', async (req, res) => {
       body: JSON.stringify({ chat_id: withdrawal.telegram_id, text: msg, parse_mode: 'Markdown' })
     });
   } catch (err) { console.error('Failed to notify user:', err); }
+
+  recordNotification({
+    telegram_id: withdrawal.telegram_id,
+    type: 'withdrawal',
+    title: `Withdrawal Rejected & Refunded (${Number(withdrawal.amount).toLocaleString('en-US')} ETB)`,
+    title_am: `የወጪ ጥያቄ ውድቅ ተደርጓል & ተመላሽ ተደርጓል (${Number(withdrawal.amount).toLocaleString('en-US')} ብር)`,
+    message: `Your withdrawal of ${Number(withdrawal.amount).toLocaleString('en-US')} ETB has been rejected. Your balance has been refunded to your wallet.`,
+    message_am: `የ ${Number(withdrawal.amount).toLocaleString('en-US')} ብር የወጪ ጥያቄዎ ውድቅ ተደርጓል። ገንዘቡ ወደ ዋና ሂሳብዎ ተመልሷል።`,
+    amount: Number(withdrawal.amount),
+    status: 'danger',
+  }).catch(console.error);
 
   res.json({ success: true });
 });
