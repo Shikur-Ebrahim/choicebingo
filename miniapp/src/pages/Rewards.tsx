@@ -78,6 +78,34 @@ function timeAgo(dateStr: string | null): string {
   return 'just now';
 }
 
+// 🌟 Formats numbers compactly (e.g. 1000 -> 1k, 999570 -> 999.6k, 1000000 -> 1M)
+function formatCompact(num: number | string | undefined | null, isCurrency = false): string {
+  if (num === undefined || num === null || isNaN(Number(num))) {
+    return isCurrency ? '0.00' : '0';
+  }
+  const n = Number(num);
+  const abs = Math.abs(n);
+
+  if (abs >= 1_000_000_000) {
+    const val = n / 1_000_000_000;
+    const rounded = Math.round(val * 10) / 10;
+    return (rounded >= 1000 ? '1T' : `${rounded}B`).replace('.0B', 'B');
+  }
+  if (abs >= 1_000_000) {
+    const val = n / 1_000_000;
+    const rounded = Math.round(val * 10) / 10;
+    return (rounded >= 1000 ? '1B' : `${rounded}M`).replace('.0M', 'M');
+  }
+  if (abs >= 1_000) {
+    const val = n / 1_000;
+    const rounded = Math.round(val * 10) / 10;
+    return (rounded >= 1000 ? '1M' : `${rounded}k`).replace('.0k', 'k');
+  }
+  return isCurrency 
+    ? n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : n.toLocaleString('en-US');
+}
+
 export default function Rewards() {
   const navigate = useNavigate();
   const { user, fetchUser, language } = useGameStore();
@@ -230,25 +258,37 @@ export default function Rewards() {
                 <Sparkles size={11} className="text-amber-200 animate-pulse" />
                 {isAmharic ? 'ያለዎት የቦነስ ሂሳብ' : 'Bonus Balance'}
               </span>
-              <p className="text-2xl font-black text-white leading-tight mt-0.5 drop-shadow-sm">
-                {Number(userStats?.bonus_balance ?? user?.bonus_balance ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              <p 
+                className="text-2xl font-black text-white leading-tight mt-0.5 drop-shadow-sm cursor-pointer"
+                title={`${Number(userStats?.bonus_balance ?? user?.bonus_balance ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2 })} ETB`}
+              >
+                {formatCompact(userStats?.bonus_balance ?? user?.bonus_balance ?? 0, true)}
                 <span className="text-xs font-bold text-amber-100 ml-1">ETB</span>
               </p>
             </div>
 
             {/* 3 Compact metrics in an inline row */}
             <div className="flex items-center gap-1.5">
-              <div className="bg-black/15 backdrop-blur-xs rounded-xl px-2.5 py-1 text-center border border-white/10 shadow-xs">
+              <div 
+                className="bg-black/15 backdrop-blur-xs rounded-xl px-2.5 py-1 text-center border border-white/10 shadow-xs cursor-pointer"
+                title={`${Number(userStats?.total_games ?? user?.total_games ?? 0).toLocaleString()} games`}
+              >
                 <p className="text-[7.5px] font-bold uppercase text-amber-100 leading-none">{isAmharic ? 'ጨዋታ' : 'Games'}</p>
-                <p className="text-[11px] font-black text-white mt-0.5 leading-none">🎮 {userStats?.total_games ?? user?.total_games ?? 0}</p>
+                <p className="text-[11px] font-black text-white mt-0.5 leading-none">🎮 {formatCompact(userStats?.total_games ?? user?.total_games ?? 0)}</p>
               </div>
-              <div className="bg-black/15 backdrop-blur-xs rounded-xl px-2.5 py-1 text-center border border-white/10 shadow-xs">
+              <div 
+                className="bg-black/15 backdrop-blur-xs rounded-xl px-2.5 py-1 text-center border border-white/10 shadow-xs cursor-pointer"
+                title={`${Number(userStats?.total_stake ?? user?.total_stake ?? 0).toLocaleString()} ETB`}
+              >
                 <p className="text-[7.5px] font-bold uppercase text-amber-100 leading-none">{isAmharic ? 'ውርርድ' : 'Stake'}</p>
-                <p className="text-[11px] font-black text-white mt-0.5 leading-none">{Number(userStats?.total_stake ?? user?.total_stake ?? 0).toLocaleString()} <span className="text-[7px]">ETB</span></p>
+                <p className="text-[11px] font-black text-white mt-0.5 leading-none">{formatCompact(userStats?.total_stake ?? user?.total_stake ?? 0)} <span className="text-[7px]">ETB</span></p>
               </div>
-              <div className="bg-black/15 backdrop-blur-xs rounded-xl px-2.5 py-1 text-center border border-white/10 shadow-xs">
+              <div 
+                className="bg-black/15 backdrop-blur-xs rounded-xl px-2.5 py-1 text-center border border-white/10 shadow-xs cursor-pointer"
+                title={`${Number(userStats?.invited_reward ?? user?.invited_reward ?? 0).toLocaleString()} ETB`}
+              >
                 <p className="text-[7.5px] font-bold uppercase text-amber-100 leading-none">{isAmharic ? 'ግብዣ' : 'Invite'}</p>
-                <p className="text-[11px] font-black text-white mt-0.5 leading-none">{Number(userStats?.invited_reward ?? user?.invited_reward ?? 0).toLocaleString()} <span className="text-[7px]">ETB</span></p>
+                <p className="text-[11px] font-black text-white mt-0.5 leading-none">{formatCompact(userStats?.invited_reward ?? user?.invited_reward ?? 0)} <span className="text-[7px]">ETB</span></p>
               </div>
             </div>
           </div>
