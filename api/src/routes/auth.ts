@@ -78,9 +78,9 @@ router.post('/pwa-register', async (req, res) => {
       return;
     }
 
-    const cleanName = (first_name || '').trim();
+    const cleanName = (first_name || '').trim().split(/\s+/)[0];
     if (!cleanName) {
-      res.status(400).json({ error: 'እባክዎ ሙሉ ስምዎን ያስገቡ (Please enter your name).' });
+      res.status(400).json({ error: 'እባክዎ የመጀመሪያ ስምዎን ያስገቡ (Please enter your first name).' });
       return;
     }
 

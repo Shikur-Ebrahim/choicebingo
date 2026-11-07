@@ -11,7 +11,7 @@ interface PwaPhoneModalProps {
 export default function PwaPhoneModal({ isOpen, onClose, onSuccess }: PwaPhoneModalProps) {
   const { language, loginWithPhoneAndPass, registerWithPhoneAndPass } = useGameStore();
 
-  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [mode, setMode] = useState<'login' | 'register'>('register');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [password, setPassword] = useState('');
   const [firstName, setFirstName] = useState('');
@@ -55,11 +55,12 @@ export default function PwaPhoneModal({ isOpen, onClose, onSuccess }: PwaPhoneMo
       return;
     }
 
-    if (mode === 'register' && !firstName.trim()) {
+    const singleFirstName = firstName.trim().split(/\s+/)[0];
+    if (mode === 'register' && !singleFirstName) {
       setError(
         language === 'am'
-          ? 'እባክዎ ሙሉ ስምዎን ያስገቡ::'
-          : 'Please enter your full name.'
+          ? 'እባክዎ የመጀመሪያ ስምዎን ያስገቡ::'
+          : 'Please enter your first name.'
       );
       return;
     }
@@ -67,7 +68,7 @@ export default function PwaPhoneModal({ isOpen, onClose, onSuccess }: PwaPhoneMo
     setLoading(true);
     try {
       if (mode === 'register') {
-        const res = await registerWithPhoneAndPass(clean, password, firstName.trim());
+        const res = await registerWithPhoneAndPass(clean, password, singleFirstName);
         if (res.success) {
           setSuccessMsg(language === 'am' ? 'አካውንትዎ በተሳካ ሁኔታ ተፈጥሯል!' : 'Account Created Successfully!');
           setSuccess(true);
@@ -135,20 +136,8 @@ export default function PwaPhoneModal({ isOpen, onClose, onSuccess }: PwaPhoneMo
           </p>
         </div>
 
-        {/* ── 3D SEGMENTED MODE SWITCHER (LOGIN / REGISTER) ── */}
+        {/* ── 3D SEGMENTED MODE SWITCHER (REGISTER / LOGIN) ── */}
         <div className="grid grid-cols-2 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-2xl gap-1 mb-4 border border-slate-200/80 dark:border-slate-700/60 shadow-inner">
-          <button
-            type="button"
-            onClick={() => { setMode('login'); setError(''); }}
-            className={`py-2 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1 ${
-              mode === 'login'
-                ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
-                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
-            }`}
-          >
-            <span>{language === 'am' ? 'ግባ (Log In)' : 'Log In'}</span>
-          </button>
-
           <button
             type="button"
             onClick={() => { setMode('register'); setError(''); }}
@@ -160,6 +149,18 @@ export default function PwaPhoneModal({ isOpen, onClose, onSuccess }: PwaPhoneMo
           >
             <Sparkles size={12} className="text-amber-500" />
             <span>{language === 'am' ? 'ተመዝገብ (Register)' : 'Register'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => { setMode('login'); setError(''); }}
+            className={`py-2 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1 ${
+              mode === 'login'
+                ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+            }`}
+          >
+            <span>{language === 'am' ? 'ግባ (Log In)' : 'Log In'}</span>
           </button>
         </div>
 
@@ -177,7 +178,7 @@ export default function PwaPhoneModal({ isOpen, onClose, onSuccess }: PwaPhoneMo
             {mode === 'register' && (
               <div className="animate-slide-down">
                 <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">
-                  {language === 'am' ? 'ሙሉ ስም (Full Name)' : 'Full Name'}
+                  {language === 'am' ? 'የመጀመሪያ ስም (First Name)' : 'First Name'}
                 </label>
                 <div className="flex items-center rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 shadow-inner overflow-hidden focus-within:border-amber-400">
                   <span className="pl-3.5 pr-2 text-slate-400 select-none">
@@ -185,13 +186,16 @@ export default function PwaPhoneModal({ isOpen, onClose, onSuccess }: PwaPhoneMo
                   </span>
                   <input
                     type="text"
-                    placeholder={language === 'am' ? 'ለምሳሌ፡ አበበ ከበደ' : 'e.g. Abebe Kebede'}
+                    placeholder={language === 'am' ? 'ለምሳሌ፡ ሙራድ' : 'e.g. Murad'}
                     value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
+                    onChange={(e) => setFirstName(e.target.value.replace(/\s+/g, ''))}
                     className="w-full bg-transparent pr-3.5 py-2.5 text-xs font-black text-slate-800 dark:text-white outline-none"
                     required
                   />
                 </div>
+                <p className="text-[9px] text-slate-400 font-medium mt-1">
+                  {language === 'am' ? 'ያለ ክፍተት የመጀመሪያ ስም ብቻ (ለምሳሌ፡ Murad)' : 'Single first name without spaces (e.g. Murad)'}
+                </p>
               </div>
             )}
 
