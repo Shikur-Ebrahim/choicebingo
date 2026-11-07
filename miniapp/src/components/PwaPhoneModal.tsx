@@ -35,39 +35,39 @@ export default function PwaPhoneModal({ isOpen, onClose, onSuccess }: PwaPhoneMo
     e.preventDefault();
     setError('');
 
-    const clean = cleanPhoneInput(phoneNumber);
+    if (mode === 'register') {
+      const clean = cleanPhoneInput(phoneNumber);
 
-    if (!clean.match(/^(9|7)\d{8}$/)) {
-      setError(
-        language === 'am'
-          ? 'እባክዎ ባለ 9 አሃዝ ስልክ ቁጥር ያስገቡ (በ 9 ወይም 7 የሚጀምር፣ ለምሳሌ፡ 964582376)'
-          : 'Please enter a 9-digit phone number starting with 9 or 7 (e.g. 964582376)'
-      );
-      return;
-    }
+      if (!clean.match(/^(9|7)\d{8}$/)) {
+        setError(
+          language === 'am'
+            ? 'እባክዎ ባለ 9 አሃዝ ስልክ ቁጥር ያስገቡ (በ 9 ወይም 7 የሚጀምር፣ ለምሳሌ፡ 964582376)'
+            : 'Please enter a 9-digit phone number starting with 9 or 7 (e.g. 964582376)'
+        );
+        return;
+      }
 
-    if (!password || password.trim().length < 4) {
-      setError(
-        language === 'am'
-          ? 'የይለፍ ቃል ቢያንስ 4 ፊደል ወይም ቁጥር መሆን አለበት::'
-          : 'Password must be at least 4 characters.'
-      );
-      return;
-    }
+      const singleFirstName = firstName.trim().split(/\s+/)[0];
+      if (!singleFirstName) {
+        setError(
+          language === 'am'
+            ? 'እባክዎ የመጀመሪያ ስምዎን ያስገቡ::'
+            : 'Please enter your first name.'
+        );
+        return;
+      }
 
-    const singleFirstName = firstName.trim().split(/\s+/)[0];
-    if (mode === 'register' && !singleFirstName) {
-      setError(
-        language === 'am'
-          ? 'እባክዎ የመጀመሪያ ስምዎን ያስገቡ::'
-          : 'Please enter your first name.'
-      );
-      return;
-    }
+      if (!password || password.trim().length < 4) {
+        setError(
+          language === 'am'
+            ? 'የይለፍ ቃል ቢያንስ 4 ፊደል ወይም ቁጥር መሆን አለበት::'
+            : 'Password must be at least 4 characters.'
+        );
+        return;
+      }
 
-    setLoading(true);
-    try {
-      if (mode === 'register') {
+      setLoading(true);
+      try {
         const res = await registerWithPhoneAndPass(clean, password, singleFirstName);
         if (res.success) {
           setSuccessMsg(language === 'am' ? 'አካውንትዎ በተሳካ ሁኔታ ተፈጥሯል!' : 'Account Created Successfully!');
@@ -80,8 +80,35 @@ export default function PwaPhoneModal({ isOpen, onClose, onSuccess }: PwaPhoneMo
         } else {
           setError(res.error || (language === 'am' ? 'ምዝገባው አልተሳካም::' : 'Registration failed.'));
         }
-      } else {
-        const res = await loginWithPhoneAndPass(clean, password);
+      } catch (err: any) {
+        setError(err?.message || 'Connection error. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      // LOGIN MODE: accepts Phone Number OR Telegram ID
+      const idInput = phoneNumber.trim().replace(/[^\d]/g, '');
+      if (!idInput || idInput.length < 5) {
+        setError(
+          language === 'am'
+            ? 'እባክዎ ትክክለኛ ስልክ ቁጥር ወይም የቴሌግራም ID ያስገቡ::'
+            : 'Please enter a valid phone number or Telegram ID.'
+        );
+        return;
+      }
+
+      if (!password || password.trim().length < 4) {
+        setError(
+          language === 'am'
+            ? 'የይለፍ ቃል ቢያንስ 4 ፊደል ወይም ቁጥር መሆን አለበት::'
+            : 'Password must be at least 4 characters.'
+        );
+        return;
+      }
+
+      setLoading(true);
+      try {
+        const res = await loginWithPhoneAndPass(idInput, password);
         if (res.success) {
           setSuccessMsg(language === 'am' ? 'እንኳን ደህና መጡ! በተሳካ ሁኔታ ገብተዋል!' : 'Welcome Back! Logged In Successfully!');
           setSuccess(true);
@@ -93,11 +120,11 @@ export default function PwaPhoneModal({ isOpen, onClose, onSuccess }: PwaPhoneMo
         } else {
           setError(res.error || (language === 'am' ? 'መግባት አልተቻለም::' : 'Login failed.'));
         }
+      } catch (err: any) {
+        setError(err?.message || 'Connection error. Please try again.');
+      } finally {
+        setLoading(false);
       }
-    } catch (err: any) {
-      setError(err?.message || 'Connection error. Please try again.');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -200,33 +227,59 @@ export default function PwaPhoneModal({ isOpen, onClose, onSuccess }: PwaPhoneMo
             )}
 
             {/* PHONE NUMBER INPUT (SEPARATED PREFIX - NO OVERLAPPING) */}
-            <div>
-              <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">
-                {language === 'am' ? 'የስልክ ቁጥር (Phone Number)' : 'Mobile Phone Number'}
-              </label>
-              
-              <div className="flex items-center rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 shadow-inner overflow-hidden focus-within:border-amber-400">
-                {/* Prefix Badge Container */}
-                <div className="px-3 py-2.5 bg-slate-100 dark:bg-slate-700/60 border-r border-slate-200 dark:border-slate-700 flex items-center gap-1 select-none shrink-0">
-                  <span className="text-sm">🇪🇹</span>
-                  <span className="text-xs font-black text-slate-600 dark:text-slate-300 font-mono">+251</span>
-                </div>
+            {/* PHONE NUMBER OR TELEGRAM ID INPUT */}
+            {mode === 'login' ? (
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">
+                  {language === 'am' ? 'ስልክ ቁጥር ወይም የቴሌግራም ID' : 'Phone Number or Telegram ID'}
+                </label>
+                
+                <div className="flex items-center rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 shadow-inner overflow-hidden focus-within:border-amber-400">
+                  <div className="px-3 py-2.5 bg-slate-100 dark:bg-slate-700/60 border-r border-slate-200 dark:border-slate-700 flex items-center gap-1 select-none shrink-0">
+                    <span className="text-xs">📱/🆔</span>
+                  </div>
 
-                {/* Input */}
-                <input
-                  type="tel"
-                  inputMode="numeric"
-                  placeholder="9XXXXXXXX"
-                  value={phoneNumber}
-                  onChange={(e) => setPhoneNumber(cleanPhoneInput(e.target.value))}
-                  className="w-full bg-transparent px-3 py-2.5 text-xs font-black text-slate-800 dark:text-white outline-none font-mono tracking-wider"
-                  required
-                />
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder={language === 'am' ? 'ለምሳሌ፡ 964582376 ወይም 8780037711' : 'e.g. 964582376 or 8780037711'}
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value.replace(/[^\d]/g, ''))}
+                    className="w-full bg-transparent px-3 py-2.5 text-xs font-black text-slate-800 dark:text-white outline-none font-mono tracking-wider"
+                    required
+                  />
+                </div>
+                <p className="text-[9.5px] text-slate-400 font-medium mt-1">
+                  {language === 'am' ? 'ባለ 9 አሃዝ ስልክ ቁጥር ወይም የቴሌግራም IDዎን ያስገቡ' : 'Enter your 9-digit phone number or Telegram ID'}
+                </p>
               </div>
-              <p className="text-[9.5px] text-slate-400 font-medium mt-1">
-                {language === 'am' ? 'ባለ 9 አሃዝ ስልክ ቁጥር (በ 9 ወይም 7 የሚጀምር፣ ለምሳሌ፡ 964582376)' : '9 digits starting with 9 or 7 (e.g. 964582376)'}
-              </p>
-            </div>
+            ) : (
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">
+                  {language === 'am' ? 'የስልክ ቁጥር (Phone Number)' : 'Mobile Phone Number'}
+                </label>
+                
+                <div className="flex items-center rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 shadow-inner overflow-hidden focus-within:border-amber-400">
+                  <div className="px-3 py-2.5 bg-slate-100 dark:bg-slate-700/60 border-r border-slate-200 dark:border-slate-700 flex items-center gap-1 select-none shrink-0">
+                    <span className="text-sm">🇪🇹</span>
+                    <span className="text-xs font-black text-slate-600 dark:text-slate-300 font-mono">+251</span>
+                  </div>
+
+                  <input
+                    type="tel"
+                    inputMode="numeric"
+                    placeholder="9XXXXXXXX"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(cleanPhoneInput(e.target.value))}
+                    className="w-full bg-transparent px-3 py-2.5 text-xs font-black text-slate-800 dark:text-white outline-none font-mono tracking-wider"
+                    required
+                  />
+                </div>
+                <p className="text-[9.5px] text-slate-400 font-medium mt-1">
+                  {language === 'am' ? 'ባለ 9 አሃዝ ስልክ ቁጥር (በ 9 ወይም 7 የሚጀምር፣ ለምሳሌ፡ 964582376)' : '9 digits starting with 9 or 7 (e.g. 964582376)'}
+                </p>
+              </div>
+            )}
 
             {/* PASSWORD INPUT */}
             <div>
@@ -262,6 +315,15 @@ export default function PwaPhoneModal({ isOpen, onClose, onSuccess }: PwaPhoneMo
                 </button>
               </div>
             </div>
+
+            {/* Telegram User Login Tip */}
+            {mode === 'login' && (
+              <div className="p-2.5 rounded-xl bg-amber-500/10 dark:bg-amber-500/15 border border-amber-300/60 dark:border-amber-500/30 text-[10px] text-amber-700 dark:text-amber-300 font-medium leading-relaxed">
+                {language === 'am'
+                  ? '💡 ቴሌግራም ላይ ይጫወቱ ነበር? ቴሌግራም ሚኒ አፕ (Profile -> የዌብ የይለፍ ቃል) ውስጥ የይለፍ ቃል ካስቀመጡ በኋላ በቴሌግራም IDዎ እዚህ በቀጥታ መግባት ይችላሉ::'
+                  : '💡 Play on Telegram? Set your password in Telegram MiniApp (Profile -> Web Password) and login here using your Telegram ID!'}
+              </div>
+            )}
 
             {/* Error Message */}
             {error && (

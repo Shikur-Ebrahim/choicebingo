@@ -10,13 +10,13 @@ export function validateTelegramAuth(req: AuthRequest, res: Response, next: Next
   const initData = req.headers['x-telegram-init-data'] as string;
   const pwaPhoneHeader = (req.headers['x-pwa-phone'] as string || '').trim();
 
-  // 1. PWA Phone Number Authentication (Direct Web / PWA mode)
+  // 1. PWA Phone / Telegram ID Authentication (Direct Web / PWA mode)
   const candidatePhone = pwaPhoneHeader || (initData && initData.startsWith('pwa_phone=') ? decodeURIComponent(initData.replace('pwa_phone=', '')) : '');
   if (candidatePhone) {
     let cleanPhone = candidatePhone.replace(/[^\d]/g, '');
-    if (cleanPhone.startsWith('251')) cleanPhone = cleanPhone.slice(3);
-    if (cleanPhone.startsWith('0')) cleanPhone = cleanPhone.slice(1);
-    if (cleanPhone.length >= 9) {
+    if (cleanPhone.startsWith('251') && cleanPhone.length === 12) cleanPhone = cleanPhone.slice(3);
+    else if (cleanPhone.startsWith('0') && cleanPhone.length === 10) cleanPhone = cleanPhone.slice(1);
+    if (cleanPhone.length >= 5) {
       req.isPwaUser = true;
       req.telegramUser = {
         id: cleanPhone,
@@ -48,13 +48,13 @@ export function optionalTelegramAuth(req: AuthRequest, _res: Response, next: Nex
   const initData = req.headers['x-telegram-init-data'] as string;
   const pwaPhoneHeader = (req.headers['x-pwa-phone'] as string || '').trim();
 
-  // 1. PWA Phone Number Authentication (Direct Web / PWA mode)
+  // 1. PWA Phone / Telegram ID Authentication (Direct Web / PWA mode)
   const candidatePhone = pwaPhoneHeader || (initData && initData.startsWith('pwa_phone=') ? decodeURIComponent(initData.replace('pwa_phone=', '')) : '');
   if (candidatePhone) {
     let cleanPhone = candidatePhone.replace(/[^\d]/g, '');
-    if (cleanPhone.startsWith('251')) cleanPhone = cleanPhone.slice(3);
-    if (cleanPhone.startsWith('0')) cleanPhone = cleanPhone.slice(1);
-    if (cleanPhone.length >= 9) {
+    if (cleanPhone.startsWith('251') && cleanPhone.length === 12) cleanPhone = cleanPhone.slice(3);
+    else if (cleanPhone.startsWith('0') && cleanPhone.length === 10) cleanPhone = cleanPhone.slice(1);
+    if (cleanPhone.length >= 5) {
       req.isPwaUser = true;
       req.telegramUser = {
         id: cleanPhone,

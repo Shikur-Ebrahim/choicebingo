@@ -162,12 +162,13 @@ router.post('/pwa-register', async (req, res) => {
   }
 });
 
-// ── PWA USER LOGIN WITH PHONE & PASSWORD ──
+// ── PWA USER LOGIN WITH PHONE OR TELEGRAM ID & PASSWORD ──
 router.post('/pwa-login', async (req, res) => {
   try {
-    const { phone, password } = req.body;
-    if (!phone || typeof phone !== 'string') {
-      res.status(400).json({ error: 'ስልክ ቁጥር ያስፈልጋል (Phone number is required).' });
+    const { phone, identifier: rawId, password } = req.body;
+    const input = (rawId || phone || '').toString().trim();
+    if (!input) {
+      res.status(400).json({ error: 'ስልክ ቁጥር ወይም የቴሌግራም ID ያስፈልጋል (Phone number or Telegram ID is required).' });
       return;
     }
     if (!password || typeof password !== 'string') {
@@ -175,23 +176,37 @@ router.post('/pwa-login', async (req, res) => {
       return;
     }
 
-    const cleanPhone = normalizePhone9(phone);
-    if (!cleanPhone.match(/^(9|7)\d{8}$/)) {
-      res.status(400).json({ error: 'እባክዎ ባለ 9 አሃዝ ስልክ ቁጥር ያስገቡ (በ 9 ወይም 7 የሚጀምር፣ ለምሳሌ፡ 964582376)' });
-      return;
-    }
-
+    const cleanInput = input.replace(/[^\d]/g, '');
+    const cleanPhone = normalizePhone9(input);
     const pwdHash = hashPassword(password);
 
-    // Look up by clean 9-digit or legacy 10-digit
-    let { data: user } = await supabase.from('users').select('*').eq('telegram_id', cleanPhone).maybeSingle();
-    if (!user) {
+    // 1. Try finding by cleanInput directly (Telegram ID e.g. '8780037711' or phone '912345678')
+    let { data: user } = cleanInput
+      ? await supabase.from('users').select('*').eq('telegram_id', cleanInput).maybeSingle()
+      : { data: null };
+
+    // 2. If not found, try normalized 9-digit phone
+    if (!user && cleanPhone && cleanPhone !== cleanInput) {
+      const { data: pUser } = await supabase.from('users').select('*').eq('telegram_id', cleanPhone).maybeSingle();
+      if (pUser) user = pUser;
+    }
+
+    // 3. If not found, try legacy 10-digit with leading 0 (e.g. '09XXXXXXXX')
+    if (!user && cleanPhone) {
       const { data: legacy } = await supabase.from('users').select('*').eq('telegram_id', '0' + cleanPhone).maybeSingle();
       if (legacy) user = legacy;
     }
 
+    // 4. If not found, try username
     if (!user) {
-      res.status(404).json({ error: 'ይህ ስልክ ቁጥር አልተመዘገበም:: እባክዎ መጀመሪያ "ይመዝገቡ (Register)" የሚለውን ይምረጡ::' });
+      const { data: uUser } = await supabase.from('users').select('*').eq('username', input).maybeSingle();
+      if (uUser) user = uUser;
+    }
+
+    if (!user) {
+      res.status(404).json({
+        error: 'ይህ አካውንት አልተገኘም:: እባክዎ ትክክለኛ ስልክ ቁጥር ወይም የቴሌግራም ID ያስገቡ:: (Account not found. Please enter a valid phone number or Telegram ID.)'
+      });
       return;
     }
 
@@ -207,18 +222,64 @@ router.post('/pwa-login', async (req, res) => {
         return;
       }
     } else {
-      // First time setting password for this number
-      await supabase
-        .from('users')
-        .update({
-          permissions: { ...(user.permissions || {}), password_hash: pwdHash }
-        })
-        .eq('id', user.id);
+      // User has no password set yet (e.g. Telegram player who opened PWA before setting password)
+      res.status(400).json({
+        error: 'ለዚህ የቴሌግራም አካውንት የይለፍ ቃል ገና አልተዘጋጀም:: እባክዎ መጀመሪያ ቴሌግራም ላይ Choice Bingoን ከፍተው (Profile -> የዌብ የይለፍ ቃል) ውስጥ የይለፍ ቃል ያስቀምጡ:: (No password set for this Telegram account yet. Please open Choice Bingo in Telegram -> Profile -> Web Password to set it first).'
+      });
+      return;
     }
 
     res.json({ success: true, user });
   } catch (err: any) {
     res.status(500).json({ error: err.message || 'Login failed' });
+  }
+});
+
+// ── SET OR UPDATE WEB / PWA PASSWORD FROM TELEGRAM MINI APP ──
+router.post('/set-web-password', validateTelegramAuth, async (req: AuthRequest, res) => {
+  try {
+    const telegramId = req.telegramUser!.id.toString();
+    const { password } = req.body;
+
+    if (!password || typeof password !== 'string' || password.trim().length < 4) {
+      res.status(400).json({ error: 'የይለፍ ቃል ቢያንስ 4 ፊደል ወይም ቁጥር መሆን አለበት (Password must be at least 4 characters).' });
+      return;
+    }
+
+    const pwdHash = hashPassword(password);
+
+    // Look up user
+    let { data: user } = await supabase.from('users').select('*').eq('telegram_id', telegramId).maybeSingle();
+    if (!user) {
+      res.status(404).json({ error: 'ተጠቃሚው አልተገኘም (User not found).' });
+      return;
+    }
+
+    const updatedPermissions = {
+      ...(user.permissions || {}),
+      password_hash: pwdHash,
+      web_password_updated_at: new Date().toISOString()
+    };
+
+    const { data: updatedUser, error: updateErr } = await supabase
+      .from('users')
+      .update({ permissions: updatedPermissions })
+      .eq('id', user.id)
+      .select()
+      .single();
+
+    if (updateErr) {
+      res.status(500).json({ error: updateErr.message });
+      return;
+    }
+
+    res.json({
+      success: true,
+      message: 'የይለፍ ቃልዎ በተሳካ ሁኔታ ተቀምጧል! በቴሌግራም IDዎ ድህረ-ገጽ ላይ መግባት ይችላሉ:: (Password saved successfully!)',
+      user: updatedUser
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to set password' });
   }
 });
 

@@ -10,6 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import WebApp from '@twa-dev/sdk';
 import { usePwaPrompt } from '../components/PwaInstallBanner';
 import PwaResetPasswordModal from '../components/PwaResetPasswordModal';
+import SetWebPasswordModal from '../components/SetWebPasswordModal';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -21,7 +22,11 @@ export default function Profile() {
   const [copied, setCopied] = useState(false);
   const { isStandalone, triggerInstall } = usePwaPrompt();
   const [showResetPasswordModal, setShowResetPasswordModal] = useState(false);
+  const [showSetWebPasswordModal, setShowSetWebPasswordModal] = useState(false);
   const navigate = useNavigate();
+
+  const isInsideTelegram = typeof window !== 'undefined' && 
+    Boolean(WebApp?.initData && WebApp.initData.length > 0 && !WebApp.initData.startsWith('pwa_phone='));
 
   useEffect(() => {
     const initData = typeof WebApp !== 'undefined' ? WebApp.initData : '';
@@ -253,7 +258,8 @@ export default function Profile() {
               </div>
             </button>
 
-            {!isStandalone && (
+            {/* Install PWA Button — ONLY shown outside Telegram in regular browsers */}
+            {!isStandalone && !isInsideTelegram && (
               <button
                 onClick={async () => {
                   const ok = await triggerInstall();
@@ -281,6 +287,27 @@ export default function Profile() {
                 <span className="bg-amber-500 text-slate-950 font-black text-[9px] px-2 py-0.5 rounded-lg shadow-xs">
                   {language === 'am' ? 'ጫን' : 'Install'}
                 </span>
+              </button>
+            )}
+
+            {/* Set / Manage Web Password for Telegram Account */}
+            {isInsideTelegram && (
+              <button
+                onClick={() => setShowSetWebPasswordModal(true)}
+                className={row}
+              >
+                <div className={icon('bg-amber-50 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400')}>
+                  <KeyRound size={12} />
+                </div>
+                <div className="flex-1 text-left">
+                  <span className="font-bold text-slate-700 dark:text-slate-200 text-[10px] block">
+                    {language === 'am' ? 'የዌብ / PWA የይለፍ ቃል (Web Password)' : 'Web / PWA Login Password'}
+                  </span>
+                  <span className="text-[8px] text-slate-400 block font-mono">
+                    {language === 'am' ? `በ Chrome ላይ ለመግባት (ID: ${user?.telegram_id || ''})` : `Login on Chrome/PWA with ID: ${user?.telegram_id || ''}`}
+                  </span>
+                </div>
+                <ChevronRight size={11} className="text-slate-300" />
               </button>
             )}
 
@@ -349,6 +376,10 @@ export default function Profile() {
       <PwaResetPasswordModal
         isOpen={showResetPasswordModal}
         onClose={() => setShowResetPasswordModal(false)}
+      />
+      <SetWebPasswordModal
+        isOpen={showSetWebPasswordModal}
+        onClose={() => setShowSetWebPasswordModal(false)}
       />
     </>
   );
