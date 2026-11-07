@@ -593,8 +593,11 @@ export default function BingoGame() {
       if (r.ok) {
         const d = await r.json();
         // If server returns finished game that we already celebrated, ignore it
-        if (d.game && d.game.status === 'finished' && hasCelebratedRef.current === d.game.id) {
-          return;
+        if (d.game && d.game.status === 'finished') {
+          if (hasCelebratedRef.current === d.game.id) {
+            return;
+          }
+          isCelebratingRef.current = true;
         }
         if (d.max_players) setMaxPlayers(Number(d.max_players));
         if (d.max_cartelas_per_user) setMaxCartelasPerUser(Number(d.max_cartelas_per_user));
@@ -687,12 +690,10 @@ export default function BingoGame() {
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "bingo_games" }, ({ new: g }) => {
         if (Number(g.stake) === selectedStake) {
           if (isCelebratingRef.current && g.id !== gameIdRef.current) return;
-          setGame(g as BGame);
           if (g.status === 'finished') {
-            setMyCartelas([]);
-            setMyCard(null);
-            setTaken([]);
+            isCelebratingRef.current = true;
           }
+          setGame(g as BGame);
           if (g.id !== gameIdRef.current) {
             gameIdRef.current = g.id;
             prevCalledLenRef.current = 0;
@@ -914,6 +915,7 @@ export default function BingoGame() {
       setMyCartelas([]);
       setActiveCartelaIdx(0);
       setTaken([]);
+      setGame(prev => prev && prev.status === 'finished' ? { ...prev, status: 'waiting', called_numbers: [] } : prev);
       fetchState();
       refreshUser();
     }, 5000);
@@ -2115,13 +2117,13 @@ export default function BingoGame() {
     );
   };
 
-  const showOldCallingBoard = game.status === 'calling' || (game.status === 'finished' && Boolean(celebration) && celebrationSecondsLeft > 3);
+  const showCallingBoard = game.status === 'calling' || game.status === 'finished';
 
   return (
     <div className="h-[calc(100dvh-80px)] w-full bg-[#05081a] flex flex-col select-none" onClick={initWebAudio}>
       <div className="sticky top-0 z-40 bg-[#05081a] flex flex-col shrink-0">
         <Header />
-        {!showOldCallingBoard && (
+        {!showCallingBoard && (
           <div
             className="px-3 pt-2.5 pb-2.5"
             style={{
@@ -2291,8 +2293,8 @@ export default function BingoGame() {
         </div>
       )}
 
-      <div className={`flex-1 min-h-0 ${showOldCallingBoard ? 'overflow-hidden' : 'overflow-y-auto'}`}>
-        {showOldCallingBoard ? renderCallingBoard() : renderCartelaPicker()}
+      <div className={`flex-1 min-h-0 ${showCallingBoard ? 'overflow-hidden' : 'overflow-y-auto'}`}>
+        {showCallingBoard ? renderCallingBoard() : renderCartelaPicker()}
       </div>
 
       {/* Winner Celebration (Fantastic 3D Luxury Casino Celebration Card) */}
