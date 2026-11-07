@@ -115,7 +115,7 @@ router.get('/', validateTelegramAuth, async (req: AuthRequest, res: Response) =>
 
       if (c.id === 'total_games') {
         userProgress = totalGames;
-        potentialReward = Number((totalStake * (Number(c.reward_value || 2) / 100)).toFixed(2));
+        potentialReward = Math.max(100, Number((totalStake * (Number(c.reward_value || 2) / 100)).toFixed(2)));
       } else if (c.id === 'invitation_reward') {
         userProgress = invitedReward;
         potentialReward = Number(c.reward_value || 500);
@@ -236,8 +236,7 @@ router.post('/claim', validateTelegramAuth, async (req: AuthRequest, res: Respon
         });
         return;
       }
-      rewardAmount = Number((totalStake * (Number(campaign.reward_value || 2) / 100)).toFixed(2));
-      if (rewardAmount <= 0) rewardAmount = 10; // Minimum baseline
+      rewardAmount = Math.max(100, Number((totalStake * (Number(campaign.reward_value || 2) / 100)).toFixed(2)));
     } else if (campaign.id === 'invitation_reward') {
       if (invitedReward < Number(campaign.target_value || 5000)) {
         res.status(400).json({
