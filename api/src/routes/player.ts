@@ -172,8 +172,12 @@ router.post('/transfer', validateTelegramAuth, async (req: AuthRequest, res) => 
   // Notify recipient and sender via Telegram bot
   try {
     const botToken = process.env.BOT_TOKEN;
-    const safeSender = (sender.username || sender.first_name || 'Someone').replace(/[_*[\]]/g, '\\$&');
-    const safeRecipient = (recipient.username || recipient.first_name || 'User').replace(/[_*[\]]/g, '\\$&');
+    const senderDisplay = sender.username
+      ? `@${sender.username.replace(/[_*[\]()~`>#+\-=|{}.!\\]/g, '\\$&')}`
+      : (sender.first_name || 'Someone').replace(/[_*[\]()~`>#+\-=|{}.!\\]/g, '\\$&');
+    const recipientDisplay = recipient.username
+      ? `@${recipient.username.replace(/[_*[\]()~`>#+\-=|{}.!\\]/g, '\\$&')}`
+      : (recipient.first_name || 'User').replace(/[_*[\]()~`>#+\-=|{}.!\\]/g, '\\$&');
     
     if (botToken) {
       // Notify Recipient
@@ -182,7 +186,7 @@ router.post('/transfer', validateTelegramAuth, async (req: AuthRequest, res) => 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           chat_id: recipient_telegram_id,
-          text: `ðŸ’¸ *You received a transfer!*\n\nðŸ‘¤ From: @${safeSender}\nðŸ’° Amount: *${transferAmount.toLocaleString('en-US')} ETB*\n\nâœ… Added to your Main Balance.`,
+          text: `💸 *You received a transfer!*\n\n👤 From: ${senderDisplay}\n💰 Amount: *${transferAmount.toLocaleString('en-US')} ETB*\n\n✅ Added to your Main Balance.`,
           parse_mode: 'Markdown'
         })
       });
@@ -193,7 +197,7 @@ router.post('/transfer', validateTelegramAuth, async (req: AuthRequest, res) => 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           chat_id: senderTelegramId,
-          text: `ðŸ“¤ *Transfer Sent Successfully!*\n\nðŸ‘¤ To: @${safeRecipient}\nðŸ’° Amount: *${transferAmount.toLocaleString('en-US')} ETB*\n\nâœ… Deducted from your Main Balance.`,
+          text: `📤 *Transfer Sent Successfully!*\n\n👤 To: ${recipientDisplay}\n💰 Amount: *${transferAmount.toLocaleString('en-US')} ETB*\n\n✅ Deducted from your Main Balance.`,
           parse_mode: 'Markdown'
         })
       });
