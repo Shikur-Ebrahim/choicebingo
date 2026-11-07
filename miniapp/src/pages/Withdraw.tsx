@@ -84,7 +84,7 @@ const typeEmoji: Record<string, string> = {
 type Step = 'list' | 'form' | 'pending_status';
 
 export default function Withdraw() {
-  const { user, language, fetchUser } = useGameStore();
+  const { user, language, fetchUser, setIsPhoneModalOpen } = useGameStore();
   const userBalance = Number(user?.main_balance || 0);
 
   const [methods, setMethods] = useState<WithdrawalMethod[]>([]);
@@ -227,6 +227,13 @@ export default function Withdraw() {
     e.preventDefault();
     if (!selected) return;
     setError('');
+
+    const isTelegramUser = typeof WebApp !== 'undefined' && Boolean(WebApp.initDataUnsafe?.user?.id);
+    const hasPwaPhone = typeof window !== 'undefined' && Boolean(localStorage.getItem('cb_pwa_phone'));
+    if (!isTelegramUser && !hasPwaPhone) {
+      setIsPhoneModalOpen(true);
+      return;
+    }
 
     const amtNum = parseFloat(amount);
     if (!amount || amount.trim() === '' || isNaN(amtNum) || amtNum <= 0) {
@@ -728,6 +735,13 @@ export default function Withdraw() {
                   <button
                     key={method.id}
                     onClick={() => {
+                      const isTelegramUser = typeof WebApp !== 'undefined' && Boolean(WebApp.initDataUnsafe?.user?.id);
+                      const hasPwaPhone = typeof window !== 'undefined' && Boolean(localStorage.getItem('cb_pwa_phone'));
+                      if (!isTelegramUser && !hasPwaPhone) {
+                        setIsPhoneModalOpen(true);
+                        return;
+                      }
+
                       if (pendingAmount !== null) {
                         showToast(
                           language === 'am' 

@@ -6,11 +6,30 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import WebApp from '@twa-dev/sdk';
 import { supabase } from '../lib/supabase';
 import VideoGuideModal, { useAutoVideoGuide } from '../components/VideoGuideModal';
+import PwaInstallBanner from '../components/PwaInstallBanner';
 
 export default function Home() {
-  const { user, language } = useGameStore();
+  const { user, language, setIsPhoneModalOpen } = useGameStore();
   const navigate = useNavigate();
   const location = useLocation();
+
+  const isTelegramUser = typeof WebApp !== 'undefined' && Boolean(WebApp.initDataUnsafe?.user?.id);
+  const hasPwaPhone = typeof window !== 'undefined' && Boolean(localStorage.getItem('cb_pwa_phone'));
+  const isPwaGuest = !isTelegramUser && !hasPwaPhone;
+
+  // Auto-prompt phone login once on first load in PWA / browser mode
+  useEffect(() => {
+    const isTg = typeof WebApp !== 'undefined' && Boolean(WebApp.initDataUnsafe?.user?.id);
+    const pwaPhone = localStorage.getItem('cb_pwa_phone');
+    const alreadyPrompted = sessionStorage.getItem('cb_pwa_prompted');
+    if (!isTg && !pwaPhone && !alreadyPrompted) {
+      sessionStorage.setItem('cb_pwa_prompted', 'true');
+      const timer = setTimeout(() => {
+        setIsPhoneModalOpen(true);
+      }, 700);
+      return () => clearTimeout(timer);
+    }
+  }, [setIsPhoneModalOpen]);
 
   const [homeGames, setHomeGames] = useState<Record<number, { pool: number; start_at?: string; status: string; players: number }>>({});
   const [homeTimeLeft, setHomeTimeLeft] = useState<Record<number, number>>({});
@@ -311,7 +330,8 @@ export default function Home() {
       <div className="bg-white dark:bg-slate-900 px-4 py-4 rounded-b-2xl shadow-[0_4px_12px_rgba(0,0,0,0.04)] dark:shadow-[0_4px_15px_rgba(0,0,0,0.4)] border-b border-gray-100 dark:border-slate-800 flex items-center justify-between transition-colors">
         <div className="flex items-center space-x-3">
           <div
-            className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg"
+            onClick={() => { if (isPwaGuest) setIsPhoneModalOpen(true); }}
+            className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg select-none ${isPwaGuest ? 'cursor-pointer active:scale-95' : ''}`}
             style={{
               background: 'radial-gradient(circle at 35% 25%, #34d399 0%, #10b981 50%, #047857 100%)',
               boxShadow: '0 3px 0 #064e3b, 0 3px 6px rgba(0,0,0,0.15)',
@@ -321,7 +341,18 @@ export default function Home() {
             {initial}
           </div>
           <div>
-            <p className="font-bold text-sm uppercase tracking-wider text-slate-700 dark:text-slate-200">{user?.first_name || 'USER'}</p>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <p className="font-bold text-sm uppercase tracking-wider text-slate-700 dark:text-slate-200">{user?.first_name || 'USER'}</p>
+              {isPwaGuest && (
+                <button
+                  type="button"
+                  onClick={() => setIsPhoneModalOpen(true)}
+                  className="flex items-center gap-1 text-[10px] font-black text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/70 border border-amber-300 dark:border-amber-700 px-2 py-0.5 rounded-full active:scale-95 transition-all shadow-xs"
+                >
+                  <span>📱 {language === 'am' ? 'ስልክ ቁጥር ያስገቡ' : 'Enter Phone'}</span>
+                </button>
+              )}
+            </div>
             {user?.role && user.role !== 'user' && (
               <span className="text-[10px] bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 px-2 py-0.5 rounded-full font-semibold">
                 {user.role}
@@ -345,11 +376,21 @@ export default function Home() {
         </div>
       </div>
 
+      {/* ── PWA INSTALL BANNER (Shown in Chrome / Mobile Browsers) ── */}
+      <PwaInstallBanner />
+
       {/* 3D ACTION BUTTONS ROW (Deposit, Withdraw, Invite) */}
       <div className="px-4 grid grid-cols-3 gap-3">
         {/* Deposit: 3D Yellow Button */}
-        <Link
-          to="/deposit"
+        <button
+          type="button"
+          onClick={() => {
+            if (isPwaGuest) {
+              setIsPhoneModalOpen(true);
+            } else {
+              navigate('/deposit');
+            }
+          }}
           className="flex items-center justify-center space-x-1.5 py-2.5 rounded-xl font-bold text-xs select-none active:translate-y-1 transition-all"
           style={{
             background: 'linear-gradient(180deg, #fef08a 0%, #facc15 35%, #eab308 70%, #ca8a04 100%)',
@@ -360,11 +401,18 @@ export default function Home() {
         >
           <PlusCircle size={16} />
           <span>{t[language].home.deposit}</span>
-        </Link>
+        </button>
 
         {/* Withdraw: 3D Clean White Button */}
-        <Link
-          to="/withdraw"
+        <button
+          type="button"
+          onClick={() => {
+            if (isPwaGuest) {
+              setIsPhoneModalOpen(true);
+            } else {
+              navigate('/withdraw');
+            }
+          }}
           className="flex items-center justify-center space-x-1.5 py-2.5 rounded-xl font-bold text-xs select-none active:translate-y-1 transition-all bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700"
           style={{
             boxShadow: '0 3px 0 #cbd5e1',
@@ -372,7 +420,7 @@ export default function Home() {
         >
           <ArrowDownToLine size={16} />
           <span>{t[language].home.withdraw}</span>
-        </Link>
+        </button>
 
         {/* Invite: 3D Clean White Button */}
         <button 

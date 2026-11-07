@@ -943,6 +943,14 @@ export default function BingoGame() {
   const joinGame = async (seat: number, matrix: number[][]) => {
     setPreviewCartela(null);
     initWebAudio();
+
+    const isTelegramUser = typeof WebApp !== 'undefined' && Boolean(WebApp.initDataUnsafe?.user?.id);
+    const hasPwaPhone = typeof window !== 'undefined' && Boolean(localStorage.getItem('cb_pwa_phone'));
+    if (!isTelegramUser && !hasPwaPhone) {
+      useGameStore.getState().setIsPhoneModalOpen(true);
+      return;
+    }
+
     if (!game || game.status !== "waiting") return;
     if (myCartelas.length >= maxCartelasPerUser) { setErrMsg(`Max ${maxCartelasPerUser} cartela${maxCartelasPerUser > 1 ? 's' : ''} per game`); return; }
     if (taken.includes(seat)) { setErrMsg("Taken! Pick another."); return; }

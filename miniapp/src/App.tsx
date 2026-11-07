@@ -149,9 +149,10 @@ import Transfer from './pages/Transfer';
 import Invite from './pages/Invite';
 import InvitedPeople from './pages/InvitedPeople';
 import BlockedScreen from './components/BlockedScreen';
+import PwaPhoneModal from './components/PwaPhoneModal';
 
 function App() {
-  const { fetchUser, subscribeToBalance, isDarkMode, isBlocked, setProfileOpen } = useGameStore();
+  const { fetchUser, subscribeToBalance, isDarkMode, isBlocked, setProfileOpen, isPhoneModalOpen, setIsPhoneModalOpen } = useGameStore();
 
   useEffect(() => {
     WebApp.ready();
@@ -214,6 +215,7 @@ function App() {
         </Routes></ErrorBoundary>
         <Profile />
         <Navigation />
+        <PwaPhoneModal isOpen={isPhoneModalOpen} onClose={() => setIsPhoneModalOpen(false)} />
       </div>
     </MemoryRouter>
   );

@@ -4,10 +4,11 @@ import { t } from '../lib/translations';
 import { 
   Wallet, Gift, PlusCircle, ArrowDownToLine, Share2, 
   ArrowRightLeft, History, Users, Globe, Headphones, Megaphone,
-  ChevronRight, X, Moon, BarChart2, Copy, Check, BookOpen
+  ChevronRight, X, Moon, BarChart2, Copy, Check, BookOpen, Download, Smartphone
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import WebApp from '@twa-dev/sdk';
+import { usePwaPrompt } from '../components/PwaInstallBanner';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -17,6 +18,7 @@ export default function Profile() {
   const [supportUsername, setSupportUsername] = useState('ChoiceBingo_admin');
   const [channelLink, setChannelLink] = useState('https://t.me/ChoiceBingo');
   const [copied, setCopied] = useState(false);
+  const { isStandalone, triggerInstall } = usePwaPrompt();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -244,6 +246,61 @@ export default function Profile() {
                 <div className={`w-3 h-3 bg-white rounded-full absolute top-[1px] shadow-sm transition-all duration-300 ${isDarkMode ? 'left-[15px]' : 'left-[1px]'}`} />
               </div>
             </button>
+
+            {!isStandalone && (
+              <button
+                onClick={async () => {
+                  const ok = await triggerInstall();
+                  if (!ok) {
+                    alert(
+                      language === 'am'
+                        ? 'አፑን ለመጫን በላይኛው ቀኝ ጥግ ያለውን የ Chrome ሶስት ነጥብ (⋮) ተጭነው "Install app" ወይም "Add to Home screen" ይምረጡ::'
+                        : 'To install the app, tap the three dots (⋮) in your Chrome browser menu and choose "Install app" or "Add to Home screen".'
+                    );
+                  }
+                }}
+                className={`${row} bg-amber-500/10 dark:bg-amber-500/20 border-amber-300 dark:border-amber-500/40`}
+              >
+                <div className={icon('bg-amber-500 text-slate-950')}>
+                  <Download size={12} className="stroke-[2.5]" />
+                </div>
+                <div className="flex-1 text-left">
+                  <span className="font-black text-amber-700 dark:text-amber-400 text-[10px] block">
+                    {language === 'am' ? 'Choice Bingo አፕ ጫን (PWA)' : 'Install Choice Bingo App (PWA)'}
+                  </span>
+                  <span className="text-[8px] text-slate-400 block font-medium">
+                    {language === 'am' ? 'በስልክዎ ላይ በቀጥታ ይጫኑ' : 'Add to home screen as PWA'}
+                  </span>
+                </div>
+                <span className="bg-amber-500 text-slate-950 font-black text-[9px] px-2 py-0.5 rounded-lg shadow-xs">
+                  {language === 'am' ? 'ጫን' : 'Install'}
+                </span>
+              </button>
+            )}
+
+            {/* PWA Phone Account Connect / Switch */}
+            {typeof window !== 'undefined' && !WebApp.initDataUnsafe?.user?.id && (
+              <button
+                onClick={() => {
+                  setProfileOpen(false);
+                  useGameStore.getState().setIsPhoneModalOpen(true);
+                }}
+                className={row}
+              >
+                <div className={icon('bg-emerald-50 text-emerald-600')}>
+                  <Smartphone size={12} />
+                </div>
+                <div className="flex-1 text-left">
+                  <span className="font-bold text-slate-700 dark:text-slate-200 text-[10px] block">
+                    {language === 'am' ? 'የስልክ ቁጥር መለያ' : 'Phone Account'}
+                  </span>
+                  <span className="text-[8px] text-slate-400 block font-mono">
+                    {localStorage.getItem('cb_pwa_phone') || (language === 'am' ? 'ያልተገናኘ' : 'Not Connected')}
+                  </span>
+                </div>
+                <ChevronRight size={11} className="text-slate-300" />
+              </button>
+            )}
 
             <button onClick={handleSupport} className={row}>
               <div className={icon('bg-orange-50 text-orange-500')}><Headphones size={12} /></div>

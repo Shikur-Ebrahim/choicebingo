@@ -93,7 +93,7 @@ type Step = 'list' | 'form';
 type ProofType = 'screenshot' | 'sms';
 
 export default function Deposit() {
-  const { language, user, fetchUser } = useGameStore();
+  const { language, user, fetchUser, setIsPhoneModalOpen } = useGameStore();
   const [methods, setMethods] = useState<DepositMethod[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<DepositMethod | null>(null);
@@ -268,6 +268,13 @@ export default function Deposit() {
   };
 
   const handleSelectMethod = (method: DepositMethod) => {
+    const isTelegramUser = typeof WebApp !== 'undefined' && Boolean(WebApp.initDataUnsafe?.user?.id);
+    const hasPwaPhone = typeof window !== 'undefined' && Boolean(localStorage.getItem('cb_pwa_phone'));
+    if (!isTelegramUser && !hasPwaPhone) {
+      setIsPhoneModalOpen(true);
+      return;
+    }
+
     // If user already has a pending deposit, show auto-dismissing toast notification
     if (pendingDeposit) {
       showToast(

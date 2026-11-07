@@ -3,6 +3,27 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
 
+// ── Auto-attach PWA phone authentication to all API fetches when outside Telegram ──
+if (typeof window !== 'undefined') {
+  const originalFetch = window.fetch;
+  window.fetch = async (input, init = {}) => {
+    try {
+      const pwaPhone = localStorage.getItem('cb_pwa_phone');
+      if (pwaPhone) {
+        const headers = new Headers(init.headers || {});
+        if (!headers.has('x-pwa-phone')) {
+          headers.set('x-pwa-phone', pwaPhone);
+        }
+        if (!headers.has('x-telegram-init-data') || !headers.get('x-telegram-init-data')) {
+          headers.set('x-telegram-init-data', `pwa_phone=${encodeURIComponent(pwaPhone)}`);
+        }
+        init.headers = headers;
+      }
+    } catch (_) {}
+    return originalFetch(input, init);
+  };
+}
+
 const BACKGROUND_THRESHOLD_MS = 15_000; // 15 seconds away = force fresh remount
 
 function Root() {

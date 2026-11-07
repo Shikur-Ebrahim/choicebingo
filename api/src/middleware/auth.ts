@@ -2,11 +2,28 @@ import { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
 
 export interface AuthRequest extends Request {
-  telegramUser?: { id: number; first_name: string; last_name?: string; username?: string; };
+  telegramUser?: { id: number | string; first_name: string; last_name?: string; username?: string; };
 }
 
 export function validateTelegramAuth(req: AuthRequest, res: Response, next: NextFunction): void {
   const initData = req.headers['x-telegram-init-data'] as string;
+  const pwaPhoneHeader = (req.headers['x-pwa-phone'] as string || '').trim();
+
+  // 1. PWA Phone Number Authentication (Direct Web / PWA mode)
+  const candidatePhone = pwaPhoneHeader || (initData && initData.startsWith('pwa_phone=') ? decodeURIComponent(initData.replace('pwa_phone=', '')) : '');
+  if (candidatePhone) {
+    const cleanPhone = candidatePhone.replace(/[^\d+]/g, '');
+    if (cleanPhone.length >= 9) {
+      req.telegramUser = {
+        id: cleanPhone,
+        first_name: cleanPhone,
+        username: cleanPhone,
+      };
+      return next();
+    }
+  }
+
+  // 2. Telegram WebApp Authentication
   if (!initData) { res.status(401).json({ error: 'No auth data' }); return; }
 
   try {
