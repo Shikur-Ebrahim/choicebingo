@@ -387,7 +387,23 @@ router.put('/admin/campaign/:id', validateTelegramAuth, async (req: AuthRequest,
     }
 
     const { id } = req.params;
-    const { target_value, reward_value, max_winners, is_active, scheduled_at } = req.body;
+    const { 
+      target_value, 
+      reward_value, 
+      max_winners, 
+      is_active, 
+      scheduled_at,
+      reset_for_all_users,
+      clear_claims_history
+    } = req.body;
+
+    const { data: currentCampaign } = await supabase
+      .from('reward_campaigns')
+      .select('round_number')
+      .eq('id', id)
+      .single();
+
+    const currentRound = Number(currentCampaign?.round_number || 1);
 
     const updates: any = { updated_at: new Date().toISOString() };
     if (target_value !== undefined) updates.target_value = Number(target_value);
@@ -395,6 +411,15 @@ router.put('/admin/campaign/:id', validateTelegramAuth, async (req: AuthRequest,
     if (max_winners !== undefined) updates.max_winners = Number(max_winners);
     if (is_active !== undefined) updates.is_active = Boolean(is_active);
     if (scheduled_at !== undefined) updates.scheduled_at = scheduled_at ? new Date(scheduled_at).toISOString() : null;
+
+    if (reset_for_all_users) {
+      updates.round_number = currentRound + 1;
+      updates.current_claims = 0;
+
+      if (clear_claims_history) {
+        await supabase.from('reward_claims').delete().eq('campaign_id', id);
+      }
+    }
 
     let { data, error } = await supabase
       .from('reward_campaigns')
@@ -419,6 +444,9 @@ router.put('/admin/campaign/:id', validateTelegramAuth, async (req: AuthRequest,
       res.json({
         success: true,
         campaign: fallback.data,
+        message: reset_for_all_users 
+          ? `Settings saved and new round ${currentRound + 1} started fresh for all users!` 
+          : 'Settings saved successfully!',
         warning: 'scheduled_at column not found in database. Run: ALTER TABLE reward_campaigns ADD COLUMN IF NOT EXISTS scheduled_at timestamp with time zone;',
       });
       return;
@@ -429,7 +457,13 @@ router.put('/admin/campaign/:id', validateTelegramAuth, async (req: AuthRequest,
       return;
     }
 
-    res.json({ success: true, campaign: data });
+    res.json({ 
+      success: true, 
+      campaign: data,
+      message: reset_for_all_users 
+        ? `Settings saved and new round ${currentRound + 1} started fresh for all users!` 
+        : 'Settings saved successfully!'
+    });
   } catch (err: any) {
     console.error('[Admin Campaign Update Error]', err);
     res.status(500).json({ error: 'Update failed', details: err?.message });
@@ -449,6 +483,7 @@ router.post('/admin/campaign/:id/reset', validateTelegramAuth, async (req: AuthR
     }
 
     const { id } = req.params;
+    const { clear_claims_history } = req.body || {};
     const { data: campaign } = await supabase.from('reward_campaigns').select('round_number').eq('id', id).single();
     const currentRound = Number(campaign?.round_number || 1);
 
@@ -468,10 +503,55 @@ router.post('/admin/campaign/:id/reset', validateTelegramAuth, async (req: AuthR
       return;
     }
 
-    res.json({ success: true, message: `Round ${currentRound + 1} started! Claims reset to 0.`, campaign: data });
+    if (clear_claims_history) {
+      await supabase.from('reward_claims').delete().eq('campaign_id', id);
+    }
+
+    res.json({ success: true, message: `Round ${currentRound + 1} started! Claims reset for all users.`, campaign: data });
   } catch (err: any) {
     console.error('[Admin Campaign Reset Error]', err);
     res.status(500).json({ error: 'Reset failed', details: err?.message });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 6. ADMIN: POST /api/rewards/admin/reset-all — Master Reset All Rewards for All Users
+// ─────────────────────────────────────────────────────────────────────────────
+router.post('/admin/reset-all', validateTelegramAuth, async (req: AuthRequest, res: Response) => {
+  try {
+    const telegramId = req.telegramUser!.id.toString();
+    const { data: adminUser } = await supabase.from('users').select('role').eq('telegram_id', telegramId).single();
+    if (!adminUser || adminUser.role !== 'admin') {
+      res.status(403).json({ error: 'Admin access required' });
+      return;
+    }
+
+    const { clear_claims_history } = req.body || {};
+
+    const campaigns = await getOrSeedCampaigns();
+    for (const c of campaigns) {
+      const nextRound = Number(c.round_number || 1) + 1;
+      await supabase
+        .from('reward_campaigns')
+        .update({
+          round_number: nextRound,
+          current_claims: 0,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', c.id);
+
+      if (clear_claims_history) {
+        await supabase.from('reward_claims').delete().eq('campaign_id', c.id);
+      }
+    }
+
+    res.json({
+      success: true,
+      message: 'All rewards have been reset successfully! All users can now participate in the new round.',
+    });
+  } catch (err: any) {
+    console.error('[Admin Reset All Error]', err);
+    res.status(500).json({ error: 'Reset all failed', details: err?.message });
   }
 });
 

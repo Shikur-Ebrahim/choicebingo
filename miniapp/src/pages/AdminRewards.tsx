@@ -53,6 +53,8 @@ export default function AdminRewards() {
   const [resettingId, setResettingId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [clearHistoryFlags, setClearHistoryFlags] = useState<Record<string, boolean>>({});
+  const [resettingAll, setResettingAll] = useState(false);
 
   // Form edit states
   const [editForms, setEditForms] = useState<Record<string, {
@@ -104,21 +106,32 @@ export default function AdminRewards() {
     fetchAdminData();
   }, [fetchAdminData]);
 
-  const handleSave = async (id: string) => {
+  const handleSaveAndApply = async (id: string, resetForUsers: boolean) => {
     const form = editForms[id];
     if (!form) return;
+
+    if (resetForUsers) {
+      const confirmed = window.confirm(
+        `Reset ${id} for ALL users and apply new settings?\n\nThis will:\n1. Save your new settings.\n2. Reset claimed winners to 0.\n3. Start a brand new round so all users can claim again.`
+      );
+      if (!confirmed) return;
+    }
 
     setSavingId(id);
     try {
       const res = await fetch(`${API_URL}/rewards/admin/campaign/${id}`, {
         method: 'PUT',
         headers: getHeaders(),
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          ...form,
+          reset_for_all_users: resetForUsers,
+          clear_claims_history: !!clearHistoryFlags[id],
+        }),
       });
 
       const data = await res.json();
       if (res.ok) {
-        showToast('success', `${id} settings saved successfully!`);
+        showToast('success', data.message || `${id} updated successfully!`);
         fetchAdminData();
       } else {
         showToast('error', data.error || 'Save failed');
@@ -131,7 +144,9 @@ export default function AdminRewards() {
   };
 
   const handleResetRound = async (id: string) => {
-    const confirmed = window.confirm(`Start a new round for ${id}? This will increment the round number and reset claimed winners to 0.`);
+    const confirmed = window.confirm(
+      `Start a new round for ${id}? This will reset claimed winners to 0 for all users.`
+    );
     if (!confirmed) return;
 
     setResettingId(id);
@@ -139,6 +154,9 @@ export default function AdminRewards() {
       const res = await fetch(`${API_URL}/rewards/admin/campaign/${id}/reset`, {
         method: 'POST',
         headers: getHeaders(),
+        body: JSON.stringify({
+          clear_claims_history: !!clearHistoryFlags[id],
+        }),
       });
 
       const data = await res.json();
@@ -152,6 +170,34 @@ export default function AdminRewards() {
       showToast('error', 'Network error');
     } finally {
       setResettingId(null);
+    }
+  };
+
+  const handleResetAllCampaigns = async () => {
+    const confirmed = window.confirm(
+      '⚠️ MASTER RESET FOR ALL USERS:\n\nAre you sure you want to reset ALL rewards (Gursha, 500 Games Milestone, 5,000 ETB Invite)?\n\nThis will start a brand new round for all rewards, reset winners to 0, and allow all users to claim again.'
+    );
+    if (!confirmed) return;
+
+    setResettingAll(true);
+    try {
+      const res = await fetch(`${API_URL}/rewards/admin/reset-all`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ clear_claims_history: true }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        showToast('success', data.message || 'All rewards have been reset for all users!');
+        fetchAdminData();
+      } else {
+        showToast('error', data.error || 'Master reset failed');
+      }
+    } catch (err) {
+      showToast('error', 'Network error');
+    } finally {
+      setResettingAll(false);
     }
   };
 
@@ -202,6 +248,27 @@ export default function AdminRewards() {
       </div>
 
       <div className="p-4 space-y-4 max-w-2xl mx-auto w-full">
+
+        {/* ── 🌟 MASTER RESET ALL REWARDS (FOR ALL USERS) BANNER ── */}
+        <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 rounded-2xl p-4 text-white shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-1.5 mb-1">
+              <RotateCcw size={16} className="text-amber-200" />
+              <h2 className="text-sm font-black">Master Rewards Reset</h2>
+            </div>
+            <p className="text-xs text-amber-100 font-semibold leading-relaxed">
+              Reset all campaigns (Gursha & Milestones) to start a brand new round for all users simultaneously.
+            </p>
+          </div>
+          <button
+            onClick={handleResetAllCampaigns}
+            disabled={resettingAll}
+            className="px-4 py-2.5 rounded-xl bg-white text-slate-900 font-black text-xs shadow-sm hover:bg-slate-50 active:scale-95 transition-all flex items-center justify-center gap-2 shrink-0 disabled:opacity-60"
+          >
+            <RotateCcw size={14} className={resettingAll ? 'animate-spin text-amber-500' : ''} />
+            <span>{resettingAll ? 'Resetting All...' : '🔄 Reset All for All Users'}</span>
+          </button>
+        </div>
 
         {/* ── CAMPAIGNS CONFIGURATION CARDS ── */}
         <div className="space-y-4">
@@ -494,26 +561,60 @@ export default function AdminRewards() {
                   </div>
                 </div>
 
-                {/* Action Buttons */}
-                <div className="flex gap-2 pt-2 border-t border-slate-100">
+                {/* Clean Slate Options & Current Round */}
+                <div className="flex items-center justify-between text-xs py-1.5 px-1">
+                  <label className="flex items-center gap-1.5 cursor-pointer text-slate-600 font-semibold select-none">
+                    <input
+                      type="checkbox"
+                      checked={!!clearHistoryFlags[camp.id]}
+                      onChange={(e) => setClearHistoryFlags({
+                        ...clearHistoryFlags,
+                        [camp.id]: e.target.checked
+                      })}
+                      className="rounded border-slate-300 text-amber-500 focus:ring-amber-400 w-3.5 h-3.5"
+                    />
+                    <span className="text-[10.5px]">Clear winners history on reset</span>
+                  </label>
+                  <span className="text-[10px] text-slate-400 font-bold bg-slate-100 px-2 py-0.5 rounded-full">
+                    Round #{camp.round_number}
+                  </span>
+                </div>
+
+                {/* 🌟 Action Buttons: Save & Reset for All Users + Save Only */}
+                <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t border-slate-100">
+                  {/* Primary: Save & Reset for All Users */}
                   <button
-                    onClick={() => handleSave(camp.id)}
+                    onClick={() => handleSaveAndApply(camp.id, true)}
                     disabled={isSaving}
-                    className="flex-1 py-2 rounded-xl bg-slate-800 text-white font-black text-xs flex items-center justify-center gap-1.5 active:scale-95 shadow-xs disabled:opacity-50"
+                    className="flex-1 py-2.5 px-3 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 active:scale-95 text-white font-black text-xs shadow-md shadow-amber-500/20 flex items-center justify-center gap-1.5 transition-all disabled:opacity-50"
                   >
-                    <Save size={14} />
-                    <span>{isSaving ? 'Saving...' : 'Save Settings'}</span>
+                    <RotateCcw size={14} className={isSaving ? 'animate-spin' : ''} />
+                    <span>{isSaving ? 'Saving & Resetting...' : '🚀 Save & Reset for All Users (Start Fresh)'}</span>
                   </button>
 
-                  <button
-                    onClick={() => handleResetRound(camp.id)}
-                    disabled={isResetting}
-                    className="py-2 px-3 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 disabled:opacity-50 hover:bg-amber-100"
-                    title="Start new round and reset claim count"
-                  >
-                    <RotateCcw size={14} />
-                    <span>{isResetting ? 'Resetting...' : 'New Round'}</span>
-                  </button>
+                  <div className="flex gap-2">
+                    {/* Secondary: Save Settings Only */}
+                    <button
+                      onClick={() => handleSaveAndApply(camp.id, false)}
+                      disabled={isSaving}
+                      className="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-900 active:scale-95 text-white font-black text-xs flex items-center justify-center gap-1.5 shadow-xs disabled:opacity-50"
+                      title="Update settings without resetting user claims"
+                    >
+                      <Save size={13} />
+                      <span>Save Only</span>
+                    </button>
+
+                    {/* Quick Reset Round Only */}
+                    <button
+                      onClick={() => handleResetRound(camp.id)}
+                      disabled={isResetting}
+                      className="py-2.5 px-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-bold text-xs flex items-center justify-center gap-1 disabled:opacity-50 border border-slate-200"
+                      title="Reset claim spots to 0 without modifying inputs"
+                    >
+                      <RotateCcw size={13} />
+                      <span className="hidden sm:inline">Reset</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             );
