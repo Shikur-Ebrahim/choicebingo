@@ -27,6 +27,12 @@ router.post('/verify', validateTelegramAuth, async (req: AuthRequest, res) => {
   }
 
   if (existing) {
+    // If user is accessing via PWA / Phone, preserve their custom full name and username!
+    if (req.isPwaUser) {
+      res.json({ user: existing });
+      return;
+    }
+
     const { data, error } = await supabase
       .from('users')
       .update({ username: user.username || user.first_name, first_name: user.first_name })

@@ -3,6 +3,7 @@ import crypto from 'crypto';
 
 export interface AuthRequest extends Request {
   telegramUser?: { id: number | string; first_name: string; last_name?: string; username?: string; };
+  isPwaUser?: boolean;
 }
 
 export function validateTelegramAuth(req: AuthRequest, res: Response, next: NextFunction): void {
@@ -16,6 +17,7 @@ export function validateTelegramAuth(req: AuthRequest, res: Response, next: Next
     if (cleanPhone.startsWith('251')) cleanPhone = cleanPhone.slice(3);
     if (cleanPhone.startsWith('0')) cleanPhone = cleanPhone.slice(1);
     if (cleanPhone.length >= 9) {
+      req.isPwaUser = true;
       req.telegramUser = {
         id: cleanPhone,
         first_name: cleanPhone,
