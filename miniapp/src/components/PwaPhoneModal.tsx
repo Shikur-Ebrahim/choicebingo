@@ -24,14 +24,10 @@ export default function PwaPhoneModal({ isOpen, onClose, onSuccess }: PwaPhoneMo
   if (!isOpen) return null;
 
   const cleanPhoneInput = (input: string) => {
-    let clean = input.trim().replace(/[\s-]/g, '');
-    if (clean.startsWith('+251')) {
-      clean = '0' + clean.slice(4);
-    } else if (clean.startsWith('251')) {
-      clean = '0' + clean.slice(3);
-    } else if (clean.length === 9 && (clean.startsWith('9') || clean.startsWith('7'))) {
-      clean = '0' + clean;
-    }
+    let clean = input.trim().replace(/[^\d]/g, '');
+    if (clean.startsWith('251')) clean = clean.slice(3);
+    if (clean.startsWith('0')) clean = clean.slice(1);
+    if (clean.length > 9) clean = clean.slice(0, 9);
     return clean;
   };
 
@@ -41,11 +37,11 @@ export default function PwaPhoneModal({ isOpen, onClose, onSuccess }: PwaPhoneMo
 
     const clean = cleanPhoneInput(phoneNumber);
 
-    if (!clean.match(/^(09|07)\d{8}$/)) {
+    if (!clean.match(/^(9|7)\d{8}$/)) {
       setError(
         language === 'am'
-          ? 'እባክዎ ትክክለኛ የኢትዮጵያ ስልክ ቁጥር ያስገቡ (ለምሳሌ፡ 0964582376)'
-          : 'Please enter a valid Ethiopian phone number (e.g. 0964582376)'
+          ? 'እባክዎ ባለ 9 አሃዝ ስልክ ቁጥር ያስገቡ (በ 9 ወይም 7 የሚጀምር፣ ለምሳሌ፡ 964582376)'
+          : 'Please enter a 9-digit phone number starting with 9 or 7 (e.g. 964582376)'
       );
       return;
     }
@@ -62,8 +58,8 @@ export default function PwaPhoneModal({ isOpen, onClose, onSuccess }: PwaPhoneMo
     if (mode === 'register' && !firstName.trim()) {
       setError(
         language === 'am'
-          ? 'እባክዎ ስምዎን ያስገቡ::'
-          : 'Please enter your name.'
+          ? 'እባክዎ ሙሉ ስምዎን ያስገቡ::'
+          : 'Please enter your full name.'
       );
       return;
     }
@@ -216,15 +212,15 @@ export default function PwaPhoneModal({ isOpen, onClose, onSuccess }: PwaPhoneMo
                 <input
                   type="tel"
                   inputMode="numeric"
-                  placeholder="09XXXXXXXX"
+                  placeholder="9XXXXXXXX"
                   value={phoneNumber}
-                  onChange={(e) => setPhoneNumber(e.target.value)}
-                  className="w-full bg-transparent px-3 py-2.5 text-xs font-black text-slate-800 dark:text-white outline-none font-mono"
+                  onChange={(e) => setPhoneNumber(cleanPhoneInput(e.target.value))}
+                  className="w-full bg-transparent px-3 py-2.5 text-xs font-black text-slate-800 dark:text-white outline-none font-mono tracking-wider"
                   required
                 />
               </div>
-              <p className="text-[9px] text-slate-400 font-medium mt-1">
-                {language === 'am' ? 'ምሳሌ፡ 0964582376 ወይም 0712345678' : 'e.g. 0964582376 or 0712345678'}
+              <p className="text-[9.5px] text-slate-400 font-medium mt-1">
+                {language === 'am' ? 'ባለ 9 አሃዝ ስልክ ቁጥር (በ 9 ወይም 7 የሚጀምር፣ ለምሳሌ፡ 964582376)' : '9 digits starting with 9 or 7 (e.g. 964582376)'}
               </p>
             </div>
 

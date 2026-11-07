@@ -9,6 +9,13 @@ function hashPassword(pass: string): string {
   return crypto.createHash('sha256').update(pass.trim()).digest('hex');
 }
 
+export function normalizePhone9(phone: string): string {
+  let clean = (phone || '').trim().replace(/[^\d]/g, '');
+  if (clean.startsWith('251')) clean = clean.slice(3);
+  if (clean.startsWith('0')) clean = clean.slice(1);
+  return clean;
+}
+
 router.post('/verify', validateTelegramAuth, async (req: AuthRequest, res) => {
   const user = req.telegramUser!;
   
@@ -58,21 +65,32 @@ router.post('/pwa-register', async (req, res) => {
       res.status(400).json({ error: 'ስልክ ቁጥር ያስፈልጋል (Phone number is required).' });
       return;
     }
+
+    const cleanPhone = normalizePhone9(phone);
+    if (!cleanPhone.match(/^(9|7)\d{8}$/)) {
+      res.status(400).json({ error: 'እባክዎ ባለ 9 አሃዝ ስልክ ቁጥር ያስገቡ (በ 9 ወይም 7 የሚጀምር፣ ለምሳሌ፡ 964582376)' });
+      return;
+    }
+
+    const cleanName = (first_name || '').trim();
+    if (!cleanName) {
+      res.status(400).json({ error: 'እባክዎ ሙሉ ስምዎን ያስገቡ (Please enter your name).' });
+      return;
+    }
+
     if (!password || typeof password !== 'string' || password.trim().length < 4) {
       res.status(400).json({ error: 'የይለፍ ቃል ቢያንስ 4 ፊደል ወይም ቁጥር መሆን አለበት (Password must be at least 4 characters).' });
       return;
     }
-    const cleanPhone = phone.trim().replace(/[^\d+]/g, '');
-    if (cleanPhone.length < 9) {
-      res.status(400).json({ error: 'እባክዎ ትክክለኛ የኢትዮጵያ ስልክ ቁጥር ያስገቡ (Invalid phone number).' });
-      return;
-    }
 
-    const cleanName = (first_name || '').trim() || cleanPhone;
     const pwdHash = hashPassword(password);
 
-    // Check if user already exists
-    const { data: existing } = await supabase.from('users').select('*').eq('telegram_id', cleanPhone).maybeSingle();
+    // Check if user already exists by 9-digit or legacy 10-digit
+    let { data: existing } = await supabase.from('users').select('*').eq('telegram_id', cleanPhone).maybeSingle();
+    if (!existing) {
+      const { data: legacy } = await supabase.from('users').select('*').eq('telegram_id', '0' + cleanPhone).maybeSingle();
+      if (legacy) existing = legacy;
+    }
 
     if (existing) {
       if (existing.status === 'inactive') {
@@ -82,7 +100,7 @@ router.post('/pwa-register', async (req, res) => {
 
       const existingPwd = existing.permissions?.password_hash;
       if (existingPwd) {
-        res.status(400).json({ error: 'ይህ ስልክ ቁጥር ቀደም ሲል ተመዝግቧል:: እባክዎ "ግባ (Log In)" የሚለውን ይጫኑ (This phone is already registered. Please Log In).' });
+        res.status(400).json({ error: 'ይህ ስልክ ቁጥር ቀደም ሲል ተመዝግቧል:: እባክዎ "ግባ (Log In)" የሚለውን ይጫኑ::' });
         return;
       }
 
@@ -91,6 +109,8 @@ router.post('/pwa-register', async (req, res) => {
       const { data: updatedUser, error: updateErr } = await supabase
         .from('users')
         .update({
+          telegram_id: cleanPhone,
+          username: cleanPhone,
           first_name: cleanName,
           permissions: updatedPermissions,
         })
@@ -149,13 +169,23 @@ router.post('/pwa-login', async (req, res) => {
       return;
     }
 
-    const cleanPhone = phone.trim().replace(/[^\d+]/g, '');
+    const cleanPhone = normalizePhone9(phone);
+    if (!cleanPhone.match(/^(9|7)\d{8}$/)) {
+      res.status(400).json({ error: 'እባክዎ ባለ 9 አሃዝ ስልክ ቁጥር ያስገቡ (በ 9 ወይም 7 የሚጀምር፣ ለምሳሌ፡ 964582376)' });
+      return;
+    }
+
     const pwdHash = hashPassword(password);
 
-    const { data: user } = await supabase.from('users').select('*').eq('telegram_id', cleanPhone).maybeSingle();
+    // Look up by clean 9-digit or legacy 10-digit
+    let { data: user } = await supabase.from('users').select('*').eq('telegram_id', cleanPhone).maybeSingle();
+    if (!user) {
+      const { data: legacy } = await supabase.from('users').select('*').eq('telegram_id', '0' + cleanPhone).maybeSingle();
+      if (legacy) user = legacy;
+    }
 
     if (!user) {
-      res.status(404).json({ error: 'ይህ ስልክ ቁጥር አልተመዘገበም:: እባክዎ መጀመሪያ "ይመዝገቡ (Register)" የሚለውን ይምረጡ (Account not found. Please Register).' });
+      res.status(404).json({ error: 'ይህ ስልክ ቁጥር አልተመዘገበም:: እባክዎ መጀመሪያ "ይመዝገቡ (Register)" የሚለውን ይምረጡ::' });
       return;
     }
 

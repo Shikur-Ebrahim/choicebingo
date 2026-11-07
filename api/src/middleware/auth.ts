@@ -12,7 +12,9 @@ export function validateTelegramAuth(req: AuthRequest, res: Response, next: Next
   // 1. PWA Phone Number Authentication (Direct Web / PWA mode)
   const candidatePhone = pwaPhoneHeader || (initData && initData.startsWith('pwa_phone=') ? decodeURIComponent(initData.replace('pwa_phone=', '')) : '');
   if (candidatePhone) {
-    const cleanPhone = candidatePhone.replace(/[^\d+]/g, '');
+    let cleanPhone = candidatePhone.replace(/[^\d]/g, '');
+    if (cleanPhone.startsWith('251')) cleanPhone = cleanPhone.slice(3);
+    if (cleanPhone.startsWith('0')) cleanPhone = cleanPhone.slice(1);
     if (cleanPhone.length >= 9) {
       req.telegramUser = {
         id: cleanPhone,
