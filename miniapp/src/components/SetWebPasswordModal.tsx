@@ -109,12 +109,12 @@ export default function SetWebPasswordModal({ isOpen, onClose }: SetWebPasswordM
         </div>
 
         <h3 className="text-base font-black text-slate-800 dark:text-white leading-tight">
-          {isAm ? 'የዌብ / PWA የይለፍ ቃል' : 'Web / PWA Login Password'}
+          {isAm ? 'የሞባይል አፕሊኬሽን የይለፍ ቃል' : 'Mobile Application Password'}
         </h3>
         <p className="text-[11px] text-slate-400 mt-1 max-w-[260px] mx-auto leading-relaxed">
           {isAm
-            ? 'ከቴሌግራም ውጭ በ Chrome ወይም PWA አፕሊኬሽን ላይ ለመግባት የይለፍ ቃልዎን እዚህ ያስቀምጡ::'
-            : 'Set your password to login on Chrome browser or PWA app outside Telegram.'}
+            ? 'በሞባይል አፕሊኬሽኑ ላይ ለመግባት የይለፍ ቃልዎን እዚህ ያስቀምጡ::'
+            : 'Set your password to log in to the mobile application.'}
         </p>
 
         {/* Account Info Badge */}
@@ -214,8 +214,8 @@ export default function SetWebPasswordModal({ isOpen, onClose }: SetWebPasswordM
             <Globe size={14} className="text-amber-500 shrink-0 mt-0.5" />
             <span>
               {isAm
-                ? `አሁን ድህረ-ገጹን (choicebingo.vercel.app) በ Chrome ሲከፍቱ በቴሌግራም IDዎ (${telegramId}) እና በዚህ የይለፍ ቃል መግባት ይችላሉ::`
-                : `You can now open choicebingo.vercel.app on Chrome and login using your Telegram ID (${telegramId}) and this password.`}
+                ? `በሞባይል አፕሊኬሽኑ ላይ በቴሌግራም IDዎ (${telegramId}) እና በዚህ የይለፍ ቃል መግባት ይችላሉ::`
+                : `You can log in to the mobile application using your Telegram ID (${telegramId}) and this password.`}
             </span>
           </div>
 

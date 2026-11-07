@@ -290,7 +290,21 @@ export default function Profile() {
               </button>
             )}
 
-            {/* Set / Manage Web Password for Telegram Account */}
+            {/* Support Team */}
+            <button onClick={handleSupport} className={row}>
+              <div className={icon('bg-orange-50 text-orange-500')}><Headphones size={12} /></div>
+              <span className="flex-1 font-bold text-slate-700 dark:text-slate-200 text-[10px]">{t[language].profile.support}</span>
+              <ChevronRight size={11} className="text-slate-300" />
+            </button>
+
+            {/* Official Channel */}
+            <button onClick={handleChannel} className={row}>
+              <div className={icon('bg-indigo-50 text-indigo-500')}><Megaphone size={12} /></div>
+              <span className="flex-1 font-bold text-slate-700 dark:text-slate-200 text-[10px]">{t[language].profile.channel}</span>
+              <ChevronRight size={11} className="text-slate-300" />
+            </button>
+
+            {/* ── BELOW CHANNEL: TELEGRAM MINI APP: Mobile Application Password ── */}
             {isInsideTelegram && (
               <button
                 onClick={() => setShowSetWebPasswordModal(true)}
@@ -301,41 +315,17 @@ export default function Profile() {
                 </div>
                 <div className="flex-1 text-left">
                   <span className="font-bold text-slate-700 dark:text-slate-200 text-[10px] block">
-                    {language === 'am' ? 'የዌብ / PWA የይለፍ ቃል (Web Password)' : 'Web / PWA Login Password'}
+                    {language === 'am' ? 'የሞባይል አፕሊኬሽን የይለፍ ቃል' : 'Mobile Application Password'}
                   </span>
                   <span className="text-[8px] text-slate-400 block font-mono">
-                    {language === 'am' ? `በ Chrome ላይ ለመግባት (ID: ${user?.telegram_id || ''})` : `Login on Chrome/PWA with ID: ${user?.telegram_id || ''}`}
+                    {language === 'am' ? `በሞባይል አፕሊኬሽን ለመግባት (ID: ${user?.telegram_id || ''})` : `Login on Mobile Application with ID: ${user?.telegram_id || ''}`}
                   </span>
                 </div>
                 <ChevronRight size={11} className="text-slate-300" />
               </button>
             )}
 
-            {/* PWA Phone Account Connect / Switch */}
-            {typeof window !== 'undefined' && !WebApp.initDataUnsafe?.user?.id && (
-              <button
-                onClick={() => {
-                  setProfileOpen(false);
-                  useGameStore.getState().setIsPhoneModalOpen(true);
-                }}
-                className={row}
-              >
-                <div className={icon('bg-emerald-50 text-emerald-600')}>
-                  <Smartphone size={12} />
-                </div>
-                <div className="flex-1 text-left">
-                  <span className="font-bold text-slate-700 dark:text-slate-200 text-[10px] block">
-                    {language === 'am' ? 'የስልክ ቁጥር መለያ' : 'Phone Account'}
-                  </span>
-                  <span className="text-[8px] text-slate-400 block font-mono">
-                    {localStorage.getItem('cb_pwa_phone') || (language === 'am' ? 'ያልተገናኘ' : 'Not Connected')}
-                  </span>
-                </div>
-                <ChevronRight size={11} className="text-slate-300" />
-              </button>
-            )}
-
-            {/* PWA Reset / Change Password Button (Visible only in PWA for connected phone users) */}
+            {/* ── BELOW CHANNEL: PWA: 1) Reset Password ── */}
             {typeof window !== 'undefined' && !WebApp.initDataUnsafe?.user?.id && localStorage.getItem('cb_pwa_phone') && (
               <button
                 onClick={() => {
@@ -358,17 +348,29 @@ export default function Profile() {
               </button>
             )}
 
-            <button onClick={handleSupport} className={row}>
-              <div className={icon('bg-orange-50 text-orange-500')}><Headphones size={12} /></div>
-              <span className="flex-1 font-bold text-slate-700 dark:text-slate-200 text-[10px]">{t[language].profile.support}</span>
-              <ChevronRight size={11} className="text-slate-300" />
-            </button>
-
-            <button onClick={handleChannel} className={row}>
-              <div className={icon('bg-indigo-50 text-indigo-500')}><Megaphone size={12} /></div>
-              <span className="flex-1 font-bold text-slate-700 dark:text-slate-200 text-[10px]">{t[language].profile.channel}</span>
-              <ChevronRight size={11} className="text-slate-300" />
-            </button>
+            {/* ── BELOW CHANNEL: PWA: 2) Phone Account (LAST item) ── */}
+            {typeof window !== 'undefined' && !WebApp.initDataUnsafe?.user?.id && (
+              <button
+                onClick={() => {
+                  setProfileOpen(false);
+                  useGameStore.getState().setIsPhoneModalOpen(true);
+                }}
+                className={row}
+              >
+                <div className={icon('bg-emerald-50 text-emerald-600')}>
+                  <Smartphone size={12} />
+                </div>
+                <div className="flex-1 text-left">
+                  <span className="font-bold text-slate-700 dark:text-slate-200 text-[10px] block">
+                    {language === 'am' ? 'የስልክ ቁጥር መለያ' : 'Phone Account'}
+                  </span>
+                  <span className="text-[8px] text-slate-400 block font-mono">
+                    {localStorage.getItem('cb_pwa_phone') || (language === 'am' ? 'ያልተገናኘ' : 'Not Connected')}
+                  </span>
+                </div>
+                <ChevronRight size={11} className="text-slate-300" />
+              </button>
+            )}
 
           </div>
         </div>
