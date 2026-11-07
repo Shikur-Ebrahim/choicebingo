@@ -59,15 +59,35 @@ router.get('/', async (req: AuthRequest, res) => {
     new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
   );
 
-  // ── Step 3: Compute stats (all time) ─────────────────────────────────────
+  // ── Step 3: Compute stats directly from tracked user metrics ───────────────
+  const { data: userRecord } = await supabase
+    .from('users')
+    .select('total_games, total_stake, total_wins')
+    .eq('telegram_id', telegramId)
+    .maybeSingle();
+
   const finishedGames = allGames.filter((g: any) => g.status === 'finished');
-  const totalWins = finishedGames.filter((g: any) => g.winner_telegram_id === telegramId).length;
+  const computedWins = finishedGames.filter((g: any) => g.winner_telegram_id === telegramId).length;
   const totalWon = finishedGames
     .filter((g: any) => g.winner_telegram_id === telegramId)
     .reduce((sum: number, g: any) => sum + (Number(g.winner_prize) || 0), 0);
-  const totalWagered = allGames.reduce((sum: number, g: any) => sum + (Number(g.stake) || 0), 0);
-  const winRate = finishedGames.length > 0
-    ? Math.round((totalWins / finishedGames.length) * 100)
+  const fallbackWagered = allGames.reduce((sum: number, g: any) => sum + (Number(g.stake) || 0), 0);
+
+  // Exact user column values or fallback to calculated historical data
+  const totalGamesCount = (userRecord && userRecord.total_games != null && userRecord.total_games > 0)
+    ? Number(userRecord.total_games)
+    : allGames.length;
+
+  const totalStakeAmount = (userRecord && userRecord.total_stake != null && Number(userRecord.total_stake) > 0)
+    ? Number(userRecord.total_stake)
+    : fallbackWagered;
+
+  const totalWinsCount = (userRecord && userRecord.total_wins != null && userRecord.total_wins > 0)
+    ? Number(userRecord.total_wins)
+    : computedWins;
+
+  const winRate = totalGamesCount > 0
+    ? Math.round((totalWinsCount / totalGamesCount) * 100)
     : 0;
 
   // ── Step 4: Paginate ──────────────────────────────────────────────────────
@@ -93,9 +113,9 @@ router.get('/', async (req: AuthRequest, res) => {
   res.json({
     games: enriched,
     stats: {
-      total:         allGames.length,
-      wins:          totalWins,
-      total_wagered: totalWagered,
+      total:         totalGamesCount,
+      wins:          totalWinsCount,
+      total_wagered: totalStakeAmount,
       total_won:     totalWon,
       win_rate:      winRate,
     },
