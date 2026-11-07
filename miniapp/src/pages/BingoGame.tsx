@@ -786,18 +786,7 @@ export default function BingoGame() {
     hasCelebratedRef.current = game.id;
     isCelebratingRef.current = true;
 
-    // 1. Play stop.mp3 sound immediately — guaranteed once with zero echo
-    if (hasCelebratedSoundRef.current !== game.id) {
-      hasCelebratedSoundRef.current = game.id;
-      playSpecial('stop');
-    }
-
-    // 2. Vibration / haptic feedback
-    if (WebApp?.HapticFeedback) {
-      WebApp.HapticFeedback.notificationOccurred('success');
-    }
-
-    // 3. ── REMATCH: 3+ way tie ──
+    // 1. ── REMATCH: 3+ way tie ──
     if (game.winner_first_name === 'REMATCH') {
       setCelebration({
         winner_name: 'REMATCH',
@@ -815,32 +804,24 @@ export default function BingoGame() {
     let isMounted = true;
 
     if (game.winner_first_name && game.winner_first_name.includes(' & ')) {
+      // Show celebration card immediately with zero delay
+      setCelebration({
+        winner_name: game.winner_first_name || 'Players',
+        winner_cartela: 0,
+        winner_prize: game.winner_prize || 0,
+        winner_matrix: null,
+        winners_list: [],
+        iWon,
+        called: [...(game.called_numbers || [])],
+      });
+
       fetch(`${API}/bingo/winners?game_id=${game.id}`, { headers: hdrs() })
         .then(r => r.json())
         .then(data => {
           if (!isMounted) return;
-          setCelebration({
-            winner_name: game.winner_first_name || 'Players',
-            winner_cartela: 0,
-            winner_prize: game.winner_prize || 0,
-            winner_matrix: null,
-            winners_list: data.winners,
-            iWon,
-            called: [...(game.called_numbers || [])],
-          });
+          setCelebration(prev => (prev ? { ...prev, winners_list: data.winners } : null));
         })
-        .catch(() => {
-          if (isMounted) {
-            setCelebration({
-              winner_name: game.winner_first_name || 'Players',
-              winner_cartela: 0,
-              winner_prize: game.winner_prize || 0,
-              winner_matrix: null,
-              iWon,
-              called: [...(game.called_numbers || [])],
-            });
-          }
-        });
+        .catch(() => {});
     } else {
       const localCard = myCartelas.find(c => c.cartela_number === game.winner_cartela)?.card_matrix;
       if (localCard) {
@@ -892,6 +873,16 @@ export default function BingoGame() {
       setCelebrationSecondsLeft(5);
       return;
     }
+
+    // Play stop.mp3 sound & trigger haptics EXACTLY when celebration card appears on screen!
+    if (hasCelebratedSoundRef.current !== game?.id) {
+      hasCelebratedSoundRef.current = game?.id || 'sound';
+      playSpecial('stop');
+      if (WebApp?.HapticFeedback) {
+        WebApp.HapticFeedback.notificationOccurred('success');
+      }
+    }
+
     setCelebrationSecondsLeft(5);
     const interval = setInterval(() => {
       setCelebrationSecondsLeft(prev => Math.max(0, prev - 1));
