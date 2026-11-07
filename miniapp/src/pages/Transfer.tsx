@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { ArrowLeft, ArrowRightLeft, CheckCircle2, AlertCircle, Send, User, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, ArrowRightLeft, CheckCircle2, AlertCircle, Send, User, ShieldCheck, Play } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useGameStore } from '../store/gameStore';
 import { t } from '../lib/translations';
 import WebApp from '@twa-dev/sdk';
+import VideoGuideModal from '../components/VideoGuideModal';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -19,6 +20,7 @@ export default function Transfer() {
   const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
   const navigate = useNavigate();
 
   const handleBack = () => {
@@ -250,22 +252,36 @@ export default function Transfer() {
   // ─── MAIN FORM ────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col pb-24">
+      {/* ── VIDEO GUIDE MODAL ── */}
+      <VideoGuideModal
+        isOpen={isVideoModalOpen}
+        onClose={() => setIsVideoModalOpen(false)}
+        category="transfer"
+      />
 
       {/* HEADER */}
-      <div className="bg-white dark:bg-slate-900 px-4 pt-6 pb-4 shadow-sm border-b border-gray-100 dark:border-slate-800 flex items-center sticky top-0 z-10">
+      <div className="bg-white dark:bg-slate-900 px-4 pt-6 pb-4 shadow-sm border-b border-gray-100 dark:border-slate-800 flex items-center justify-between sticky top-0 z-10">
+        <div className="flex items-center min-w-0 flex-1">
+          <button
+            onClick={handleBack}
+            className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-700 dark:text-slate-200 active:bg-slate-200 transition-colors shrink-0"
+          >
+            <ArrowLeft size={20} />
+          </button>
+          <div className="ml-3.5 flex-1 min-w-0">
+            <h1 className="text-xl font-black text-slate-800 dark:text-slate-100 tracking-tight truncate">{t[language].transfer.transferTitle}</h1>
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium truncate">{t[language].transfer.transferSubtitle}</p>
+          </div>
+        </div>
+
+        {/* Video Guide Pill Button */}
         <button
-          onClick={handleBack}
-          className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-700 dark:text-slate-200 active:bg-slate-200 transition-colors"
+          onClick={() => setIsVideoModalOpen(true)}
+          className="bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white text-[11px] font-black px-3 py-1.5 rounded-full shadow-md shadow-amber-500/20 flex items-center gap-1 active:scale-95 transition-all shrink-0 ml-2"
         >
-          <ArrowLeft size={20} />
+          <Play size={11} className="fill-white" />
+          <span>Video Guide</span>
         </button>
-        <div className="ml-4 flex-1">
-          <h1 className="text-xl font-black text-slate-800 dark:text-slate-100 tracking-tight">{t[language].transfer.transferTitle}</h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">{t[language].transfer.transferSubtitle}</p>
-        </div>
-        <div className="w-10 h-10 bg-emerald-50 dark:bg-emerald-950/40 rounded-full flex items-center justify-center">
-          <ArrowRightLeft size={18} className="text-emerald-500" />
-        </div>
       </div>
 
       <div className="px-4 py-5 flex flex-col space-y-4">

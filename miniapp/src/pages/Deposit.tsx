@@ -24,6 +24,7 @@ import { useGameStore } from '../store/gameStore';
 import { t } from '../lib/translations';
 import { uploadImage } from '../lib/upload';
 import { supabase } from '../lib/supabase';
+import VideoGuideModal from '../components/VideoGuideModal';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -46,23 +47,6 @@ interface PendingDeposit {
     name?: string;
     logo_url?: string;
   };
-}
-
-interface SupportVideoItem {
-  id: string;
-  category: string;
-  title: string;
-  description: string | null;
-  video_url: string;
-  video_key: string;
-  thumbnail_url: string | null;
-  sort_order: number;
-}
-
-function getYouTubeEmbedUrl(url: string): string | null {
-  if (!url) return null;
-  const ytMatch = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/))([\w-]{11})/i);
-  return ytMatch ? `https://www.youtube-nocookie.com/embed/${ytMatch[1]}?autoplay=1&rel=0` : null;
 }
 
 const methodNames: Record<string, string> = {
@@ -116,29 +100,6 @@ export default function Deposit() {
   const [step, setStep] = useState<Step>('list');
   const [supportUsername, setSupportUsername] = useState<string | null>(null);
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
-  const [depositVideos, setDepositVideos] = useState<SupportVideoItem[]>([]);
-  const [loadingVideos, setLoadingVideos] = useState(false);
-  const [selectedVideo, setSelectedVideo] = useState<SupportVideoItem | null>(null);
-
-  const openVideoGuide = async () => {
-    setIsVideoModalOpen(true);
-    try {
-      setLoadingVideos(true);
-      const res = await fetch(`${API_URL}/support-videos?category=deposit`);
-      if (res.ok) {
-        const data = await res.json();
-        const vids = (data.videos || []) as SupportVideoItem[];
-        setDepositVideos(vids);
-        if (vids.length > 0) {
-          setSelectedVideo(vids[0]);
-        }
-      }
-    } catch (e) {
-      console.error('Failed to fetch deposit video guide', e);
-    } finally {
-      setLoadingVideos(false);
-    }
-  };
 
   // Pending Deposit State
   const [pendingDeposit, setPendingDeposit] = useState<PendingDeposit | null>(null);
@@ -531,163 +492,12 @@ export default function Deposit() {
         </div>
       )}
 
-      {/* ── 🌟 DYNAMIC SUPPORT VIDEO GUIDE MODAL ── */}
-      {isVideoModalOpen && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-3.5 sm:p-4 animate-fade-in">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[32px] p-5 shadow-2xl border border-slate-200 dark:border-slate-800 text-center relative animate-scale-up max-h-[92vh] flex flex-col overflow-hidden">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800/80 mb-3 shrink-0">
-              <div className="flex items-center gap-2 text-left">
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-500 to-rose-500 text-white flex items-center justify-center shadow-md shadow-amber-500/20">
-                  <Play size={16} className="fill-white translate-x-0.5" />
-                </div>
-                <div>
-                  <h3 className="font-black text-slate-800 dark:text-white text-sm leading-tight">
-                    {language === 'am' ? 'የገንዘብ ማስገቢያ ቪዲዮ' : 'Deposit Video Guide'}
-                  </h3>
-                  <p className="text-[10px] text-amber-600 dark:text-amber-400 font-bold uppercase tracking-wider">
-                    {language === 'am' ? 'ደረጃ በደረጃ አጠቃቀም' : 'Step-by-step tutorial'}
-                  </p>
-                </div>
-              </div>
-
-              <button
-                onClick={() => setIsVideoModalOpen(false)}
-                className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors active:scale-95"
-              >
-                <X size={16} />
-              </button>
-            </div>
-
-            {/* Modal Content */}
-            <div className="overflow-y-auto space-y-3.5 pr-0.5 flex-1 text-left">
-              {loadingVideos ? (
-                <div className="py-12 flex flex-col items-center justify-center">
-                  <div className="w-10 h-10 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mb-3 shadow-[0_0_15px_rgba(245,158,11,0.3)]" />
-                  <p className="text-xs font-bold text-slate-500 dark:text-slate-400">
-                    {language === 'am' ? 'ቪዲዮው በመጫን ላይ ነው...' : 'Loading video guide...'}
-                  </p>
-                </div>
-              ) : selectedVideo ? (
-                <div>
-                  {/* Dynamic Video Player */}
-                  {(() => {
-                    const ytEmbed = getYouTubeEmbedUrl(selectedVideo.video_url);
-                    if (ytEmbed) {
-                      return (
-                        <div className="relative rounded-2xl overflow-hidden aspect-video bg-black shadow-lg border border-slate-200 dark:border-slate-800">
-                          <iframe
-                            src={ytEmbed}
-                            title={selectedVideo.title}
-                            className="w-full h-full border-0"
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                            allowFullScreen
-                          />
-                        </div>
-                      );
-                    }
-                    return (
-                      <div className="relative rounded-2xl overflow-hidden aspect-video bg-black shadow-lg border border-slate-200 dark:border-slate-800 flex items-center justify-center">
-                        <video
-                          key={selectedVideo.id}
-                          src={selectedVideo.video_url}
-                          poster={selectedVideo.thumbnail_url || undefined}
-                          controls
-                          autoPlay
-                          playsInline
-                          className="w-full h-full object-contain"
-                        />
-                      </div>
-                    );
-                  })()}
-
-                  {/* Video Title & Details */}
-                  <div className="mt-3 bg-amber-500/5 dark:bg-amber-500/10 border border-amber-500/20 rounded-2xl p-3">
-                    <h4 className="font-black text-xs text-slate-800 dark:text-white flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse" />
-                      <span>{selectedVideo.title}</span>
-                    </h4>
-                    {selectedVideo.description && (
-                      <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-1 leading-relaxed">
-                        {selectedVideo.description}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Multiple Videos Selector if more than 1 */}
-                  {depositVideos.length > 1 && (
-                    <div className="mt-2.5">
-                      <span className="text-[9.5px] font-black uppercase tracking-wider text-slate-400 block mb-1.5">
-                        {language === 'am' ? 'ተጨማሪ ቪዲዮዎች' : 'More Deposit Guides'} ({depositVideos.length})
-                      </span>
-                      <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-                        {depositVideos.map((v, idx) => (
-                          <button
-                            key={v.id}
-                            onClick={() => setSelectedVideo(v)}
-                            className={`px-3 py-1.5 rounded-xl text-[11px] font-bold shrink-0 transition-all ${
-                              selectedVideo.id === v.id
-                                ? 'bg-amber-500 text-white shadow-sm'
-                                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
-                            }`}
-                          >
-                            #{idx + 1} {v.title.slice(0, 18)}...
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                /* Fallback if no video is uploaded yet */
-                <div>
-                  <div className="w-14 h-14 rounded-2xl bg-amber-50 dark:bg-amber-950/50 text-amber-500 mx-auto flex items-center justify-center mb-3">
-                    <Play size={28} className="fill-amber-500" />
-                  </div>
-                  <h3 className="font-black text-slate-800 dark:text-white text-base text-center">
-                    {language === 'am' ? 'የገንዘብ ማስገቢያ መመሪያ' : 'Deposit Instructions'}
-                  </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 mb-3.5 leading-relaxed text-center">
-                    {language === 'am'
-                      ? 'ቪዲዮው በአስተዳዳሪው ገና አልተጫነም:: እባክዎ የሚከተሉትን ቀላል ደረጃዎች ይከተሉ:'
-                      : 'Video tutorial coming soon! Follow these quick steps to deposit:'}
-                  </p>
-                  <div className="space-y-2 text-left mb-2">
-                    <div className="bg-slate-50 dark:bg-slate-800/60 p-2.5 rounded-2xl border border-slate-100 dark:border-slate-800 flex items-center gap-2.5">
-                      <span className="w-5 h-5 rounded-full bg-amber-500 text-white flex items-center justify-center text-[10px] font-black shrink-0">1</span>
-                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200">
-                        {language === 'am' ? 'የባንክ ወይም የቴሌብር አካውንት ቁጥሩን ይቅዱ' : 'Copy the official bank or Telebirr account number'}
-                      </span>
-                    </div>
-                    <div className="bg-slate-50 dark:bg-slate-800/60 p-2.5 rounded-2xl border border-slate-100 dark:border-slate-800 flex items-center gap-2.5">
-                      <span className="w-5 h-5 rounded-full bg-amber-500 text-white flex items-center justify-center text-[10px] font-black shrink-0">2</span>
-                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200">
-                        {language === 'am' ? 'በሞባይል ባንኪንግ ገንዘቡን ያስተላልፉ' : 'Transfer funds via your mobile banking app'}
-                      </span>
-                    </div>
-                    <div className="bg-slate-50 dark:bg-slate-800/60 p-2.5 rounded-2xl border border-slate-100 dark:border-slate-800 flex items-center gap-2.5">
-                      <span className="w-5 h-5 rounded-full bg-amber-500 text-white flex items-center justify-center text-[10px] font-black shrink-0">3</span>
-                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200">
-                        {language === 'am' ? 'ስክሪንሾት ያያይዙ ወይም የግብይቱን SMS ጽሑፍ ይለጥፉ' : 'Upload receipt screenshot OR paste transaction SMS'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Modal Footer */}
-            <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 mt-2 shrink-0">
-              <button
-                onClick={() => setIsVideoModalOpen(false)}
-                className="w-full py-3 bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white rounded-2xl font-black text-xs shadow-md shadow-amber-500/20 active:scale-95 transition-all"
-              >
-                {language === 'am' ? 'ተረድቻለሁ (አስገባ)' : 'Got it, Proceed to Deposit!'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* ── VIDEO GUIDE MODAL ── */}
+      <VideoGuideModal
+        isOpen={isVideoModalOpen}
+        onClose={() => setIsVideoModalOpen(false)}
+        category="deposit"
+      />
 
       {/* ── STEP 1: FORM VIEW (IF A METHOD IS SELECTED) ── */}
       {step === 'form' && selected ? (
@@ -709,7 +519,7 @@ export default function Deposit() {
               </p>
             </div>
             <button
-              onClick={openVideoGuide}
+              onClick={() => setIsVideoModalOpen(true)}
               className="bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white text-[11px] font-black px-2.5 py-1.5 rounded-full shadow-md shadow-amber-500/20 flex items-center gap-1 active:scale-95 transition-all shrink-0"
               title="Watch video guide"
             >
@@ -964,7 +774,7 @@ export default function Deposit() {
 
             {/* Video Guide Pill Button */}
             <button
-              onClick={openVideoGuide}
+              onClick={() => setIsVideoModalOpen(true)}
               className="bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white text-[11px] font-black px-3 py-1.5 rounded-full shadow-md shadow-amber-500/20 flex items-center gap-1 active:scale-95 transition-all shrink-0"
             >
               <Play size={11} className="fill-white" />

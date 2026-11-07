@@ -1,13 +1,15 @@
 import { useState } from 'react';
-import { ArrowLeft, Share2, Copy, Check, Users, Gift, Sparkles } from 'lucide-react';
+import { ArrowLeft, Share2, Copy, Check, Users, Gift, Sparkles, Play } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useGameStore } from '../store/gameStore';
 import { t } from '../lib/translations';
 import WebApp from '@twa-dev/sdk';
+import VideoGuideModal from '../components/VideoGuideModal';
 
 export default function Invite() {
   const { user, setProfileOpen, language } = useGameStore();
   const [copied, setCopied] = useState(false);
+  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
   const navigate = useNavigate();
 
   const botUsername = import.meta.env.VITE_BOT_USERNAME || 'ChoiceBingo_bot';
@@ -45,18 +47,36 @@ export default function Invite() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-[#070b14] text-slate-800 dark:text-slate-100 transition-colors duration-200 flex flex-col pb-24">
+      {/* ── VIDEO GUIDE MODAL ── */}
+      <VideoGuideModal
+        isOpen={isVideoModalOpen}
+        onClose={() => setIsVideoModalOpen(false)}
+        category="invite"
+      />
+
       {/* ── 3D HEADER ── */}
-      <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-4 pt-6 pb-4 shadow-[0_4px_20px_rgba(0,0,0,0.03)] dark:shadow-[0_4px_25px_rgba(0,0,0,0.4)] border-b border-slate-200/80 dark:border-slate-800 flex items-center sticky top-0 z-20 transition-colors">
-        <button
-          onClick={handleBack}
-          className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 active:scale-90 transition-all border border-slate-200/60 dark:border-slate-700 shadow-sm flex items-center justify-center shrink-0"
-        >
-          <ArrowLeft size={18} />
-        </button>
-        <div className="ml-3.5 flex-1 min-w-0">
-          <h1 className="text-xl font-black text-slate-800 dark:text-white tracking-tight truncate">{t[language].invite.title}</h1>
-          <p className="text-xs text-slate-400 dark:text-slate-400 font-medium truncate">{t[language].invite.subtitle}</p>
+      <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-4 pt-6 pb-4 shadow-[0_4px_20px_rgba(0,0,0,0.03)] dark:shadow-[0_4px_25px_rgba(0,0,0,0.4)] border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between sticky top-0 z-20 transition-colors">
+        <div className="flex items-center min-w-0 flex-1">
+          <button
+            onClick={handleBack}
+            className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 active:scale-90 transition-all border border-slate-200/60 dark:border-slate-700 shadow-sm flex items-center justify-center shrink-0"
+          >
+            <ArrowLeft size={18} />
+          </button>
+          <div className="ml-3.5 flex-1 min-w-0">
+            <h1 className="text-xl font-black text-slate-800 dark:text-white tracking-tight truncate">{t[language].invite.title}</h1>
+            <p className="text-xs text-slate-400 dark:text-slate-400 font-medium truncate">{t[language].invite.subtitle}</p>
+          </div>
         </div>
+
+        {/* Video Guide Pill Button */}
+        <button
+          onClick={() => setIsVideoModalOpen(true)}
+          className="bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white text-[11px] font-black px-3 py-1.5 rounded-full shadow-md shadow-amber-500/20 flex items-center gap-1 active:scale-95 transition-all shrink-0 ml-2"
+        >
+          <Play size={11} className="fill-white" />
+          <span>Video Guide</span>
+        </button>
       </div>
 
       <div className="px-4 py-3.5 flex flex-col space-y-3.5 flex-1 overflow-hidden">

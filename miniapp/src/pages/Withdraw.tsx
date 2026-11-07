@@ -11,13 +11,15 @@ import {
   Wallet, 
   ShieldCheck,
   Check,
-  Info
+  Info,
+  Play
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import WebApp from '@twa-dev/sdk';
 import { useGameStore } from '../store/gameStore';
 import { t } from '../lib/translations';
 import { supabase } from '../lib/supabase';
+import VideoGuideModal from '../components/VideoGuideModal';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -91,6 +93,7 @@ export default function Withdraw() {
   const [step, setStep] = useState<Step>('list');
   const [pendingAmount, setPendingAmount] = useState<number | null>(null);
   const [supportContact, setSupportContact] = useState<string>('');
+  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
 
   // Form state
   const [amount, setAmount] = useState('');
@@ -346,17 +349,32 @@ export default function Withdraw() {
     const gradient = typeColors[selected.type] || 'from-slate-600 to-slate-800';
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-[#070b14] text-slate-800 dark:text-slate-100 transition-colors duration-200 pb-12">
+        <VideoGuideModal
+          isOpen={isVideoModalOpen}
+          onClose={() => setIsVideoModalOpen(false)}
+          category="withdraw"
+        />
         {/* 3D Method Header */}
         <div className={`bg-gradient-to-r ${gradient} px-4 pt-6 pb-8 shadow-lg relative overflow-hidden border-b border-white/10`}>
           <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full blur-2xl pointer-events-none" />
-          <div className="flex items-center space-x-3 mb-4 relative z-10">
-            <button onClick={() => setStep('list')} className="w-10 h-10 rounded-xl bg-black/20 hover:bg-black/30 text-white flex items-center justify-center backdrop-blur-sm border border-white/20 active:scale-90 transition-all">
-              <ArrowLeft size={20} />
+          <div className="flex items-center justify-between mb-4 relative z-10">
+            <div className="flex items-center space-x-3">
+              <button onClick={() => setStep('list')} className="w-10 h-10 rounded-xl bg-black/20 hover:bg-black/30 text-white flex items-center justify-center backdrop-blur-sm border border-white/20 active:scale-90 transition-all">
+                <ArrowLeft size={20} />
+              </button>
+              <h1 className="text-lg font-black text-white drop-shadow-sm flex items-center gap-2">
+                <span>{typeEmoji[selected.type] || '💳'}</span>
+                <span>{typeLabels[selected.type] || selected.type.toUpperCase()}</span>
+              </h1>
+            </div>
+
+            <button
+              onClick={() => setIsVideoModalOpen(true)}
+              className="bg-white/20 hover:bg-white/30 text-white text-[11px] font-black px-2.5 py-1.5 rounded-full shadow-md border border-white/20 flex items-center gap-1 active:scale-95 transition-all shrink-0 backdrop-blur-sm"
+            >
+              <Play size={10} className="fill-white" />
+              <span>Video</span>
             </button>
-            <h1 className="text-lg font-black text-white drop-shadow-sm flex items-center gap-2">
-              <span>{typeEmoji[selected.type] || '💳'}</span>
-              <span>{typeLabels[selected.type] || selected.type.toUpperCase()}</span>
-            </h1>
           </div>
           {/* 3D Balance Inset Card */}
           <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-3xl p-5 shadow-[0_10px_25px_rgba(0,0,0,0.1)] border border-white/20 relative z-10">
@@ -608,14 +626,32 @@ export default function Withdraw() {
         </div>
       )}
 
+      {/* ── VIDEO GUIDE MODAL ── */}
+      <VideoGuideModal
+        isOpen={isVideoModalOpen}
+        onClose={() => setIsVideoModalOpen(false)}
+        category="withdraw"
+      />
+
       {/* 3D Realistic Header */}
       <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 px-4 pt-6 pb-8 border-b border-slate-800 shadow-lg relative overflow-hidden">
         <div className="absolute top-0 right-0 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="flex items-center space-x-3 mb-4 relative z-10">
-          <Link to="/" className="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center backdrop-blur-sm border border-white/20 active:scale-90 transition-all">
-            <ArrowLeft size={20} />
-          </Link>
-          <h1 className="text-xl font-black text-white tracking-tight drop-shadow-sm">{t[language].withdraw.title}</h1>
+        <div className="flex items-center justify-between mb-4 relative z-10">
+          <div className="flex items-center space-x-3">
+            <Link to="/" className="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center backdrop-blur-sm border border-white/20 active:scale-90 transition-all">
+              <ArrowLeft size={20} />
+            </Link>
+            <h1 className="text-xl font-black text-white tracking-tight drop-shadow-sm">{t[language].withdraw.title}</h1>
+          </div>
+
+          {/* Video Guide Pill Button */}
+          <button
+            onClick={() => setIsVideoModalOpen(true)}
+            className="bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white text-[11px] font-black px-3 py-1.5 rounded-full shadow-md shadow-amber-500/20 flex items-center gap-1 active:scale-95 transition-all shrink-0"
+          >
+            <Play size={11} className="fill-white" />
+            <span>Video Guide</span>
+          </button>
         </div>
 
         {/* 3D Vault Balance Card */}
