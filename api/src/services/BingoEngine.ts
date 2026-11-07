@@ -1,6 +1,7 @@
 import { supabase } from './supabase';
 import { getSettings } from '../routes/adminSettings';
 import { randomUUID } from 'crypto';
+import { recordUserEvent } from './eventNotifications';
 
 const TICK_MS = 500; // 500ms tick for exact call_interval_ms execution
 const STAKES  = [10, 20, 50, 100];
@@ -274,6 +275,19 @@ class BingoEngine {
           signal: AbortSignal.timeout(3000),
         }).catch((e) => { console.error('Refund notify error:', e?.message); });
       }
+
+      // Record in-app notification for the user
+      recordUserEvent(telegramId, {
+        id: `refund_${game.id}_${telegramId}_${Date.now()}`,
+        type: 'refund',
+        title: `Game Cancelled & Cartela Refunded (+${totalRefund} ETB)`,
+        title_am: `ጨዋታው ተሰርዟል & የካርቴላ ገንዘብ ተመላሽ ተደርጓል (+${totalRefund} ብር)`,
+        message: `Because another player joined too late, your ${count}-card payment (${totalRefund} ETB) has been refunded (${refundDesc}).`,
+        message_am: `በቂ ተጫዋች ባለመግባቱ ምክንያት የገዟቸው ${count} ካርቴላዎች (${totalRefund} ብር) ተመላሽ ተደርገዋል።`,
+        amount: totalRefund,
+        status: 'warning',
+        created_at: new Date().toISOString(),
+      }).catch(console.error);
     }
 
     // Delete players from bingo_players
@@ -512,6 +526,17 @@ class BingoEngine {
         p.telegram_id,
         `🔄 REMATCH! ${winners.length} players hit BINGO at the same time on Game #${gameLabel}. Your ${stake} ETB stake has been refunded. A new game is starting!`
       );
+      recordUserEvent(p.telegram_id, {
+        id: `rematch_${gameId}_${p.telegram_id}_${Date.now()}`,
+        type: 'refund',
+        title: `🔄 REMATCH! Stake Refunded (+${stake} ETB)`,
+        title_am: `🔄 ድጋሚ ጨዋታ! መደብዎ ተመልሷል (+${stake} ብር)`,
+        message: `REMATCH! Multiple players hit BINGO at the same time on Game #${gameLabel}. Your ${stake} ETB stake has been refunded.`,
+        message_am: `ድጋሚ ጨዋታ! በርካታ ተጫዋቾች በአንድ ጊዜ ቢንጎ ስላወጡ የ ${stake} ብር መደብዎ ተመላሽ ተደርጓል።`,
+        amount: Number(stake),
+        status: 'warning',
+        created_at: new Date().toISOString(),
+      }).catch(console.error);
     }
     // Engine will auto-create a new game for this stake on next tick
   }

@@ -1,12 +1,13 @@
 import { Router, Response } from 'express';
 import { AuthRequest, optionalTelegramAuth } from '../middleware/auth';
 import { supabase } from '../services/supabase';
+import { getUserEvents } from '../services/eventNotifications';
 
 const router = Router();
 
 export interface NotificationItem {
   id: string;
-  type: 'broadcast' | 'deposit' | 'withdrawal' | 'win' | 'reward';
+  type: 'broadcast' | 'deposit' | 'withdrawal' | 'win' | 'reward' | 'refund' | 'transfer';
   title: string;
   title_am?: string;
   message: string;
@@ -76,7 +77,27 @@ router.get('/', optionalTelegramAuth, async (req: AuthRequest, res: Response) =>
     if (rawId.startsWith('9') || rawId.startsWith('7')) userIds.push(`0${rawId}`);
     if (rawId.startsWith('0')) userIds.push(rawId.slice(1));
 
-    // 2. Fetch User Deposits (Approved, Rejected, Pending)
+    // 2. Fetch User Events (Game Cancellations/Refunds & Transfers)
+    try {
+      const events = await getUserEvents(userIds);
+      for (const ev of events) {
+        addNotif({
+          id: ev.id,
+          type: ev.type,
+          title: ev.title,
+          title_am: ev.title_am || ev.title,
+          message: ev.message,
+          message_am: ev.message_am || ev.message,
+          created_at: ev.created_at,
+          status: ev.status,
+          amount: ev.amount,
+        });
+      }
+    } catch (evErr) {
+      console.error('[Notifications] Error fetching user events:', evErr);
+    }
+
+    // 3. Fetch User Deposits (Approved, Rejected, Pending)
     try {
       const { data: deposits } = await supabase
         .from('deposits')
