@@ -10,19 +10,20 @@ import {
   CheckCircle2, 
   Lock, 
   RefreshCw, 
-  ChevronRight, 
   Clock, 
   Coins, 
   Zap, 
   Flame, 
-  Check, 
   X,
   Target,
-  Layers
+  Layers,
+  Crown,
+  ChevronRight,
+  ShieldCheck,
+  Check
 } from 'lucide-react';
 import WebApp from '@twa-dev/sdk';
 import { useGameStore } from '../store/gameStore';
-import { t } from '../lib/translations';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -88,7 +89,7 @@ export default function Rewards() {
   const [claimingId, setClaimingId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // 🌟 Category tab: 'gursha' first by default as requested!
+  // 🌟 Category tab: 'gursha' first by default
   const [activeCategory, setActiveCategory] = useState<'gursha' | 'milestones' | 'all'>('gursha');
 
   // Success Modal State
@@ -148,7 +149,6 @@ export default function Rewards() {
         return;
       }
 
-      // Success! Refresh user balance & rewards list
       fetchUser();
       await fetchRewards();
 
@@ -171,87 +171,48 @@ export default function Rewards() {
 
   const isAmharic = language === 'am';
 
-  // Filter campaigns based on the active category tab
+  // Filter campaigns
   const filteredCampaigns = campaigns.filter(c => {
-    if (activeCategory === 'gursha') {
-      return c.id === 'gursha';
-    }
-    if (activeCategory === 'milestones') {
-      return c.id === 'total_games' || c.id === 'invitation_reward';
-    }
+    if (activeCategory === 'gursha') return c.id === 'gursha';
+    if (activeCategory === 'milestones') return c.id === 'total_games' || c.id === 'invitation_reward';
     return true; // 'all'
   });
 
-  // Gursha campaign reference
-  const gurshaCamp = campaigns.find(c => c.id === 'gursha');
-  const milestoneCamps = campaigns.filter(c => c.id !== 'gursha');
-
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#070b14] text-slate-800 dark:text-slate-100 transition-colors duration-200 pb-24 select-none">
+    <div className="min-h-screen bg-slate-100/70 dark:bg-[#070b14] text-slate-800 dark:text-slate-100 transition-colors duration-200 pb-28 select-none">
       <div className="max-w-md mx-auto">
 
-        {/* ── 3D INTEGRATED LUXURY ORANGE HEADER & BONUS WALLET (FLUSH TOP, NO AWKWARD TOP CURVE) ── */}
-        <div className="bg-gradient-to-b from-amber-500 via-amber-500 to-orange-600 text-white pt-4 pb-6 px-4 shadow-[0_10px_30px_rgba(245,158,11,0.25)] rounded-b-[36px] relative overflow-hidden">
-          {/* Subtle ambient light effects */}
-          <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full blur-2xl pointer-events-none" />
-          <div className="absolute -bottom-8 -left-8 w-36 h-36 bg-amber-300/20 rounded-full blur-xl pointer-events-none" />
-
-          {/* Top navigation row */}
-          <div className="flex items-center justify-between relative z-10 mb-3">
+        {/* ── 3D TOP LUXURY APP BAR ── */}
+        <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md sticky top-0 z-30 px-4 pt-4 pb-3 border-b border-slate-200/80 dark:border-slate-800 shadow-[0_4px_20px_rgba(0,0,0,0.03)] flex items-center justify-between">
+          <div className="flex items-center gap-3">
             <button
               onClick={() => navigate(-1)}
-              className="w-9 h-9 rounded-xl bg-black/15 hover:bg-black/25 text-white flex items-center justify-center backdrop-blur-md border border-white/20 active:scale-90 transition-all shadow-xs"
+              className="w-10 h-10 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 text-slate-700 dark:text-slate-200 flex items-center justify-center active:scale-90 transition-all shadow-sm hover:bg-slate-100"
             >
               <ArrowLeft size={18} />
             </button>
-
-            <div className="text-center">
-              <h1 className="text-base font-black text-white leading-tight flex items-center justify-center gap-1.5 drop-shadow-sm">
-                <Gift size={18} className="text-amber-200 shrink-0" />
+            <div>
+              <h1 className="text-base font-black text-slate-800 dark:text-white leading-tight flex items-center gap-1.5">
+                <Gift size={18} className="text-amber-500 shrink-0" />
                 <span>{isAmharic ? 'ቦነሶች እና ሽልማቶች' : 'Bonuses & Rewards'}</span>
               </h1>
-            </div>
-
-            <button
-              onClick={() => { setLoading(true); fetchRewards(); }}
-              className="w-9 h-9 rounded-xl bg-black/15 hover:bg-black/25 text-white flex items-center justify-center backdrop-blur-md border border-white/20 active:scale-90 transition-all shadow-xs"
-            >
-              <RefreshCw size={15} className={`text-white ${loading ? 'animate-spin' : ''}`} />
-            </button>
-          </div>
-
-          {/* Bonus balance display */}
-          <div className="text-center relative z-10 my-2">
-            <span className="text-white/85 text-[11px] font-bold uppercase tracking-wider flex items-center justify-center gap-1.5">
-              <Sparkles size={13} className="text-amber-200 animate-pulse" />
-              {isAmharic ? 'ያለዎት የቦነስ ሂሳብ' : 'Your Bonus Balance'}
-            </span>
-            <p className="text-3xl font-black text-white leading-tight drop-shadow-md mt-1 tracking-tight">
-              {Number(userStats?.bonus_balance ?? user?.bonus_balance ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              <span className="text-sm font-bold text-amber-200 ml-1.5">ETB</span>
-            </p>
-          </div>
-
-          {/* 3 Translucent Frosted Glass Metric Capsules */}
-          <div className="grid grid-cols-3 gap-2 mt-4 relative z-10 text-center">
-            <div className="bg-black/15 backdrop-blur-md rounded-2xl p-2 border border-white/15 shadow-inner">
-              <p className="text-[8px] font-bold uppercase tracking-wider text-white/80">{isAmharic ? 'ጨዋታዎች' : 'Games'}</p>
-              <p className="text-xs font-black text-white mt-0.5">🎮 {userStats?.total_games ?? user?.total_games ?? 0}</p>
-            </div>
-            <div className="bg-black/15 backdrop-blur-md rounded-2xl p-2 border border-white/15 shadow-inner">
-              <p className="text-[8px] font-bold uppercase tracking-wider text-white/80">{isAmharic ? 'ውርርድ' : 'Stake'}</p>
-              <p className="text-xs font-black text-white mt-0.5">{Number(userStats?.total_stake ?? user?.total_stake ?? 0).toLocaleString()} <span className="text-[7.5px]">ETB</span></p>
-            </div>
-            <div className="bg-black/15 backdrop-blur-md rounded-2xl p-2 border border-white/15 shadow-inner">
-              <p className="text-[8px] font-bold uppercase tracking-wider text-white/80">{isAmharic ? 'ግብዣ' : 'Referral'}</p>
-              <p className="text-xs font-black text-white mt-0.5">{Number(userStats?.invited_reward ?? user?.invited_reward ?? 0).toLocaleString()} <span className="text-[7.5px]">ETB</span></p>
+              <p className="text-[10px] text-slate-400 font-semibold">
+                {isAmharic ? 'የተዘጋጁ ልዩ ቦነሶችን ይውሰዱ' : 'Claim your milestone rewards'}
+              </p>
             </div>
           </div>
+
+          <button
+            onClick={() => { setLoading(true); fetchRewards(); }}
+            className="w-10 h-10 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center active:scale-90 transition-all shadow-sm hover:bg-slate-100"
+          >
+            <RefreshCw size={15} className={loading ? 'animate-spin text-amber-500' : ''} />
+          </button>
         </div>
 
         {/* ── ERROR ALERT ── */}
         {errorMsg && (
-          <div className="mx-3.5 mt-3 p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800/60 flex items-center justify-between text-xs text-rose-700 dark:text-rose-300 font-bold animate-shake">
+          <div className="mx-4 mt-3 p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800/60 flex items-center justify-between text-xs text-rose-700 dark:text-rose-300 font-bold animate-shake">
             <span>{errorMsg}</span>
             <button onClick={() => setErrorMsg(null)} className="p-1 hover:text-rose-900">
               <X size={14} />
@@ -259,10 +220,55 @@ export default function Rewards() {
           </div>
         )}
 
-        {/* ── 🌟 3 CATEGORY TABS (GURSHA FIRST AS REQUESTED) ── */}
-        <div className="px-3.5 pt-4 pb-2">
-          <div className="bg-slate-100 dark:bg-slate-900/80 p-1 rounded-2xl flex items-center gap-1 border border-slate-200/80 dark:border-slate-800 shadow-inner">
-            {/* Tab 1: Gursha Bonus (First Tab) */}
+        {/* ── 🌟 ULTRA-PREMIUM 3D GOLD VIP BALANCE CARD ── */}
+        <div className="px-4 pt-3.5">
+          <div className="bg-gradient-to-br from-amber-400 via-amber-500 to-orange-500 rounded-3xl p-5 text-white shadow-[0_12px_30px_rgba(245,158,11,0.28)] border-t border-white/40 relative overflow-hidden">
+            {/* Shimmer & Lens Flare Effect */}
+            <div className="absolute -top-10 -right-10 w-44 h-44 bg-white/20 rounded-full blur-2xl pointer-events-none" />
+            <div className="absolute -bottom-10 -left-10 w-36 h-36 bg-orange-700/20 rounded-full blur-xl pointer-events-none" />
+
+            {/* Header pill */}
+            <div className="flex items-center justify-between mb-1.5 relative z-10">
+              <span className="bg-white/25 backdrop-blur-md text-white text-[10px] font-black px-3 py-1 rounded-full border border-white/30 shadow-xs flex items-center gap-1.5">
+                <Sparkles size={12} className="text-amber-100 animate-pulse" />
+                <span>{isAmharic ? 'የቦነስ ሂሳብ' : 'VIP BONUS WALLET'}</span>
+              </span>
+
+              <span className="text-white/80 text-[10px] font-bold">
+                Choice Bingo
+              </span>
+            </div>
+
+            {/* Big 3D Typography */}
+            <div className="relative z-10 my-1 text-center py-1">
+              <p className="text-3xl font-black text-white leading-tight tracking-tight drop-shadow-md">
+                {Number(userStats?.bonus_balance ?? user?.bonus_balance ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                <span className="text-base font-bold text-amber-100 ml-1.5">ETB</span>
+              </p>
+            </div>
+
+            {/* 3 Translucent Frosted Glass Metric Capsules */}
+            <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-white/25 text-center relative z-10">
+              <div className="bg-black/15 backdrop-blur-md rounded-2xl p-2 border border-white/15">
+                <p className="text-[8px] font-bold uppercase tracking-wider text-amber-100">{isAmharic ? 'ጨዋታዎች' : 'Games'}</p>
+                <p className="text-xs font-black text-white mt-0.5">🎮 {userStats?.total_games ?? user?.total_games ?? 0}</p>
+              </div>
+              <div className="bg-black/15 backdrop-blur-md rounded-2xl p-2 border border-white/15">
+                <p className="text-[8px] font-bold uppercase tracking-wider text-amber-100">{isAmharic ? 'ውርርድ' : 'Stake'}</p>
+                <p className="text-xs font-black text-white mt-0.5">{Number(userStats?.total_stake ?? user?.total_stake ?? 0).toLocaleString()} <span className="text-[7.5px]">ETB</span></p>
+              </div>
+              <div className="bg-black/15 backdrop-blur-md rounded-2xl p-2 border border-white/15">
+                <p className="text-[8px] font-bold uppercase tracking-wider text-amber-100">{isAmharic ? 'ግብዣ' : 'Referral'}</p>
+                <p className="text-xs font-black text-white mt-0.5">{Number(userStats?.invited_reward ?? user?.invited_reward ?? 0).toLocaleString()} <span className="text-[7.5px]">ETB</span></p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── 🌟 3D CATEGORY PILLS BAR (GURSHA FIRST AS REQUESTED) ── */}
+        <div className="px-4 pt-4 pb-2">
+          <div className="bg-white dark:bg-slate-900 p-1.5 rounded-2xl flex items-center gap-1.5 border border-slate-200/80 dark:border-slate-800 shadow-sm">
+            {/* Tab 1: Gursha Bonus (First) */}
             <button
               onClick={() => setActiveCategory('gursha')}
               className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 active:scale-95 ${
@@ -303,16 +309,16 @@ export default function Rewards() {
           </div>
         </div>
 
-        {/* ── CAMPAIGN CARDS LIST ── */}
-        <div className="px-3.5 pt-2 space-y-3.5">
+        {/* ── 🌟 ATTRACTIVE 3D REWARD CARDS ── */}
+        <div className="px-4 pt-2 space-y-4">
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-16">
+            <div className="flex flex-col items-center justify-center py-20">
               <div className="w-10 h-10 border-4 border-amber-400 border-t-transparent rounded-full animate-spin mb-3 shadow-[0_0_15px_rgba(245,158,11,0.3)]" />
               <p className="text-xs font-bold text-slate-400">{isAmharic ? 'ቦነሶችን በመጫን ላይ...' : 'Loading rewards...'}</p>
             </div>
           ) : filteredCampaigns.length === 0 ? (
-            <div className="bg-white dark:bg-slate-900 rounded-2xl p-8 text-center border border-slate-200 dark:border-slate-800 shadow-sm">
-              <Gift size={36} className="mx-auto text-slate-300 dark:text-slate-600 mb-2" />
+            <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 text-center border border-slate-200 dark:border-slate-800 shadow-sm">
+              <Gift size={40} className="mx-auto text-slate-300 dark:text-slate-600 mb-2" />
               <p className="font-bold text-sm text-slate-600 dark:text-slate-300">{isAmharic ? 'ምንም ቦነሶች የሉም' : 'No rewards currently available.'}</p>
             </div>
           ) : (
@@ -320,142 +326,142 @@ export default function Rewards() {
               const isClaiming = claimingId === camp.id;
               const titleText = isAmharic && camp.title_am ? camp.title_am : camp.title;
               const descText = isAmharic && camp.description_am ? camp.description_am : camp.description;
-              
-              // Progress percentage
+
+              const isGursha = camp.id === 'gursha';
+              const isGamesMilestone = camp.id === 'total_games';
+              const isInviteMilestone = camp.id === 'invitation_reward';
+
               const progressPct = camp.target_value > 0 
                 ? Math.min(100, Math.round((camp.user_progress / camp.target_value) * 100))
                 : 100;
 
-              // Card styling themes
-              let theme = {
-                badgeBg: 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border-amber-200 dark:border-amber-700/50',
-                border: 'border-slate-200/90 dark:border-slate-800',
-                glow: 'shadow-[0_6px_20px_rgba(0,0,0,0.04)] dark:shadow-[0_6px_25px_rgba(0,0,0,0.4)]',
-                icon: <Gamepad2 size={18} className="text-amber-500" />,
-                barColor: 'bg-gradient-to-r from-amber-400 to-orange-500',
+              // Attractive Icon & Themes
+              let cardTheme = {
+                iconBg: 'bg-gradient-to-tr from-amber-400 to-orange-500 text-white shadow-[0_4px_12px_rgba(245,158,11,0.3)]',
+                icon: <Gamepad2 size={22} />,
+                badge: 'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-700/50',
+                barGradient: 'from-amber-400 to-orange-500',
               };
 
-              if (camp.id === 'invitation_reward') {
-                theme = {
-                  badgeBg: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-700/50',
-                  border: 'border-slate-200/90 dark:border-slate-800',
-                  glow: 'shadow-[0_6px_20px_rgba(0,0,0,0.04)] dark:shadow-[0_6px_25px_rgba(0,0,0,0.4)]',
-                  icon: <Users size={18} className="text-emerald-500" />,
-                  barColor: 'bg-gradient-to-r from-emerald-400 to-teal-500',
+              if (isInviteMilestone) {
+                cardTheme = {
+                  iconBg: 'bg-gradient-to-tr from-emerald-400 to-teal-500 text-white shadow-[0_4px_12px_rgba(16,185,129,0.3)]',
+                  icon: <Users size={22} />,
+                  badge: 'bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-700/50',
+                  barGradient: 'from-emerald-400 to-teal-500',
                 };
-              } else if (camp.id === 'gursha') {
-                theme = {
-                  badgeBg: 'bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 border-purple-200 dark:border-purple-700/50',
-                  border: 'border-slate-200/90 dark:border-slate-800',
-                  glow: 'shadow-[0_6px_20px_rgba(0,0,0,0.04)] dark:shadow-[0_6px_25px_rgba(0,0,0,0.4)]',
-                  icon: <Zap size={18} className="text-purple-500" />,
-                  barColor: 'bg-gradient-to-r from-purple-500 to-indigo-500',
+              } else if (isGursha) {
+                cardTheme = {
+                  iconBg: 'bg-gradient-to-tr from-purple-500 to-indigo-500 text-white shadow-[0_4px_12px_rgba(168,85,247,0.3)]',
+                  icon: <Zap size={22} />,
+                  badge: 'bg-purple-50 text-purple-800 border-purple-200 dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-700/50',
+                  barGradient: 'from-purple-500 to-indigo-500',
                 };
               }
 
-              // 🌟 Reward Display Text: For 500 Games Milestone, show range '100 - 1,000 ETB' instead of '2% of stake'!
-              const rewardDisplayText = camp.id === 'total_games'
+              // 🌟 REWARD DISPLAY: Range 100 - 1,000 ETB for 500 Games Milestone!
+              const rewardHeading = isGamesMilestone
                 ? '100 - 1,000 ETB'
                 : `${camp.reward_value.toLocaleString()} ETB`;
 
-              const rewardSubText = camp.id === 'total_games'
-                ? (isAmharic ? '(ከ 10 - 100 ብር መደብ 2% ቦነስ)' : '(2% of stake from 10 - 100 ETB)')
-                : (isAmharic ? 'የቦነስ ሂሳብ' : 'Bonus Balance');
+              const rewardSub = isGamesMilestone
+                ? (isAmharic ? 'የ 10 - 100 ብር መደብ 2% ቦነስ' : '2% of stake from 10 - 100 ETB')
+                : isGursha
+                ? (isAmharic ? 'የፈጣን ማህበረሰብ ጉርሻ' : 'Instant Community Cash')
+                : (isAmharic ? 'ቋሚ የቦነስ ሽልማት' : 'Flat Cash Bonus');
 
               return (
                 <div
                   key={camp.id}
-                  className={`bg-white dark:bg-slate-900/90 rounded-3xl p-4 border ${theme.border} ${theme.glow} transition-all relative overflow-hidden backdrop-blur-sm ${
-                    camp.has_claimed ? 'opacity-90' : ''
-                  }`}
+                  className="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200/90 dark:border-slate-800 shadow-[0_8px_25px_rgba(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.3)] relative overflow-hidden transition-all"
                 >
-                  {/* Top Header */}
-                  <div className="flex items-start justify-between gap-2.5 mb-2.5">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-10 h-10 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0 border border-slate-200/60 dark:border-slate-700 shadow-inner">
-                        {theme.icon}
+                  {/* Top card header */}
+                  <div className="flex items-center justify-between gap-3 mb-3.5">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${cardTheme.iconBg}`}>
+                        {cardTheme.icon}
                       </div>
                       <div>
                         <h3 className="text-sm font-black text-slate-800 dark:text-white leading-tight">
                           {titleText}
                         </h3>
-                        <p className="text-[10px] text-slate-400 dark:text-slate-400 font-medium line-clamp-1 mt-0.5">
+                        <p className="text-[11px] text-slate-400 font-medium line-clamp-1 mt-0.5">
                           {descText}
                         </p>
                       </div>
                     </div>
 
                     {/* Spots Counter Badge */}
-                    <span className={`text-[9px] font-black px-2 py-1 rounded-full border shrink-0 ${theme.badgeBg}`}>
+                    <span className={`text-[10px] font-black px-2.5 py-1 rounded-full border shrink-0 ${cardTheme.badge}`}>
                       {camp.is_slots_full
                         ? (isAmharic ? 'ቦታው ተሞልቷል' : 'Full')
-                        : `${camp.spots_left} / ${camp.max_winners} ${isAmharic ? 'ቦታዎች' : 'spots'}`}
+                        : `${camp.spots_left} / ${camp.max_winners} ${isAmharic ? 'ቦታዎች' : 'left'}`}
                     </span>
                   </div>
 
-                  {/* 🌟 Reward Amount Display (Range 100 - 1,000 ETB for 500 Games) */}
-                  <div className="bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-3 my-2.5 border border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                  {/* 🌟 Big Attractive Reward Value Box */}
+                  <div className="bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-4 my-3 border border-slate-100 dark:border-slate-800 flex items-center justify-between">
                     <div>
-                      <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400">
-                        {isAmharic ? 'ሽልማት' : 'Reward Value'}
+                      <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                        {isAmharic ? 'የሽልማት መጠን' : 'Reward Value'}
                       </p>
-                      <p className="text-lg font-black text-slate-800 dark:text-white leading-tight mt-0.5">
-                        {rewardDisplayText}
+                      <p className="text-xl font-black text-slate-800 dark:text-white leading-tight mt-0.5">
+                        {rewardHeading}
                       </p>
-                      <p className="text-[9px] text-slate-400 dark:text-slate-400 font-semibold mt-0.5">
-                        {rewardSubText}
+                      <p className="text-[10px] text-amber-600 dark:text-amber-400 font-bold mt-0.5">
+                        {rewardSub}
                       </p>
                     </div>
 
                     <div className="text-right">
-                      <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400">
-                        {isAmharic ? 'የእድል ሁኔታ' : 'Eligibility'}
+                      <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                        {isAmharic ? 'ሁኔታ' : 'Status'}
                       </p>
-                      <p className="text-xs font-black mt-0.5">
+                      <div className="mt-0.5">
                         {camp.has_claimed ? (
-                          <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1 justify-end">
-                            <CheckCircle2 size={12} /> {isAmharic ? 'ተወስዷል' : 'Claimed'}
+                          <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 flex items-center gap-1 justify-end">
+                            <CheckCircle2 size={13} /> {isAmharic ? 'ተወስዷል' : 'Claimed'}
                           </span>
                         ) : camp.is_slots_full ? (
-                          <span className="text-rose-500 flex items-center gap-1 justify-end">
-                            <Lock size={12} /> {isAmharic ? 'ተዘግቷል' : 'Completed'}
+                          <span className="text-xs font-black text-rose-500 flex items-center gap-1 justify-end">
+                            <Lock size={13} /> {isAmharic ? 'ተዘግቷል' : 'Closed'}
                           </span>
                         ) : camp.is_eligible ? (
-                          <span className="text-amber-500 flex items-center gap-1 justify-end animate-pulse">
-                            <Sparkles size={12} /> {isAmharic ? 'ለመውሰድ ዝግጁ!' : 'Ready to Claim!'}
+                          <span className="text-xs font-black text-amber-500 flex items-center gap-1 justify-end animate-pulse">
+                            <Sparkles size={13} /> {isAmharic ? 'ዝግጁ ነው!' : 'Ready!'}
                           </span>
                         ) : (
-                          <span className="text-slate-400 dark:text-slate-400">
-                            {camp.target_value > 0 ? `${progressPct}%` : 'Locked'}
+                          <span className="text-xs font-bold text-slate-400">
+                            {progressPct}%
                           </span>
                         )}
-                      </p>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Progress Bar (if milestone has target) */}
-                  {camp.target_value > 0 && (
-                    <div className="mb-3 px-0.5">
-                      <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 dark:text-slate-400 mb-1">
-                        <span>{isAmharic ? 'የደረሱበት' : 'Progress'}</span>
-                        <span className="font-mono text-slate-600 dark:text-slate-300">
-                          {camp.user_progress.toLocaleString()} / {camp.target_value.toLocaleString()} {camp.id === 'total_games' ? (isAmharic ? 'ጨዋታዎች' : 'games') : 'ETB'}
+                  {/* Progress Bar (Only for milestone targets, NOT Gursha!) */}
+                  {!isGursha && camp.target_value > 0 && (
+                    <div className="mb-4 px-0.5">
+                      <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 mb-1.5">
+                        <span>{isAmharic ? 'የደረሱበት ደረጃ' : 'Milestone Progress'}</span>
+                        <span className="font-mono text-slate-700 dark:text-slate-300 font-bold">
+                          {camp.user_progress.toLocaleString()} / {camp.target_value.toLocaleString()} {isGamesMilestone ? (isAmharic ? 'ጨዋታዎች' : 'games') : 'ETB'}
                         </span>
                       </div>
-                      <div className="w-full h-2.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden p-0.5 border border-slate-200/50 dark:border-slate-700/60 shadow-inner">
+                      <div className="w-full h-3 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden p-0.5 border border-slate-200/60 dark:border-slate-700 shadow-inner">
                         <div
-                          className={`h-full rounded-full transition-all duration-500 ${theme.barColor}`}
+                          className={`h-full rounded-full transition-all duration-700 bg-gradient-to-r ${cardTheme.barGradient}`}
                           style={{ width: `${progressPct}%` }}
                         />
                       </div>
                     </div>
                   )}
 
-                  {/* ACTION CLAIM BUTTON */}
+                  {/* 🌟 3D INTERACTIVE ACTION BUTTON */}
                   {camp.has_claimed ? (
                     <button
                       disabled
-                      className="w-full py-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 text-emerald-700 dark:text-emerald-300 font-black text-xs flex items-center justify-center gap-1.5 shadow-xs"
+                      className="w-full py-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 font-black text-xs flex items-center justify-center gap-2 shadow-xs cursor-default"
                     >
                       <CheckCircle2 size={16} />
                       <span>
@@ -466,7 +472,7 @@ export default function Rewards() {
                   ) : camp.is_slots_full ? (
                     <button
                       disabled
-                      className="w-full py-3 rounded-2xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 font-bold text-xs flex items-center justify-center gap-1.5 cursor-not-allowed"
+                      className="w-full py-3.5 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-400 font-bold text-xs flex items-center justify-center gap-1.5 cursor-not-allowed"
                     >
                       <Lock size={15} />
                       <span>{isAmharic ? 'ሁሉም ቦታዎች ተሞልተዋል' : 'All Spots Claimed'}</span>
@@ -475,15 +481,15 @@ export default function Rewards() {
                     <button
                       onClick={() => handleClaim(camp)}
                       disabled={isClaiming}
-                      className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-600 to-orange-500 hover:from-amber-600 hover:to-orange-600 active:scale-95 text-white font-black text-xs shadow-[0_6px_20px_rgba(245,158,11,0.35)] border-t border-white/30 transition-all flex items-center justify-center gap-2 animate-pulse"
+                      className="w-full py-4 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-600 to-orange-500 hover:from-amber-600 hover:to-orange-600 active:scale-95 text-white font-black text-sm shadow-[0_8px_25px_rgba(245,158,11,0.35)] border-t border-white/40 transition-all flex items-center justify-center gap-2 animate-pulse"
                     >
                       {isClaiming ? (
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                       ) : (
                         <>
-                          <Gift size={16} />
+                          <Gift size={18} />
                           <span>
-                            {isAmharic ? 'ቦነሱን ይውሰዱ' : 'Claim'} {camp.potential_reward.toLocaleString()} ETB {isAmharic ? 'አሁን!' : 'Now!'}
+                            {isAmharic ? 'ቦነሱን አሁን ይውሰዱ' : 'Claim'} {camp.potential_reward.toLocaleString()} ETB!
                           </span>
                         </>
                       )}
@@ -491,13 +497,13 @@ export default function Rewards() {
                   ) : (
                     <button
                       disabled
-                      className="w-full py-3 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 font-bold text-xs flex items-center justify-center gap-1.5 cursor-not-allowed border border-slate-200/60 dark:border-slate-700"
+                      className="w-full py-3.5 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 font-bold text-xs flex items-center justify-center gap-1.5 cursor-not-allowed border border-slate-200/80 dark:border-slate-700"
                     >
                       <Lock size={14} />
                       <span>
                         {isAmharic ? 'ገና አልደረሱም (' : 'In Progress ('}
                         {camp.target_value - camp.user_progress > 0 
-                          ? `${(camp.target_value - camp.user_progress).toLocaleString()} ${camp.id === 'total_games' ? 'games' : 'ETB'} left)` 
+                          ? `${(camp.target_value - camp.user_progress).toLocaleString()} ${isGamesMilestone ? 'games' : 'ETB'} left)` 
                           : 'Locked)'}
                       </span>
                     </button>
@@ -508,31 +514,31 @@ export default function Rewards() {
           )}
         </div>
 
-        {/* ── RECENT BONUS CLAIMERS (SOCIAL PROOF) ── */}
+        {/* ── 🌟 LIVE BONUS WINNERS AUDIT ── */}
         {recentClaimers.length > 0 && (
-          <div className="px-3.5 pt-5 pb-6">
-            <h3 className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2.5 flex items-center gap-1.5">
-              <Trophy size={14} className="text-amber-500" />
-              <span>{isAmharic ? 'የቅርብ ጊዜ ቦነስ የወሰዱ' : 'Recent Bonus Claimers'}</span>
+          <div className="px-4 pt-6 pb-6">
+            <h3 className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-1.5">
+              <Trophy size={15} className="text-amber-500" />
+              <span>{isAmharic ? 'የቅርብ ጊዜ ቦነስ የወሰዱ' : 'Live Bonus Winners'}</span>
             </h3>
 
-            <div className="bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200/80 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800 overflow-hidden shadow-xs">
+            <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800 overflow-hidden shadow-sm">
               {recentClaimers.map((rc, idx) => (
-                <div key={idx} className="p-3 flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="w-7 h-7 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 font-black text-xs flex items-center justify-center shrink-0">
+                <div key={idx} className="p-3.5 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 font-black text-xs flex items-center justify-center shrink-0 border border-amber-200 dark:border-amber-800">
                       #{rc.claim_order}
                     </div>
                     <div className="min-w-0">
                       <p className="text-xs font-black text-slate-800 dark:text-slate-100 truncate">
                         {rc.first_name || 'Player'}
                       </p>
-                      <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate">
+                      <p className="text-[10px] text-slate-400 truncate">
                         {rc.campaign_id === 'total_games'
-                          ? (isAmharic ? '500 ጨዋታዎች ቦነስ' : '500 Games Bonus')
+                          ? (isAmharic ? '500 ጨዋታዎች ቦነስ' : '500 Games Milestone')
                           : rc.campaign_id === 'invitation_reward'
                           ? (isAmharic ? 'የግብዣ ቦነስ' : 'Referral Milestone')
-                          : (isAmharic ? 'የማህበረሰብ ጉርሻ' : 'Gursha Reward')}
+                          : (isAmharic ? 'የማህበረሰብ ጉርሻ' : 'Gursha Flash')}
                       </p>
                     </div>
                   </div>
@@ -541,7 +547,7 @@ export default function Rewards() {
                     <p className="text-xs font-black text-emerald-600 dark:text-emerald-400">
                       +{Number(rc.claim_amount).toLocaleString()} ETB
                     </p>
-                    <p className="text-[9px] text-slate-400 dark:text-slate-500">
+                    <p className="text-[9px] text-slate-400">
                       {timeAgo(rc.claimed_at)}
                     </p>
                   </div>
@@ -572,7 +578,7 @@ export default function Rewards() {
               {isAmharic ? 'የቦነስ ሽልማትዎ በተሳካ ሁኔታ ተወስዷል!' : 'Your milestone reward has been claimed successfully!'}
             </p>
 
-            <div className="my-4 py-3 px-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60">
+            <div className="my-4 py-3.5 px-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60">
               <p className="text-[10px] font-bold uppercase text-amber-700 dark:text-amber-400">
                 {successModal.title}
               </p>
@@ -586,7 +592,7 @@ export default function Rewards() {
 
             <button
               onClick={() => setSuccessModal({ open: false, title: '', amount: 0, spot: 0 })}
-              className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-black text-sm shadow-md active:scale-95 transition-all"
+              className="w-full py-4 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-black text-sm shadow-md active:scale-95 transition-all"
             >
               {isAmharic ? 'በጣም ጥሩ! (እሺ)' : 'Awesome, Thank you!'}
             </button>
