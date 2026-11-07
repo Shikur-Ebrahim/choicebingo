@@ -23,6 +23,7 @@ export const t = {
       games: 'Games',
       deposit: 'Deposit',
       leaderboard: 'Leaderboard',
+      bonus: 'Bonus',
       profile: 'Profile'
     },
     bingo: {
@@ -424,6 +425,7 @@ export const t = {
       games: 'ጨዋታዎች',
       deposit: 'ገንዘብ አስገባ',
       leaderboard: 'ደረጃዎች',
+      bonus: 'ቦነስ',
       profile: 'መገለጫ'
     },
     bingo: {

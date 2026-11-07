@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { MemoryRouter, Routes, Route, Link, useLocation, Navigate, useNavigate } from 'react-router-dom';
-import { Gamepad2, Wallet, Trophy, User, Headphones } from 'lucide-react';
+import { Gamepad2, Wallet, Trophy, User, Headphones, Gift } from 'lucide-react';
 import WebApp from '@twa-dev/sdk';
 import { useGameStore } from './store/gameStore';
 import { t } from './lib/translations';
@@ -15,6 +15,7 @@ import BingoGame from './pages/BingoGame';
 import AdminBingoGames from './pages/AdminBingoGames';
 import AdminUserAudit from './pages/AdminUserAudit';
 import Leaderboard from './pages/Leaderboard';
+import Rewards from './pages/Rewards';
 import GamesReport from './pages/GamesReport';
 import Audit from './pages/Audit';
 import Rules from './pages/Rules';
@@ -65,6 +66,7 @@ function Navigation() {
     { path: '/', label: t[language].nav.games, icon: Gamepad2 },
     { path: '/deposit', label: t[language].nav.deposit, icon: Wallet },
     { path: '/leaderboard', label: t[language].nav.leaderboard, icon: Trophy },
+    { path: '/rewards', label: t[language].nav.bonus, icon: Gift },
     { path: '#', label: t[language].nav.profile, icon: User },
   ];
 
@@ -137,6 +139,7 @@ import AdminTxReport from './pages/AdminTxReport';
 import AdminUsers from './pages/AdminUsers';
 import AdminWorkers from './pages/AdminWorkers';
 import AdminBroadcast from './pages/AdminBroadcast';
+import AdminRewards from './pages/AdminRewards';
 import AdminQrCode from './pages/AdminQrCode';
 
 import DepositHistory from './pages/DepositHistory';
@@ -187,6 +190,7 @@ function App() {
           <Route path="/invited" element={<InvitedPeople />} />
           <Route path="/withdraw" element={<Withdraw />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
+          <Route path="/rewards" element={<Rewards />} />
           <Route path="/games-report" element={<GamesReport />} />
           <Route path="/audit" element={<Audit />} />
           <Route path="/rules" element={<Rules />} />
@@ -198,6 +202,7 @@ function App() {
           <Route path="/admin/deposits" element={<AdminDeposits />} />
           <Route path="/admin/withdrawals" element={<AdminWithdrawals />} />
           <Route path="/admin/settings" element={<AdminSettings />} />
+          <Route path="/admin/rewards" element={<AdminRewards />} />
           <Route path="/admin/tx-report" element={<AdminTxReport />} />
           <Route path="/admin/users" element={<AdminUsers />} />
           <Route path="/admin/workers" element={<AdminWorkers />} />
