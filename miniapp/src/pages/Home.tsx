@@ -1,12 +1,13 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { t } from '../lib/translations';
-import { Gift, ArrowDownToLine, Share2, PlusCircle, Info, MessageCircle, Zap, Trophy, Clock, X, Sparkles, Play, Gamepad2 } from 'lucide-react';
+import { Gift, ArrowDownToLine, Share2, PlusCircle, Info, MessageCircle, Zap, Trophy, Clock, X, Sparkles, Play, Gamepad2, Bell } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import WebApp from '@twa-dev/sdk';
 import { supabase } from '../lib/supabase';
 import VideoGuideModal, { useAutoVideoGuide } from '../components/VideoGuideModal';
 import PwaInstallBanner from '../components/PwaInstallBanner';
+import NotificationModal, { NotificationItem } from '../components/NotificationModal';
 
 export default function Home() {
   const { user, language, setIsPhoneModalOpen } = useGameStore();
@@ -55,6 +56,102 @@ export default function Home() {
     campaignId: string;
   } | null>(null);
   const [dismissedRewardAlert, setDismissedRewardAlert] = useState(false);
+
+  // ── NOTIFICATIONS STATE & LOGIC ──
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const [readNotifIds, setReadNotifIds] = useState<Set<string>>(() => {
+    try {
+      const userKey = user?.telegram_id || 'guest';
+      const saved = localStorage.getItem(`cb_read_notifs_${userKey}`);
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
+
+  // Re-sync read IDs when user switches or logs in
+  useEffect(() => {
+    try {
+      const userKey = user?.telegram_id || 'guest';
+      const saved = localStorage.getItem(`cb_read_notifs_${userKey}`);
+      setReadNotifIds(saved ? new Set(JSON.parse(saved)) : new Set());
+    } catch {
+      setReadNotifIds(new Set());
+    }
+  }, [user?.telegram_id]);
+
+  const fetchNotifications = useCallback(async () => {
+    try {
+      const initData = typeof WebApp !== 'undefined' ? WebApp.initData : '';
+      const pwaPhone = typeof window !== 'undefined' ? localStorage.getItem('cb_pwa_phone') || '' : '';
+      const API = import.meta.env.VITE_API_URL || '/api';
+      const res = await fetch(`${API}/notifications`, {
+        headers: {
+          'Content-Type': 'application/json',
+          'x-telegram-init-data': initData,
+          'x-pwa-phone': pwaPhone,
+        },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setNotifications(data.notifications || []);
+      }
+    } catch (err) {
+      console.error('Failed to load notifications:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchNotifications();
+    const pollInterval = setInterval(() => {
+      if (document.visibilityState !== 'hidden') {
+        fetchNotifications();
+      }
+    }, 12000);
+
+    const ch = supabase.channel('home_notifications_tracker')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'deposits' }, () => fetchNotifications())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'withdrawals' }, () => fetchNotifications())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'broadcast_posts' }, () => fetchNotifications())
+      .subscribe();
+
+    return () => {
+      clearInterval(pollInterval);
+      supabase.removeChannel(ch);
+    };
+  }, [fetchNotifications]);
+
+  const handleMarkAsRead = useCallback((id: string) => {
+    setReadNotifIds((prev) => {
+      const next = new Set(prev);
+      next.add(id);
+      try {
+        const userKey = user?.telegram_id || 'guest';
+        localStorage.setItem(`cb_read_notifs_${userKey}`, JSON.stringify(Array.from(next)));
+      } catch {}
+      return next;
+    });
+  }, [user?.telegram_id]);
+
+  const handleMarkAllAsRead = useCallback(() => {
+    setReadNotifIds((prev) => {
+      const next = new Set(prev);
+      notifications.forEach((n) => next.add(n.id));
+      try {
+        const userKey = user?.telegram_id || 'guest';
+        localStorage.setItem(`cb_read_notifs_${userKey}`, JSON.stringify(Array.from(next)));
+      } catch {}
+      return next;
+    });
+    if (typeof WebApp !== 'undefined') {
+      try { WebApp.HapticFeedback?.notificationOccurred('success'); } catch (_) {}
+    }
+  }, [notifications, user?.telegram_id]);
+
+  const unreadCount = useMemo(() => {
+    return notifications.filter((n) => !readNotifIds.has(n.id)).length;
+  }, [notifications, readNotifIds]);
 
   // Check for active or upcoming rewards to notify the user
   useEffect(() => {
@@ -361,7 +458,22 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="flex items-center space-x-4 text-right">
+        <div className="flex items-center space-x-3 text-right">
+          {/* ── NOTIFICATION BELL (Top Header) ── */}
+          <button
+            type="button"
+            onClick={() => setIsNotificationOpen(true)}
+            className="relative w-9 h-9 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 active:scale-90 transition-transform shadow-xs hover:bg-slate-100"
+            title={language === 'am' ? 'ማሳወቂያዎች' : 'Notifications'}
+          >
+            <Bell size={18} className={unreadCount > 0 ? "text-amber-500 animate-bounce" : ""} />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center shadow-md ring-2 ring-white dark:ring-slate-900 animate-pulse">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </button>
+
           <div className="flex flex-col items-center">
             <div className="flex items-center space-x-1 text-purple-500 dark:text-purple-400 mb-0.5">
               <Gift size={14} />
@@ -650,6 +762,16 @@ export default function Home() {
           })}
         </div>
       </div>
+
+      {/* ── NOTIFICATION MODAL / DRAWER ── */}
+      <NotificationModal
+        isOpen={isNotificationOpen}
+        onClose={() => setIsNotificationOpen(false)}
+        notifications={notifications}
+        readIds={readNotifIds}
+        onMarkAsRead={handleMarkAsRead}
+        onMarkAllAsRead={handleMarkAllAsRead}
+      />
     </div>
   );
 }
