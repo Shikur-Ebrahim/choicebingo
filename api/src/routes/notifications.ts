@@ -135,13 +135,14 @@ router.get('/', optionalTelegramAuth, async (req: AuthRequest, res: Response) =>
     try {
       const { data: withdrawals } = await supabase
         .from('withdrawals')
-        .select('id, amount, status, account_number, created_at, updated_at, withdrawal_methods(name, type)')
+        .select('id, amount, status, account_number, created_at, updated_at, withdrawal_methods(type)')
         .in('telegram_id', userIds)
         .order('created_at', { ascending: false })
         .limit(15);
 
       for (const w of withdrawals || []) {
-        const wMethodName = (w.withdrawal_methods as any)?.name || 'Payout';
+        const rawType = (w.withdrawal_methods as any)?.type || 'Bank';
+        const wMethodName = rawType.toUpperCase();
         const formattedAmount = Number(w.amount || 0).toLocaleString('en-US');
 
         if (w.status === 'approved' || w.status === 'sent') {
@@ -172,10 +173,10 @@ router.get('/', optionalTelegramAuth, async (req: AuthRequest, res: Response) =>
           addNotif({
             id: `withdrawal_${w.id}_pending`,
             type: 'withdrawal',
-            title: `Withdrawal In Queue (${formattedAmount} ETB)`,
-            title_am: `የወጪ ጥያቄ በሂደት ላይ (${formattedAmount} ብር)`,
-            message: `Your withdrawal request of ${formattedAmount} ETB via ${wMethodName} is currently queued for transfer.`,
-            message_am: `በ${wMethodName} የጠየቁት የ ${formattedAmount} ብር ወጪ በሰራተኞች በመተላለፍ ሂደት ላይ ነው።`,
+            title: `Withdrawal Under Review (${formattedAmount} ETB)`,
+            title_am: `የወጪ ጥያቄ በግምገማ ላይ ነው (${formattedAmount} ብር)`,
+            message: `Your withdrawal request of ${formattedAmount} ETB via ${wMethodName} (${w.account_number || ''}) is being reviewed by operators.`,
+            message_am: `በ${wMethodName} (${w.account_number || ''}) የጠየቁት የ ${formattedAmount} ብር ወጪ በሰራተኞች በመረጋገጥ ላይ ነው።`,
             created_at: w.created_at,
             status: 'warning',
             amount: Number(w.amount),
