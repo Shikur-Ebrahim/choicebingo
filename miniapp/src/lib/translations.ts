@@ -121,6 +121,9 @@ export const t = {
       support: 'Support Team',
       channel: 'Channel',
       logout: 'Close Profile',
+      totalGames: 'Games',
+      totalStake: 'Total Stake',
+      invitedReward: 'Invited Reward',
     },
     deposit: {
       pendingTitle: 'Review Pending',
@@ -517,6 +520,9 @@ export const t = {
       support: 'የድጋፍ ቡድን',
       channel: 'ይፋዊ ቻናል',
       logout: 'መገለጫ ዝጋ',
+      totalGames: 'ጨዋታዎች',
+      totalStake: 'ጠቅላላ ውርርድ',
+      invitedReward: 'የግብዣ ሽልማት',
     },
     deposit: {
       pendingTitle: 'በግምገማ ላይ ያለ',

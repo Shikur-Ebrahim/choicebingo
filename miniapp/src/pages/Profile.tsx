@@ -127,6 +127,22 @@ export default function Profile() {
               <p className="text-base font-black text-white">{formatMoney(user?.bonus_balance)} <span className="text-[8px]">ETB</span></p>
             </div>
           </div>
+
+          {/* User Activity Stats */}
+          <div className="grid grid-cols-3 gap-1.5 mt-2">
+            <div className="bg-black/20 backdrop-blur-md rounded-xl p-1.5 border border-white/10 flex flex-col items-center justify-center text-center">
+              <p className="text-[7.5px] font-bold uppercase tracking-wider text-amber-300/90">{t[language].profile.totalGames}</p>
+              <p className="text-xs font-black text-white mt-0.5">🎮 {user?.total_games || 0}</p>
+            </div>
+            <div className="bg-black/20 backdrop-blur-md rounded-xl p-1.5 border border-white/10 flex flex-col items-center justify-center text-center">
+              <p className="text-[7.5px] font-bold uppercase tracking-wider text-cyan-300/90">{t[language].profile.totalStake}</p>
+              <p className="text-xs font-black text-white mt-0.5">{formatMoney(user?.total_stake)} <span className="text-[7px]">ETB</span></p>
+            </div>
+            <div className="bg-black/20 backdrop-blur-md rounded-xl p-1.5 border border-white/10 flex flex-col items-center justify-center text-center">
+              <p className="text-[7.5px] font-bold uppercase tracking-wider text-emerald-300/90">{t[language].profile.invitedReward}</p>
+              <p className="text-xs font-black text-white mt-0.5">{formatMoney(user?.invited_reward)} <span className="text-[7px]">ETB</span></p>
+            </div>
+          </div>
         </div>
 
         {/* â”€â”€ SCROLLABLE CONTENT â”€â”€ */}

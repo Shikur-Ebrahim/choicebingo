@@ -189,6 +189,35 @@ class BingoEngine {
       updated_at: new Date().toISOString(),
     }).eq('id', game.id);
     console.log(`🎰 Game #${game.id.slice(0,8).toUpperCase()} started with ${uniquePlayers} unique players!`);
+
+    // Accumulate total_games (+1) and total_stake (+ user purchased cartelas stake sum)
+    try {
+      const userStakeMap: Record<string, number> = {};
+      for (const p of players) {
+        if (!p.telegram_id) continue;
+        const cartelaStake = (Number(p.main_used || 0) + Number(p.bonus_used || 0)) || Number(game.stake || 0);
+        userStakeMap[p.telegram_id] = (userStakeMap[p.telegram_id] || 0) + cartelaStake;
+      }
+
+      for (const [telegramId, userStake] of Object.entries(userStakeMap)) {
+        const { data: u } = await supabase
+          .from('users')
+          .select('total_games, total_stake')
+          .eq('telegram_id', telegramId)
+          .single();
+
+        if (u) {
+          const currentTotalGames = Number(u.total_games || 0);
+          const currentTotalStake = Number(u.total_stake || 0);
+          await supabase.from('users').update({
+            total_games: currentTotalGames + 1,
+            total_stake: Number((currentTotalStake + userStake).toFixed(2)),
+          }).eq('telegram_id', telegramId);
+        }
+      }
+    } catch (e: any) {
+      console.error(`[BingoEngine] Failed to update user game/stake stats for game #${game.id}:`, e?.message);
+    }
   }
 
   private async refundAndResetGame(game: any, players: any[]) {
@@ -467,12 +496,16 @@ class BingoEngine {
     // Refund ALL players their stake
     for (const p of players) {
       const { data: u } = await supabase.from('users')
-        .select('main_balance')
+        .select('main_balance, total_games, total_stake')
         .eq('telegram_id', p.telegram_id)
         .single();
       if (u) {
+        const curGames = Number(u.total_games || 0);
+        const curStake = Number(u.total_stake || 0);
         await supabase.from('users').update({
           main_balance: Number(u.main_balance) + Number(stake),
+          total_games: Math.max(0, curGames - 1),
+          total_stake: Math.max(0, Number((curStake - Number(stake)).toFixed(2))),
         }).eq('telegram_id', p.telegram_id);
       }
       await notify(

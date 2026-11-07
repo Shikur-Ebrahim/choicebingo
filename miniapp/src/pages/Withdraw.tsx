@@ -444,10 +444,22 @@ export default function Withdraw() {
               <div className="relative">
                 <Phone size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
-                  type="tel"
+                  type="text"
                   inputMode="numeric"
                   pattern="[0-9]*"
                   value={accountNumber}
+                  onBeforeInput={(e: any) => {
+                    if (e.data && !/^\d+$/.test(e.data)) {
+                      e.preventDefault();
+                    }
+                  }}
+                  onInput={(e: React.FormEvent<HTMLInputElement>) => {
+                    const cleaned = e.currentTarget.value.replace(/\D/g, '');
+                    if (cleaned !== e.currentTarget.value) {
+                      e.currentTarget.value = cleaned;
+                    }
+                    setAccountNumber(cleaned);
+                  }}
                   onChange={e => setAccountNumber(e.target.value.replace(/\D/g, ''))}
                   onKeyDown={e => {
                     // Allow navigation keys and shortcuts
@@ -463,7 +475,7 @@ export default function Withdraw() {
                     const pasted = e.clipboardData.getData('text').replace(/\D/g, '');
                     setAccountNumber(pasted);
                   }}
-                  placeholder={selected.type === 'telebirr' || selected.type === 'mpesa' ? '09XXXXXXXX' : 'Account number (numbers only)'}
+                  placeholder={selected.type === 'telebirr' || selected.type === 'mpesa' ? '09XXXXXXXX' : (language === 'am' ? 'የአካውንት ቁጥር (ቁጥሮች ብቻ)' : 'Account number (numbers only)')}
                   className="w-full pl-11 pr-4 py-3.5 border-2 border-slate-200/80 dark:border-slate-700/80 rounded-2xl focus:border-amber-400 focus:outline-none text-slate-800 dark:text-slate-100 font-bold text-sm bg-slate-50 dark:bg-slate-950/80 shadow-inner"
                   required
                 />

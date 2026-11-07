@@ -36,6 +36,9 @@ interface User {
   main_balance: number;
   bonus_balance: number;
   total_wins: number;
+  total_games?: number;
+  total_stake?: number;
+  invited_reward?: number;
   totalDeposited: number;
   depositCount: number;
   created_at: string;
@@ -404,6 +407,13 @@ export default function AdminUsers() {
                   <span className="text-[10px] font-bold text-emerald-600">💰 {fmt(u.main_balance)} ETB</span>
                   <span className="text-[10px] font-bold text-violet-600">🎁 {fmt(u.bonus_balance)} ETB</span>
                 </div>
+                <div className="flex items-center space-x-2 mt-0.5 text-[9px] font-semibold text-slate-400">
+                  <span>🎮 {u.total_games || 0} games</span>
+                  <span>·</span>
+                  <span>🎯 {fmt(u.total_stake || 0)} ETB</span>
+                  <span>·</span>
+                  <span>🏆 {u.total_wins || 0} wins</span>
+                </div>
               </div>
               <ChevronRight size={14} className="text-slate-300 shrink-0" />
             </button>
@@ -499,7 +509,7 @@ export default function AdminUsers() {
                 </div>
 
                 {/* Balance Stats */}
-                <div className="grid grid-cols-2 gap-2 mb-4">
+                <div className="grid grid-cols-2 gap-2 mb-2.5">
                   {[
                     { label: 'Main Balance', value: selected.main_balance, icon: <Wallet size={14} />, color: 'text-emerald-600', bg: 'bg-emerald-50' },
                     { label: 'Bonus Balance', value: selected.bonus_balance, icon: <Gift size={14} />, color: 'text-violet-600', bg: 'bg-violet-50' },
@@ -514,6 +524,22 @@ export default function AdminUsers() {
                       </div>
                     </div>
                   ))}
+                </div>
+
+                {/* Gaming & Referral Metrics */}
+                <div className="grid grid-cols-3 gap-2 mb-3">
+                  <div className="bg-slate-50 rounded-xl p-2.5 flex flex-col items-center justify-center border border-slate-100 text-center">
+                    <p className="text-[8px] text-slate-400 font-bold uppercase tracking-wider">Total Games</p>
+                    <p className="text-xs font-black text-amber-600 mt-0.5">🎮 {selected.total_games || 0}</p>
+                  </div>
+                  <div className="bg-slate-50 rounded-xl p-2.5 flex flex-col items-center justify-center border border-slate-100 text-center">
+                    <p className="text-[8px] text-slate-400 font-bold uppercase tracking-wider">Total Stake</p>
+                    <p className="text-xs font-black text-indigo-600 mt-0.5">{fmt(selected.total_stake || 0)} <span className="text-[8px] font-semibold text-slate-400">ETB</span></p>
+                  </div>
+                  <div className="bg-slate-50 rounded-xl p-2.5 flex flex-col items-center justify-center border border-slate-100 text-center">
+                    <p className="text-[8px] text-slate-400 font-bold uppercase tracking-wider">Invited Reward</p>
+                    <p className="text-xs font-black text-emerald-600 mt-0.5">{fmt(selected.invited_reward || 0)} <span className="text-[8px] font-semibold text-slate-400">ETB</span></p>
+                  </div>
                 </div>
 
                 {/* ─── ACCOUNT STATUS TOGGLE ─── */}

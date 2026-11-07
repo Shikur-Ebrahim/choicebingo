@@ -10,4 +10,6 @@ export interface User {
   permissions?: Record<string, boolean>;
   total_games?: number;
   total_wins: number;
+  total_stake?: number;
+  invited_reward?: number;
 }

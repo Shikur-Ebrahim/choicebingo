@@ -35,6 +35,9 @@ router.post('/verify', validateTelegramAuth, async (req: AuthRequest, res) => {
         first_name: user.first_name,
         main_balance: 0,
         bonus_balance: welcomeBonus,
+        total_games: 0,
+        total_stake: 0,
+        invited_reward: 0,
       })
       .select().single();
     if (error) { res.status(500).json({ error: error.message }); return; }

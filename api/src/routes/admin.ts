@@ -479,10 +479,14 @@ router.post('/deposits/:id/approve', async (req, res) => {
   }
 
   if (inviterId && inviterBonus > 0) {
-    const { data: invRecord } = await supabase.from('users').select('bonus_balance').eq('telegram_id', inviterId).single();
+    const { data: invRecord } = await supabase.from('users').select('bonus_balance, invited_reward').eq('telegram_id', inviterId).single();
     if (invRecord) {
       const currentInvBonus = Number(invRecord.bonus_balance || 0);
-      await supabase.from('users').update({ bonus_balance: currentInvBonus + inviterBonus }).eq('telegram_id', inviterId);
+      const currentInvReward = Number(invRecord.invited_reward || 0);
+      await supabase.from('users').update({
+        bonus_balance: currentInvBonus + inviterBonus,
+        invited_reward: Number((currentInvReward + inviterBonus).toFixed(2)),
+      }).eq('telegram_id', inviterId);
     }
   }
 
@@ -1008,7 +1012,7 @@ router.get('/users', async (req, res) => {
 
   let query = supabase
     .from('users')
-    .select('id, telegram_id, username, first_name, role, status, main_balance, bonus_balance, total_wins, created_at', { count: 'exact' })
+    .select('id, telegram_id, username, first_name, role, status, main_balance, bonus_balance, total_wins, total_games, total_stake, invited_reward, created_at', { count: 'exact' })
     .order('created_at', { ascending: false });
 
   if (search) {

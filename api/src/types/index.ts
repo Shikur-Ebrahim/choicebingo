@@ -8,4 +8,6 @@ export interface User {
   role: 'admin' | 'worker' | 'user';
   total_games: number;
   total_wins: number;
+  total_stake?: number;
+  invited_reward?: number;
 }
