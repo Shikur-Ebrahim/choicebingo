@@ -18,16 +18,20 @@ router.post('/direct', validateTelegramAuth, async (req: AuthRequest, res) => {
     return;
   }
 
-  const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml'];
+  const allowedTypes = [
+    'image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml',
+    'video/mp4', 'video/webm', 'video/quicktime', 'video/3gpp', 'video/x-matroska', 'video/mpeg', 'video/ogg'
+  ];
   if (!allowedTypes.includes(contentType)) {
-    res.status(400).json({ error: 'Only image files are allowed' });
+    res.status(400).json({ error: 'Only image and video files are allowed' });
     return;
   }
 
   const telegramId = req.telegramUser!.id.toString();
-  const ext = filename.split('.').pop() || 'png';
+  const ext = filename.split('.').pop() || 'mp4';
   const uniqueId = crypto.randomBytes(8).toString('hex');
-  const key = `users/${telegramId}/${uniqueId}.${ext}`;
+  const folder = contentType.startsWith('video/') ? 'support_videos' : `users/${telegramId}`;
+  const key = `${folder}/${uniqueId}.${ext}`;
 
   try {
     const base64Data = base64.includes(';base64,') ? base64.split(';base64,')[1] : base64;
@@ -54,19 +58,21 @@ router.post('/presign', validateTelegramAuth, async (req: AuthRequest, res) => {
     return;
   }
 
-  // Only allow image types
-  const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+  // Allow image and video types
+  const allowedTypes = [
+    'image/jpeg', 'image/png', 'image/webp', 'image/gif',
+    'video/mp4', 'video/webm', 'video/quicktime', 'video/3gpp', 'video/x-matroska', 'video/mpeg', 'video/ogg'
+  ];
   if (!allowedTypes.includes(contentType)) {
-    res.status(400).json({ error: 'Only image files are allowed' });
+    res.status(400).json({ error: 'Only image and video files are allowed' });
     return;
   }
 
   const telegramId = req.telegramUser!.id.toString();
-  const ext = filename.split('.').pop() || 'jpg';
+  const ext = filename.split('.').pop() || 'mp4';
   const uniqueId = crypto.randomBytes(8).toString('hex');
-
-  // Key format: users/<telegram_id>/<random>.jpg
-  const key = `users/${telegramId}/${uniqueId}.${ext}`;
+  const folder = contentType.startsWith('video/') ? 'support_videos' : `users/${telegramId}`;
+  const key = `${folder}/${uniqueId}.${ext}`;
 
   try {
     const uploadUrl = await getPresignedUploadUrl(key, contentType);

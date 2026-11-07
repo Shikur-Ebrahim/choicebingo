@@ -1,6 +1,8 @@
 import { Router, Response } from 'express';
 import { AuthRequest, validateTelegramAuth } from '../middleware/auth';
 import { supabase } from '../services/supabase';
+import { getPresignedUploadUrl, uploadToR2 } from '../services/r2';
+import crypto from 'crypto';
 
 const router = Router();
 
@@ -25,6 +27,73 @@ function generateVideoKey(title: string, category: string): string {
     .slice(0, 40);
   return `${category}_${clean || 'vid'}_${Date.now().toString().slice(-4)}`;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 0. POST /api/support-videos/admin/presign — Get presigned R2 upload URL for gallery videos
+// ─────────────────────────────────────────────────────────────────────────────
+router.post('/admin/presign', validateTelegramAuth, async (req: AuthRequest, res: Response) => {
+  try {
+    const telegramId = req.telegramUser!.id.toString();
+    const { data: user } = await supabase.from('users').select('role').eq('telegram_id', telegramId).single();
+
+    if (!user || user.role !== 'admin') {
+      res.status(403).json({ error: 'Admin access required' });
+      return;
+    }
+
+    const { filename, contentType } = req.body;
+    if (!filename) {
+      res.status(400).json({ error: 'filename is required' });
+      return;
+    }
+
+    const ext = filename.split('.').pop() || 'mp4';
+    const uniqueId = crypto.randomBytes(8).toString('hex');
+    const key = `support_videos/${uniqueId}.${ext}`;
+
+    const uploadUrl = await getPresignedUploadUrl(key, contentType || 'video/mp4');
+    const publicUrl = `${process.env.R2_PUBLIC_URL}/${key}`;
+
+    res.json({ success: true, uploadUrl, publicUrl, key });
+  } catch (err: any) {
+    console.error('[Support Video Presign Error]', err);
+    res.status(500).json({ error: err.message || 'Presign upload URL generation failed' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 0.1 POST /api/support-videos/admin/upload-direct — Direct upload fallback for video
+// ─────────────────────────────────────────────────────────────────────────────
+router.post('/admin/upload-direct', validateTelegramAuth, async (req: AuthRequest, res: Response) => {
+  try {
+    const telegramId = req.telegramUser!.id.toString();
+    const { data: user } = await supabase.from('users').select('role').eq('telegram_id', telegramId).single();
+
+    if (!user || user.role !== 'admin') {
+      res.status(403).json({ error: 'Admin access required' });
+      return;
+    }
+
+    const { filename, contentType, base64 } = req.body;
+    if (!filename || !base64) {
+      res.status(400).json({ error: 'filename and base64 are required' });
+      return;
+    }
+
+    const ext = filename.split('.').pop() || 'mp4';
+    const uniqueId = crypto.randomBytes(8).toString('hex');
+    const key = `support_videos/${uniqueId}.${ext}`;
+
+    const base64Data = base64.includes(';base64,') ? base64.split(';base64,')[1] : base64;
+    const buffer = Buffer.from(base64Data, 'base64');
+
+    const publicUrl = await uploadToR2(key, buffer, contentType || 'video/mp4');
+    res.json({ success: true, publicUrl, key });
+  } catch (err: any) {
+    console.error('[Support Video Direct Upload Error]', err);
+    res.status(500).json({ error: err.message || 'Direct video upload failed' });
+  }
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. GET /api/support-videos — Public endpoint for players
