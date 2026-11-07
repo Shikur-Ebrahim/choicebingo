@@ -24,6 +24,8 @@ interface GameStore {
   toggleDarkMode: () => void;
   fetchUser: () => Promise<void>;
   loginWithPhone: (phone: string) => Promise<boolean>;
+  loginWithPhoneAndPass: (phone: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  registerWithPhoneAndPass: (phone: string, password: string, firstName: string) => Promise<{ success: boolean; error?: string }>;
   logoutPwaPhone: () => void;
   subscribeToBalance: () => () => void;
 }
@@ -146,6 +148,80 @@ export const useGameStore = create<GameStore>()(
             } catch (_) {}
           }
           set({ loading: false });
+        }
+      },
+
+      loginWithPhoneAndPass: async (phone: string, password: string): Promise<{ success: boolean; error?: string }> => {
+        try {
+          const cleanPhone = phone.trim().replace(/[^\d+]/g, '');
+          const res = await fetch(`${API_URL}/auth/pwa-login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone: cleanPhone, password })
+          });
+
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            return { success: false, error: data.error || 'Login failed' };
+          }
+
+          if (data.user) {
+            localStorage.setItem('cb_pwa_phone', cleanPhone);
+            const initData = `pwa_phone=${encodeURIComponent(cleanPhone)}`;
+            if (typeof WebApp !== 'undefined') {
+              try {
+                Object.defineProperty(WebApp, 'initData', {
+                  value: initData,
+                  writable: true,
+                  configurable: true,
+                });
+              } catch {}
+            }
+
+            set({ user: data.user, loading: false, isBlocked: false });
+            get().subscribeToBalance();
+            return { success: true };
+          }
+          return { success: false, error: 'User data not returned' };
+        } catch (err: any) {
+          return { success: false, error: err?.message || 'Network error' };
+        }
+      },
+
+      registerWithPhoneAndPass: async (phone: string, password: string, firstName: string): Promise<{ success: boolean; error?: string }> => {
+        try {
+          const cleanPhone = phone.trim().replace(/[^\d+]/g, '');
+          const res = await fetch(`${API_URL}/auth/pwa-register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone: cleanPhone, password, first_name: firstName })
+          });
+
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            return { success: false, error: data.error || 'Registration failed' };
+          }
+
+          if (data.user) {
+            localStorage.setItem('cb_pwa_phone', cleanPhone);
+            const initData = `pwa_phone=${encodeURIComponent(cleanPhone)}`;
+            if (typeof WebApp !== 'undefined') {
+              try {
+                Object.defineProperty(WebApp, 'initData', {
+                  value: initData,
+                  writable: true,
+                  configurable: true,
+                });
+              } catch {}
+            }
+
+            set({ user: data.user, loading: false, isBlocked: false });
+            get().subscribeToBalance();
+            return { success: true };
+          }
+          return { success: false, error: 'Registration could not be completed' };
+        } catch (err: any) {
+          return { success: false, error: err?.message || 'Network error' };
         }
       },
 

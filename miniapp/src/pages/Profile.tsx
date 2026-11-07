@@ -94,21 +94,25 @@ export default function Profile() {
             <div className="overflow-hidden flex-1">
               <p className="text-white font-black text-sm truncate leading-tight">{user?.first_name || 'Player'}</p>
               <div className="flex items-center space-x-1 mt-0.5">
-                <span className="text-white/50 text-[9px] font-mono font-semibold truncate">ID: {user?.telegram_id || 'â€”'}</span>
-                <button
-                  onClick={() => {
-                    if (user?.telegram_id) {
+                <span className="text-white/60 text-[9.5px] font-mono font-bold truncate">
+                  ID: {user?.telegram_id && user.telegram_id !== 'temp' ? user.telegram_id : (language === 'am' ? 'እንግዳ (Guest)' : 'Guest')}
+                </span>
+                {user?.telegram_id && user.telegram_id !== 'temp' && (
+                  <button
+                    type="button"
+                    onClick={() => {
                       navigator.clipboard.writeText(user.telegram_id).then(() => {
                         setCopied(true);
-                        if (typeof WebApp !== 'undefined') WebApp.HapticFeedback.impactOccurred('light');
+                        if (typeof WebApp !== 'undefined') WebApp.HapticFeedback?.impactOccurred('light');
                         setTimeout(() => setCopied(false), 2000);
                       });
-                    }
-                  }}
-                  className="shrink-0 text-white/50 hover:text-white transition-colors"
-                >
-                  {copied ? <Check size={10} className="text-emerald-400" /> : <Copy size={10} />}
-                </button>
+                    }}
+                    className="shrink-0 text-white/50 hover:text-white transition-colors ml-0.5"
+                    title="Copy ID"
+                  >
+                    {copied ? <Check size={10} className="text-emerald-400" /> : <Copy size={10} />}
+                  </button>
+                )}
               </div>
             </div>
           </div>
