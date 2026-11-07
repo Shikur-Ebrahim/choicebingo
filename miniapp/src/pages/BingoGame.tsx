@@ -896,7 +896,18 @@ export default function BingoGame() {
       setCelebrationSecondsLeft(prev => Math.max(0, prev - 1));
     }, 1000);
 
-    const timer = setTimeout(() => {
+    // After 2 seconds: automatically prepare and fetch the new waiting game in background
+    const bgLoadTimer = setTimeout(() => {
+      isCelebratingRef.current = false;
+      setMyCard(null);
+      setMyCartelas([]);
+      setActiveCartelaIdx(0);
+      setTaken([]);
+      fetchState();
+    }, 2000);
+
+    // After 5 seconds: dismiss celebration card so user immediately sees the already-loaded new game!
+    const dismissTimer = setTimeout(() => {
       isCelebratingRef.current = false;
       setCelebration(null);
       setMyCard(null);
@@ -908,7 +919,8 @@ export default function BingoGame() {
     }, 5000);
 
     return () => {
-      clearTimeout(timer);
+      clearTimeout(bgLoadTimer);
+      clearTimeout(dismissTimer);
       clearInterval(interval);
     };
   }, [celebration]);
@@ -2103,11 +2115,13 @@ export default function BingoGame() {
     );
   };
 
+  const showOldCallingBoard = game.status === 'calling' || (game.status === 'finished' && Boolean(celebration) && celebrationSecondsLeft > 3);
+
   return (
     <div className="h-[calc(100dvh-80px)] w-full bg-[#05081a] flex flex-col select-none" onClick={initWebAudio}>
       <div className="sticky top-0 z-40 bg-[#05081a] flex flex-col shrink-0">
         <Header />
-        {game.status === 'waiting' && !celebration && (
+        {!showOldCallingBoard && (
           <div
             className="px-3 pt-2.5 pb-2.5"
             style={{
@@ -2277,8 +2291,8 @@ export default function BingoGame() {
         </div>
       )}
 
-      <div className={`flex-1 min-h-0 ${game.status === 'waiting' && !celebration ? 'overflow-y-auto' : 'overflow-hidden'}`}>
-        {game.status === 'waiting' && !celebration ? renderCartelaPicker() : renderCallingBoard()}
+      <div className={`flex-1 min-h-0 ${showOldCallingBoard ? 'overflow-hidden' : 'overflow-y-auto'}`}>
+        {showOldCallingBoard ? renderCallingBoard() : renderCartelaPicker()}
       </div>
 
       {/* Winner Celebration (Fantastic 3D Luxury Casino Celebration Card) */}
