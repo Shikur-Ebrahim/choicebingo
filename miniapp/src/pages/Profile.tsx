@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import WebApp from '@twa-dev/sdk';
-import { usePwaPrompt } from '../components/PwaInstallBanner';
+import { usePwaPrompt, isRunningInPwa, isRunningInTelegram } from '../components/PwaInstallBanner';
 import PwaResetPasswordModal from '../components/PwaResetPasswordModal';
 import SetWebPasswordModal from '../components/SetWebPasswordModal';
 
@@ -259,7 +259,7 @@ export default function Profile() {
             </button>
 
             {/* Install PWA Button — ONLY shown outside Telegram in regular browsers */}
-            {!isStandalone && !isInsideTelegram && (
+            {!isStandalone && !isRunningInPwa() && !isRunningInTelegram() && !isInsideTelegram && (
               <button
                 onClick={async () => {
                   const ok = await triggerInstall();

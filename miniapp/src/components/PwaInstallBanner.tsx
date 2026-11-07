@@ -13,21 +13,79 @@ if (typeof window !== 'undefined') {
   });
 }
 
+export function isRunningInPwa(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    const isStandaloneMode =
+      window.matchMedia?.('(display-mode: standalone)')?.matches ||
+      window.matchMedia?.('(display-mode: fullscreen)')?.matches ||
+      window.matchMedia?.('(display-mode: minimal-ui)')?.matches ||
+      (window.navigator as any)?.standalone === true ||
+      document.referrer?.includes('android-app://') ||
+      window.location?.search?.includes('pwa=1') ||
+      window.location?.search?.includes('mode=pwa') ||
+      window.location?.search?.includes('source=pwa') ||
+      localStorage.getItem('cb_is_installed_pwa') === 'true' ||
+      sessionStorage.getItem('cb_is_pwa') === 'true';
+
+    if (isStandaloneMode) {
+      try {
+        localStorage.setItem('cb_is_installed_pwa', 'true');
+        sessionStorage.setItem('cb_is_pwa', 'true');
+      } catch {}
+      return true;
+    }
+  } catch {}
+  return false;
+}
+
+export function isRunningInTelegram(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    const twa = (window as any).Telegram?.WebApp;
+    const hasTgUser = Boolean(twa?.initDataUnsafe?.user?.id);
+    const rawInit = typeof twa?.initData === 'string' ? twa.initData : '';
+    const hasTgInit = Boolean(rawInit && rawInit.length > 0 && !rawInit.startsWith('pwa_phone='));
+    const hasTgHash = typeof window.location !== 'undefined' && Boolean(
+      window.location.hash?.includes('tgWebAppData') ||
+      window.location.search?.includes('tgWebAppData') ||
+      window.location.hash?.includes('tgWebAppVersion')
+    );
+    const hasPlatform = Boolean(twa?.platform && twa.platform !== 'unknown' && twa.platform !== '');
+
+    if (hasTgUser || hasTgInit || hasTgHash || (hasPlatform && (hasTgInit || hasTgHash))) {
+      try { sessionStorage.setItem('cb_is_telegram', 'true'); } catch {}
+      return true;
+    }
+    return sessionStorage.getItem('cb_is_telegram') === 'true';
+  } catch {}
+  return false;
+}
+
+export function isPwaDismissedSync(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    const dismissTime = localStorage.getItem('cb_pwa_dismissed');
+    if (dismissTime) {
+      const hoursPassed = (Date.now() - parseInt(dismissTime, 10)) / (1000 * 60 * 60);
+      if (hoursPassed < 24) {
+        return true;
+      }
+    }
+  } catch {}
+  return false;
+}
+
 export function usePwaPrompt() {
-  const [canInstall, setCanInstall] = useState(false);
-  const [isStandalone, setIsStandalone] = useState(false);
+  const [canInstall, setCanInstall] = useState<boolean>(() => Boolean(deferredInstallPrompt));
+  const [isStandalone, setIsStandalone] = useState<boolean>(() => isRunningInPwa());
 
   useEffect(() => {
     // Check if already running as installed standalone PWA
-    const checkStandalone = () => {
-      const isStandaloneMode =
-        window.matchMedia('(display-mode: standalone)').matches ||
-        (window.navigator as any).standalone === true ||
-        document.referrer.includes('android-app://');
-      setIsStandalone(Boolean(isStandaloneMode));
-    };
-
-    checkStandalone();
+    if (isRunningInPwa()) {
+      setIsStandalone(true);
+      return;
+    }
 
     if (deferredInstallPrompt) {
       setCanInstall(true);
@@ -41,6 +99,10 @@ export function usePwaPrompt() {
     window.addEventListener('appinstalled', () => {
       setCanInstall(false);
       setIsStandalone(true);
+      try {
+        localStorage.setItem('cb_is_installed_pwa', 'true');
+        sessionStorage.setItem('cb_is_pwa', 'true');
+      } catch {}
       deferredInstallPrompt = null;
     });
 
@@ -59,6 +121,10 @@ export function usePwaPrompt() {
       if (choiceResult.outcome === 'accepted') {
         deferredInstallPrompt = null;
         setCanInstall(false);
+        try {
+          localStorage.setItem('cb_is_installed_pwa', 'true');
+          sessionStorage.setItem('cb_is_pwa', 'true');
+        } catch {}
         return true;
       }
       return false;
@@ -74,23 +140,12 @@ export function usePwaPrompt() {
 export default function PwaInstallBanner() {
   const { language } = useGameStore();
   const { canInstall, isStandalone, triggerInstall } = usePwaPrompt();
-  const [dismissed, setDismissed] = useState(false);
+  const [dismissed, setDismissed] = useState<boolean>(() => isPwaDismissedSync());
   const [showIosGuide, setShowIosGuide] = useState(false);
 
-  // Check if user previously dismissed today
-  useEffect(() => {
-    try {
-      const dismissTime = localStorage.getItem('cb_pwa_dismissed');
-      if (dismissTime) {
-        const hoursPassed = (Date.now() - parseInt(dismissTime, 10)) / (1000 * 60 * 60);
-        if (hoursPassed < 24) {
-          setDismissed(true);
-        }
-      }
-    } catch {
-      // Ignore localStorage errors
-    }
-  }, []);
+  // Synchronous checks before rendering ANYTHING
+  const isInsideTelegram = isRunningInTelegram();
+  const isPwa = isStandalone || isRunningInPwa();
 
   // Detect iOS Safari
   const isIos =
@@ -98,14 +153,8 @@ export default function PwaInstallBanner() {
     /iPad|iPhone|iPod/.test(navigator.userAgent) &&
     !(window as any).MSStream;
 
-  // Detect inside Telegram WebApp
-  const isInsideTelegram = typeof window !== 'undefined' && 
-    Boolean((window as any).Telegram?.WebApp?.initData && 
-    (window as any).Telegram.WebApp.initData.length > 0 && 
-    !(window as any).Telegram.WebApp.initData.startsWith('pwa_phone='));
-
   // Don't show if already running as installed PWA, inside Telegram, or user dismissed
-  if (isInsideTelegram || isStandalone || dismissed) {
+  if (isInsideTelegram || isPwa || dismissed) {
     return null;
   }
 

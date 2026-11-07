@@ -6,7 +6,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import WebApp from '@twa-dev/sdk';
 import { supabase } from '../lib/supabase';
 import VideoGuideModal, { useAutoVideoGuide } from '../components/VideoGuideModal';
-import PwaInstallBanner from '../components/PwaInstallBanner';
+import PwaInstallBanner, { isRunningInPwa, isRunningInTelegram } from '../components/PwaInstallBanner';
 import NotificationModal, { NotificationItem } from '../components/NotificationModal';
 
 export default function Home() {
@@ -489,8 +489,10 @@ export default function Home() {
         </div>
       </div>
 
-      {/* ── PWA INSTALL BANNER (Shown in Chrome / Mobile Browsers) ── */}
-      <PwaInstallBanner />
+      {/* ── PWA INSTALL BANNER (Shown ONLY in regular Mobile Browsers outside Telegram & PWA) ── */}
+      {!isTelegramUser && !isRunningInTelegram() && !isRunningInPwa() && (
+        <PwaInstallBanner />
+      )}
 
       {/* 3D ACTION BUTTONS ROW (Deposit, Withdraw, Invite) */}
       <div className="px-4 grid grid-cols-3 gap-3">

@@ -2,7 +2,7 @@
   "name": "Choice Bingo",
   "short_name": "Choice Bingo",
   "description": "Choice Bingo - Online Ethiopian Bingo Game with Live Players",
-  "start_url": "/",
+  "start_url": "/?pwa=1",
   "scope": "/",
   "display": "standalone",
   "background_color": "#ffffff",
