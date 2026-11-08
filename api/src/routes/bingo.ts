@@ -201,16 +201,17 @@ router.post('/join', validateTelegramAuth, async (req: AuthRequest, res) => {
   let bonusUsed = 0;
   let mainUsed = 0;
 
-  if (newBonus >= toDeduct) {
-    bonusUsed = toDeduct;
-    newBonus -= toDeduct;
-    toDeduct = 0;
-  } else {
-    bonusUsed = newBonus;
-    toDeduct -= newBonus;
-    newBonus = 0;
+  // Deduct from MAIN BALANCE first, fallback to bonus if allowed
+  if (newMain >= toDeduct) {
     mainUsed = toDeduct;
     newMain -= toDeduct;
+    toDeduct = 0;
+  } else {
+    mainUsed = newMain;
+    toDeduct -= newMain;
+    newMain = 0;
+    bonusUsed = toDeduct;
+    newBonus -= toDeduct;
   }
 
   const { error: deductErr } = await supabase

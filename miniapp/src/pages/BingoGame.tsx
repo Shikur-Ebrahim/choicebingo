@@ -156,6 +156,8 @@ export default function BingoGame() {
   const [maxPlayers, setMaxPlayers] = useState<number>(150);
   const [maxCartelasPerUser, setMaxCartelasPerUser] = useState<number>(4);
   const [myCartelas, setMyCartelas] = useState<Array<{ cartela_number: number; card_matrix: number[][] }>>([]);
+  const myCartelasRef = useRef(myCartelas);
+  useEffect(() => { myCartelasRef.current = myCartelas; }, [myCartelas]);
   const [activeCartelaIdx, setActiveCartelaIdx] = useState(0);
   const [uniquePlayers, setUniquePlayers] = useState<number>(0);
   const [previewCartela, setPreviewCartela] = useState<{ seat: number; matrix: number[][] } | null>(null);
@@ -594,7 +596,7 @@ export default function BingoGame() {
   const fetchState = useCallback(async () => {
     if (!selectedStake) return;
     if (isCelebratingRef.current) return;
-    setLoading(true);
+    if (!game) setLoading(true);
     try {
       const excludeParam = hasCelebratedRef.current ? `&exclude_id=${hasCelebratedRef.current}` : '';
       const r = await fetch(`${API}/bingo/current?stake=${selectedStake}${excludeParam}`, { headers: hdrs() });
@@ -609,10 +611,27 @@ export default function BingoGame() {
         }
         if (d.max_players) setMaxPlayers(Math.min(150, Number(d.max_players)));
         if (d.max_cartelas_per_user) setMaxCartelasPerUser(Number(d.max_cartelas_per_user));
-        if (d.my_cartelas) setMyCartelas(d.my_cartelas);
+        
+        // Merge server cartelas with any pending local optimistic cartelas (avoids flicker!)
+        if (d.my_cartelas && Array.isArray(d.my_cartelas)) {
+          setMyCartelas(prev => {
+            const serverNums = new Set(d.my_cartelas.map((c: any) => c.cartela_number));
+            const pendingOptimistic = prev.filter(c => !serverNums.has(c.cartela_number));
+            return [...d.my_cartelas, ...pendingOptimistic];
+          });
+        }
         if (d.unique_players !== undefined) setUniquePlayers(Number(d.unique_players));
+
+        // Preserve optimistic cartela numbers in taken list
+        const mergeTaken = (serverTaken: number[] = []) => {
+          const combined = new Set([...serverTaken, ...myCartelasRef.current.map(c => c.cartela_number)]);
+          return Array.from(combined);
+        };
+
         if (d.game && d.game.id !== gameIdRef.current) {
-          setGame(d.game); setTaken(d.taken_cartelas ?? []); setMyCard(d.my_card ?? null);
+          setGame(d.game);
+          setTaken(mergeTaken(d.taken_cartelas ?? []));
+          if (d.my_card) setMyCard(d.my_card);
           gameIdRef.current = d.game.id;
           prevCalledLenRef.current = d.game.called_numbers?.length || 0;
           setManuallyMarked(new Set()); // Reset manual marks on new game
@@ -620,7 +639,9 @@ export default function BingoGame() {
             hasCelebratedRef.current = null;
           }
         } else if (d.game) {
-          setGame(d.game); setTaken(d.taken_cartelas ?? []); setMyCard(d.my_card ?? null);
+          setGame(d.game);
+          setTaken(mergeTaken(d.taken_cartelas ?? []));
+          if (d.my_card && !myCard) setMyCard(d.my_card);
         }
       } else {
         // Direct Supabase fallback if API returns non-ok
@@ -718,8 +739,11 @@ export default function BingoGame() {
         const np = p as { game_id: string; cartela_number: number; telegram_id: string };
         if (np.game_id === gameIdRef.current) {
           setTaken(prev => prev.includes(np.cartela_number) ? prev : [...prev, np.cartela_number]);
-          // Re-fetch to get accurate unique_players count (same user may buy multiple cartelas)
-          fetchState();
+          // Don't trigger premature fetchState if this insert came from the current player
+          const myTg = String(user?.telegram_id || WebApp?.initDataUnsafe?.user?.id || localStorage.getItem('cb_pwa_phone') || '');
+          if (np.telegram_id !== myTg) {
+            fetchState();
+          }
         }
       }).subscribe();
     return () => { supabase.removeChannel(ch); };
@@ -958,6 +982,7 @@ export default function BingoGame() {
     const prevUser = user;
     const newCartelas = myCartelas.filter(c => c.cartela_number !== seat);
     setMyCartelas(newCartelas);
+    myCartelasRef.current = newCartelas;
     setTaken(prev => prev.filter(n => n !== seat));
     if (newCartelas.length > 0) {
       setMyCard(newCartelas[0]);
@@ -992,6 +1017,7 @@ export default function BingoGame() {
       } else {
         // Rollback on failure
         setMyCartelas(prevMyCartelas);
+        myCartelasRef.current = prevMyCartelas;
         setTaken(prevTaken);
         useGameStore.setState({ user: prevUser });
         setErrMsg(data?.error || "Could not release cartela");
@@ -999,6 +1025,7 @@ export default function BingoGame() {
       }
     } catch (err: any) {
       setMyCartelas(prevMyCartelas);
+      myCartelasRef.current = prevMyCartelas;
       setTaken(prevTaken);
       useGameStore.setState({ user: prevUser });
       setErrMsg("Network error while releasing cartela");
@@ -1068,14 +1095,20 @@ export default function BingoGame() {
     const prevUser = user;
 
     setMyCartelas(prev => [...prev, optimisticCard]);
+    myCartelasRef.current = [...myCartelasRef.current, optimisticCard];
     setMyCard(optimisticCard);
     setTaken(prev => [...prev, seat]);
     setErrMsg("");
 
-    // Optimistic balance update
+    // Optimistic balance update: Deduct from MAIN BALANCE first
     const stakeAmt = Number(game.stake);
-    let nb = bonusBal, nm = mainBal;
-    if (nb >= stakeAmt) { nb -= stakeAmt; } else { nm -= stakeAmt - nb; nb = 0; }
+    let nm = mainBal, nb = bonusBal;
+    if (nm >= stakeAmt) {
+      nm -= stakeAmt;
+    } else {
+      nb -= (stakeAmt - nm);
+      nm = 0;
+    }
     useGameStore.setState(s => ({ user: s.user ? { ...s.user, main_balance: nm, bonus_balance: nb } : s.user }));
 
     // Optimistic prize pool update
@@ -1103,6 +1136,7 @@ export default function BingoGame() {
       } else {
         // Rollback on server error
         setMyCartelas(prevMyCartelas);
+        myCartelasRef.current = prevMyCartelas;
         setTaken(prevTaken);
         useGameStore.setState({ user: prevUser });
         setErrMsg(d?.error ?? (r.status === 401 ? "Session expired, please restart" : "Could not join.")); 
@@ -1111,6 +1145,7 @@ export default function BingoGame() {
     } catch (err: any) { 
       // Rollback on network failure
       setMyCartelas(prevMyCartelas);
+      myCartelasRef.current = prevMyCartelas;
       setTaken(prevTaken);
       useGameStore.setState({ user: prevUser });
       setErrMsg("Network error, please retry.");
@@ -2114,7 +2149,7 @@ export default function BingoGame() {
     return (
       <>
         {/* Scrollable Number Board Container */}
-        <div className={`flex-1 overflow-y-auto relative p-2 ${myCartelas.length > 0 ? 'pb-32' : 'pb-16'} select-none`}>
+        <div className={`flex-1 overflow-y-auto relative p-2 ${myCartelas.length > 0 ? 'pb-44' : 'pb-16'} select-none`}>
           {/* 3D Header Bar: Status Capsule & Picked Badge */}
           <div className="flex items-center justify-between mb-1.5 gap-2">
             <div
