@@ -117,11 +117,6 @@ const getWinningCells = (matrix: number[][], called: number[]) => {
     winCells.add('0-0'); winCells.add('0-4'); winCells.add('4-0'); winCells.add('4-4');
   }
 
-  // Inner 4 corners (2nd corner rule / 2nd frame)
-  if (m(1, 1) && m(1, 3) && m(3, 1) && m(3, 3)) {
-    winCells.add('1-1'); winCells.add('1-3'); winCells.add('3-1'); winCells.add('3-3');
-  }
-
   return winCells;
 };
 
@@ -134,14 +129,12 @@ const getWinningPatternTitle = (matrix: number[][], called: number[]): string =>
   };
 
   const isOuterCorners = m(0, 0) && m(0, 4) && m(4, 0) && m(4, 4);
-  const isInnerCorners = m(1, 1) && m(1, 3) && m(3, 1) && m(3, 3);
   const isRow = [0, 1, 2, 3, 4].some(r => [0, 1, 2, 3, 4].every(c => m(r, c)));
   const isCol = [0, 1, 2, 3, 4].some(c => [0, 1, 2, 3, 4].every(r => m(r, c)));
   const isDiag = [0, 1, 2, 3, 4].every(i => m(i, i)) || [0, 1, 2, 3, 4].every(i => m(i, 4 - i));
 
-  if (isInnerCorners && !isRow && !isCol && !isDiag) return '🎯 2ND CORNER BINGO!';
   if (isOuterCorners && !isRow && !isCol && !isDiag) return '🎯 4 CORNERS BINGO!';
-  if (isInnerCorners || isOuterCorners) return '🎯 CORNER BINGO!';
+  if (isOuterCorners) return '🎯 CORNER BINGO!';
   return 'BINGO!';
 };
 
@@ -981,6 +974,7 @@ export default function BingoGame() {
 
   const [releasing, setReleasing] = useState<number | null>(null);
   const lastSeatClickTimeRef = useRef<{ [seat: number]: number }>({});
+  const pendingSeatsRef = useRef<Set<number>>(new Set());
 
   const releaseCartela = async (seat: number) => {
     if (!game || game.status !== 'waiting' || releasing !== null) return;
@@ -1083,7 +1077,7 @@ export default function BingoGame() {
       return;
     }
 
-    if (taken.includes(seat) || buying !== null) return;
+    if (taken.includes(seat) || pendingSeatsRef.current.has(seat) || buying !== null) return;
 
     if (myCartelas.length >= maxCartelasPerUser) {
       setErrMsg(language === 'am' ? `ቢበዛ ${maxCartelasPerUser} ካርቴላ መምረጥ ይችላሉ` : `Max ${maxCartelasPerUser} cartelas allowed`);
@@ -1100,21 +1094,40 @@ export default function BingoGame() {
   };
 
   const joinGame = async (seat: number, matrix: number[][]) => {
+    if (pendingSeatsRef.current.has(seat)) return;
+    pendingSeatsRef.current.add(seat);
+
     setPreviewCartela(null);
     initWebAudio();
 
     const isTelegramUser = typeof WebApp !== 'undefined' && Boolean(WebApp.initDataUnsafe?.user?.id);
     const hasPwaPhone = typeof window !== 'undefined' && Boolean(localStorage.getItem('cb_pwa_phone'));
     if (!isTelegramUser && !hasPwaPhone) {
+      pendingSeatsRef.current.delete(seat);
       useGameStore.getState().setIsPhoneModalOpen(true);
       return;
     }
 
-    if (!game || game.status !== "waiting") return;
-    if (myCartelas.length >= maxCartelasPerUser) { setErrMsg(`Max ${maxCartelasPerUser} cartela${maxCartelasPerUser > 1 ? 's' : ''} per game`); return; }
-    if (taken.includes(seat)) { setErrMsg("Taken! Pick another."); return; }
+    if (!game || game.status !== "waiting") {
+      pendingSeatsRef.current.delete(seat);
+      return;
+    }
+    if (myCartelas.length >= maxCartelasPerUser) {
+      pendingSeatsRef.current.delete(seat);
+      setErrMsg(`Max ${maxCartelasPerUser} cartela${maxCartelasPerUser > 1 ? 's' : ''} per game`);
+      return;
+    }
+    if (taken.includes(seat)) {
+      pendingSeatsRef.current.delete(seat);
+      setErrMsg("Taken! Pick another.");
+      return;
+    }
     const bonusBal = Number(user?.bonus_balance || 0), mainBal = Number(user?.main_balance || 0);
-    if (!user || bonusBal + mainBal < game.stake) { setErrMsg(`Need ${game.stake} ETB`); return; }
+    if (!user || bonusBal + mainBal < game.stake) {
+      pendingSeatsRef.current.delete(seat);
+      setErrMsg(`Need ${game.stake} ETB`);
+      return;
+    }
 
     // Instant haptic feedback for super-snappy response
     try { WebApp?.HapticFeedback?.impactOccurred("medium"); } catch {}
@@ -1198,7 +1211,8 @@ export default function BingoGame() {
         myCartelasRef.current = prevMyCartelas;
         setTaken(prevTaken);
         useGameStore.setState({ user: prevUser });
-        setErrMsg(d?.error ?? (r.status === 401 ? "Session expired, please restart" : "Could not join.")); 
+        const errMsg = d?.error || d?.message || (r.status === 401 ? "Session expired, please restart" : (r.status === 400 ? "Cartela unavailable, please pick another" : "Could not join."));
+        setErrMsg(errMsg);
         fetchState();
       }
     } catch (err: any) { 
@@ -1208,6 +1222,8 @@ export default function BingoGame() {
       setTaken(prevTaken);
       useGameStore.setState({ user: prevUser });
       setErrMsg("Network error, please retry.");
+    } finally {
+      pendingSeatsRef.current.delete(seat);
     }
   };
 

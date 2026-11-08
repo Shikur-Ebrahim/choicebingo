@@ -33,8 +33,6 @@ export function checkBingo(card: number[][], called: number[]): boolean {
   if ([0,1,2,3,4].every(i => m(i,4-i))) return true;
   // Outer 4 corners
   if (m(0, 0) && m(0, 4) && m(4, 0) && m(4, 4)) return true;
-  // Inner 4 corners (2nd frame / inner corners)
-  if (m(1, 1) && m(1, 3) && m(3, 1) && m(3, 3)) return true;
   return false;
 }
 
