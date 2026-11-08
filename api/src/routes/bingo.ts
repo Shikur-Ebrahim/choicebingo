@@ -112,14 +112,19 @@ router.get('/current', validateTelegramAuth, async (req: AuthRequest, res) => {
 
   const { data: rows } = await supabase
     .from('bingo_players')
-    .select('cartela_number, telegram_id, card_matrix')
+    .select('cartela_number, telegram_id, card_matrix, bonus_used, main_used')
     .eq('game_id', game.id);
 
   const taken_cartelas = (rows || []).map((p: any) => Number(p.cartela_number));
   const unique_players = new Set((rows || []).map((p: any) => p.telegram_id)).size;
   
   const myRows = (rows || []).filter((p: any) => p.telegram_id === telegramId);
-  const my_cartelas = myRows.map((p: any) => ({ cartela_number: p.cartela_number, card_matrix: p.card_matrix }));
+  const my_cartelas = myRows.map((p: any) => ({
+    cartela_number: p.cartela_number,
+    card_matrix: p.card_matrix,
+    bonus_used: Number(p.bonus_used || 0),
+    main_used: Number(p.main_used || 0),
+  }));
   // Backward compat: my_card = first cartela
   const my_card = my_cartelas.length > 0 ? my_cartelas[0] : null;
 
@@ -201,17 +206,18 @@ router.post('/join', validateTelegramAuth, async (req: AuthRequest, res) => {
   let bonusUsed = 0;
   let mainUsed = 0;
 
-  // Deduct from MAIN BALANCE first, fallback to bonus if allowed
-  if (newMain >= toDeduct) {
+  // Deduct from BONUS BALANCE first, fallback to MAIN BALANCE
+  if (newBonus >= toDeduct) {
+    bonusUsed = toDeduct;
+    newBonus -= toDeduct;
+    toDeduct = 0;
+  } else {
+    bonusUsed = newBonus;
+    toDeduct -= newBonus;
+    newBonus = 0;
     mainUsed = toDeduct;
     newMain -= toDeduct;
     toDeduct = 0;
-  } else {
-    mainUsed = newMain;
-    toDeduct -= newMain;
-    newMain = 0;
-    bonusUsed = toDeduct;
-    newBonus -= toDeduct;
   }
 
   const { error: deductErr } = await supabase
@@ -281,7 +287,16 @@ router.post('/join', validateTelegramAuth, async (req: AuthRequest, res) => {
     updated_at: new Date().toISOString()
   }).eq('id', game.id);
 
-  res.json({ success: true, cartela_number: seat, card_matrix, unique_players });
+  res.json({
+    success: true,
+    cartela_number: seat,
+    card_matrix,
+    unique_players,
+    bonus_used: bonusUsed,
+    main_used: mainUsed,
+    main_balance: newMain,
+    bonus_balance: newBonus,
+  });
 });
 
 // ── POST /api/bingo/release ── release / unselect a bought cartela in waiting phase ──

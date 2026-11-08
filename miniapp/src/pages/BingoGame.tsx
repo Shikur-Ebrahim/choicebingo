@@ -155,7 +155,12 @@ export default function BingoGame() {
   const [showStakeDropdown, setShowStakeDropdown] = useState(false);
   const [maxPlayers, setMaxPlayers] = useState<number>(150);
   const [maxCartelasPerUser, setMaxCartelasPerUser] = useState<number>(4);
-  const [myCartelas, setMyCartelas] = useState<Array<{ cartela_number: number; card_matrix: number[][] }>>([]);
+  const [myCartelas, setMyCartelas] = useState<Array<{
+    cartela_number: number;
+    card_matrix: number[][];
+    bonus_used?: number;
+    main_used?: number;
+  }>>([]);
   const myCartelasRef = useRef(myCartelas);
   useEffect(() => { myCartelasRef.current = myCartelas; }, [myCartelas]);
   const [activeCartelaIdx, setActiveCartelaIdx] = useState(0);
@@ -663,16 +668,25 @@ export default function BingoGame() {
           }
           const { data: pRows } = await supabase
             .from('bingo_players')
-            .select('cartela_number, telegram_id, card_matrix')
+            .select('cartela_number, telegram_id, card_matrix, bonus_used, main_used')
             .eq('game_id', dbGame.id);
 
           const takenNums = (pRows || []).map((p: any) => Number(p.cartela_number));
           setTaken(takenNums);
-          const myTgId = user?.telegram_id || WebApp?.initDataUnsafe?.user?.id?.toString();
+          const myTgId = user?.telegram_id || WebApp?.initDataUnsafe?.user?.id?.toString() || localStorage.getItem('cb_pwa_phone');
           if (myTgId) {
             const myRows = (pRows || []).filter((p: any) => p.telegram_id === myTgId);
-            const myCart = myRows.map((p: any) => ({ cartela_number: p.cartela_number, card_matrix: p.card_matrix }));
-            setMyCartelas(myCart);
+            const myCart = myRows.map((p: any) => ({
+              cartela_number: p.cartela_number,
+              card_matrix: p.card_matrix,
+              bonus_used: Number(p.bonus_used || 0),
+              main_used: Number(p.main_used || 0),
+            }));
+            setMyCartelas(prev => {
+              const serverNums = new Set(myCart.map((c: any) => c.cartela_number));
+              const pendingOptimistic = prev.filter(c => !serverNums.has(c.cartela_number));
+              return [...myCart, ...pendingOptimistic];
+            });
             if (myCart.length > 0) setMyCard(myCart[0]);
           }
         }
@@ -990,9 +1004,17 @@ export default function BingoGame() {
       setMyCard(null);
     }
 
-    // Optimistic refund to main balance
+    // Optimistic refund back to the exact balance(s) it was purchased with (bonus first if paid with bonus)
+    const targetCard = prevMyCartelas.find(c => c.cartela_number === seat);
+    const bonusToRefund = targetCard?.bonus_used !== undefined ? Number(targetCard.bonus_used) : 0;
+    const mainToRefund = targetCard?.main_used !== undefined ? Number(targetCard.main_used) : (stakeAmt - bonusToRefund);
+
     useGameStore.setState(s => ({
-      user: s.user ? { ...s.user, main_balance: Number(s.user.main_balance || 0) + stakeAmt } : s.user
+      user: s.user ? {
+        ...s.user,
+        main_balance: Number(s.user.main_balance || 0) + mainToRefund,
+        bonus_balance: Number(s.user.bonus_balance || 0) + bonusToRefund,
+      } : s.user
     }));
 
     try {
@@ -1006,6 +1028,15 @@ export default function BingoGame() {
       if (res.ok && data?.success) {
         if (WebApp?.HapticFeedback) {
           WebApp.HapticFeedback.notificationOccurred("success");
+        }
+        if (data.main_balance !== undefined && data.bonus_balance !== undefined) {
+          useGameStore.setState(s => ({
+            user: s.user ? {
+              ...s.user,
+              main_balance: Number(data.main_balance),
+              bonus_balance: Number(data.bonus_balance),
+            } : s.user
+          }));
         }
         if (data.unique_players !== undefined) setUniquePlayers(Number(data.unique_players));
         if (data.total_cartelas !== undefined) {
@@ -1088,8 +1119,31 @@ export default function BingoGame() {
     // Instant haptic feedback for super-snappy response
     try { WebApp?.HapticFeedback?.impactOccurred("medium"); } catch {}
 
+    // Optimistic balance update: Deduct from BONUS BALANCE first, remainder from MAIN BALANCE
+    const stakeAmt = Number(game.stake);
+    let optBonusUsed = 0;
+    let optMainUsed = 0;
+    let nb = bonusBal;
+    let nm = mainBal;
+
+    if (nb >= stakeAmt) {
+      optBonusUsed = stakeAmt;
+      nb -= stakeAmt;
+    } else {
+      optBonusUsed = nb;
+      const remainder = stakeAmt - nb;
+      nb = 0;
+      optMainUsed = remainder;
+      nm -= remainder;
+    }
+
     // OPTIMISTIC SELECTION: Immediately add cartela and mark seat green with zero lag!
-    const optimisticCard = { cartela_number: seat, card_matrix: matrix };
+    const optimisticCard = {
+      cartela_number: seat,
+      card_matrix: matrix,
+      bonus_used: optBonusUsed,
+      main_used: optMainUsed,
+    };
     const prevMyCartelas = myCartelas;
     const prevTaken = taken;
     const prevUser = user;
@@ -1100,15 +1154,6 @@ export default function BingoGame() {
     setTaken(prev => [...prev, seat]);
     setErrMsg("");
 
-    // Optimistic balance update: Deduct from MAIN BALANCE first
-    const stakeAmt = Number(game.stake);
-    let nm = mainBal, nb = bonusBal;
-    if (nm >= stakeAmt) {
-      nm -= stakeAmt;
-    } else {
-      nb -= (stakeAmt - nm);
-      nm = 0;
-    }
     useGameStore.setState(s => ({ user: s.user ? { ...s.user, main_balance: nm, bonus_balance: nb } : s.user }));
 
     // Optimistic prize pool update
@@ -1128,8 +1173,22 @@ export default function BingoGame() {
       try { d = await r.json(); } catch {}
       if (r.ok && d) {
         try { WebApp?.HapticFeedback?.notificationOccurred("success"); } catch {}
-        if (d.card_matrix) {
-          setMyCartelas(prev => prev.map(c => c.cartela_number === seat ? { ...c, card_matrix: d.card_matrix } : c));
+        if (d.card_matrix || d.bonus_used !== undefined) {
+          setMyCartelas(prev => prev.map(c => c.cartela_number === seat ? {
+            ...c,
+            ...(d.card_matrix ? { card_matrix: d.card_matrix } : {}),
+            bonus_used: d.bonus_used !== undefined ? Number(d.bonus_used) : c.bonus_used,
+            main_used: d.main_used !== undefined ? Number(d.main_used) : c.main_used,
+          } : c));
+        }
+        if (d.main_balance !== undefined && d.bonus_balance !== undefined) {
+          useGameStore.setState(s => ({
+            user: s.user ? {
+              ...s.user,
+              main_balance: Number(d.main_balance),
+              bonus_balance: Number(d.bonus_balance),
+            } : s.user
+          }));
         }
         if (d.unique_players !== undefined) setUniquePlayers(Number(d.unique_players));
         refreshUser();

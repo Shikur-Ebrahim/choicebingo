@@ -353,7 +353,7 @@ class BingoEngine {
   ) {
     const { data: players } = await supabase
       .from('bingo_players')
-      .select('id, telegram_id, cartela_number, card_matrix, first_name')
+      .select('id, telegram_id, cartela_number, card_matrix, first_name, bonus_used, main_used')
       .eq('game_id', gameId);
 
     if (!players || players.length === 0) return;
@@ -510,17 +510,23 @@ class BingoEngine {
     // Refund ALL players their stake
     for (const p of players) {
       const { data: u } = await supabase.from('users')
-        .select('main_balance, total_games, total_stake')
+        .select('main_balance, bonus_balance, total_games, total_stake')
         .eq('telegram_id', p.telegram_id)
         .single();
       if (u) {
         const curGames = Number(u.total_games || 0);
         const curStake = Number(u.total_stake || 0);
-        await supabase.from('users').update({
-          main_balance: Number(u.main_balance) + Number(stake),
+        const bonusAmt = Number(p.bonus_used || 0);
+        const mainAmt = Number(p.main_used !== undefined ? p.main_used : (p.bonus_used ? 0 : stake));
+
+        const updates: any = {
           total_games: Math.max(0, curGames - 1),
           total_stake: Math.max(0, Number((curStake - Number(stake)).toFixed(2))),
-        }).eq('telegram_id', p.telegram_id);
+        };
+        if (bonusAmt > 0) updates.bonus_balance = Number(u.bonus_balance || 0) + bonusAmt;
+        if (mainAmt > 0) updates.main_balance = Number(u.main_balance || 0) + mainAmt;
+
+        await supabase.from('users').update(updates).eq('telegram_id', p.telegram_id);
       }
       await notify(
         p.telegram_id,
