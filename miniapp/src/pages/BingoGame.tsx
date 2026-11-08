@@ -1057,41 +1057,63 @@ export default function BingoGame() {
     if (taken.includes(seat)) { setErrMsg("Taken! Pick another."); return; }
     const bonusBal = Number(user?.bonus_balance || 0), mainBal = Number(user?.main_balance || 0);
     if (!user || bonusBal + mainBal < game.stake) { setErrMsg(`Need ${game.stake} ETB`); return; }
-    setBuying(seat); setErrMsg("");
+
+    // Instant haptic feedback for super-snappy response
+    try { WebApp?.HapticFeedback?.impactOccurred("medium"); } catch {}
+
+    // OPTIMISTIC SELECTION: Immediately add cartela and mark seat green with zero lag!
+    const optimisticCard = { cartela_number: seat, card_matrix: matrix };
+    const prevMyCartelas = myCartelas;
+    const prevTaken = taken;
+    const prevUser = user;
+
+    setMyCartelas(prev => [...prev, optimisticCard]);
+    setMyCard(optimisticCard);
     setTaken(prev => [...prev, seat]);
-    const stakeAmt = game.stake;
+    setErrMsg("");
+
+    // Optimistic balance update
+    const stakeAmt = Number(game.stake);
     let nb = bonusBal, nm = mainBal;
     if (nb >= stakeAmt) { nb -= stakeAmt; } else { nm -= stakeAmt - nb; nb = 0; }
     useGameStore.setState(s => ({ user: s.user ? { ...s.user, main_balance: nm, bonus_balance: nb } : s.user }));
-    // Optimistic: pot = (total cartelas + 1) × stake; commission only if unique players >= 3
-    const isFirstCartela = myCartelas.length === 0;
+
+    // Optimistic prize pool update
+    const isFirstCartela = prevMyCartelas.length === 0;
     const newUniquePlayers = isFirstCartela ? uniquePlayers + 1 : uniquePlayers;
-    const newTotalCartelas = taken.length + 1;
+    const newTotalCartelas = prevTaken.length + 1;
     const rawPool = newTotalCartelas * stakeAmt;
     setGame(prev => prev ? { ...prev, prize_pool: newUniquePlayers < 3 ? rawPool : Math.floor(rawPool * 0.8) } : prev);
+
     try {
-      const r = await fetch(`${API}/bingo/join`, { method: "POST", headers: hdrs(), body: JSON.stringify({ cartela_number: seat, stake: selectedStake, game_id: game.id, card_matrix: matrix }) });
+      const r = await fetch(`${API}/bingo/join`, {
+        method: "POST",
+        headers: hdrs(),
+        body: JSON.stringify({ cartela_number: seat, stake: selectedStake, game_id: game.id, card_matrix: matrix })
+      });
       let d: any = null;
       try { d = await r.json(); } catch {}
       if (r.ok && d) {
-        if (WebApp?.HapticFeedback) WebApp.HapticFeedback.notificationOccurred("success");
-        const newCard = { cartela_number: seat, card_matrix: d.card_matrix };
-        setMyCartelas(prev => [...prev, newCard]);
-        setMyCard(newCard); // also set my_card for backward compat
+        try { WebApp?.HapticFeedback?.notificationOccurred("success"); } catch {}
+        if (d.card_matrix) {
+          setMyCartelas(prev => prev.map(c => c.cartela_number === seat ? { ...c, card_matrix: d.card_matrix } : c));
+        }
         if (d.unique_players !== undefined) setUniquePlayers(Number(d.unique_players));
         refreshUser();
       } else {
-        setTaken(prev => prev.filter(n => n !== seat));
-        useGameStore.setState(s => ({ user: s.user ? { ...s.user, main_balance: mainBal, bonus_balance: bonusBal } : s.user }));
+        // Rollback on server error
+        setMyCartelas(prevMyCartelas);
+        setTaken(prevTaken);
+        useGameStore.setState({ user: prevUser });
         setErrMsg(d?.error ?? (r.status === 401 ? "Session expired, please restart" : "Could not join.")); 
         fetchState();
       }
     } catch (err: any) { 
-      setTaken(prev => prev.filter(n => n !== seat));
-      useGameStore.setState(s => ({ user: s.user ? { ...s.user, main_balance: mainBal, bonus_balance: bonusBal } : s.user }));
-      setErrMsg("Network error - please check connection"); 
-    } finally { 
-      setBuying(null); 
+      // Rollback on network failure
+      setMyCartelas(prevMyCartelas);
+      setTaken(prevTaken);
+      useGameStore.setState({ user: prevUser });
+      setErrMsg("Network error, please retry.");
     }
   };
 
@@ -2092,9 +2114,9 @@ export default function BingoGame() {
     return (
       <>
         {/* Scrollable Number Board Container */}
-        <div className={`flex-1 overflow-y-auto relative p-2.5 ${myCartelas.length > 0 ? 'pb-36' : 'pb-20'} select-none`}>
+        <div className={`flex-1 overflow-y-auto relative p-2 ${myCartelas.length > 0 ? 'pb-32' : 'pb-16'} select-none`}>
           {/* 3D Header Bar: Status Capsule & Picked Badge */}
-          <div className="flex items-center justify-between mb-2.5 gap-2">
+          <div className="flex items-center justify-between mb-1.5 gap-2">
             <div
               className="flex items-center gap-1.5 px-3 py-1 rounded-full shadow-md"
               style={{
@@ -2228,25 +2250,22 @@ export default function BingoGame() {
         {/* ── FIXED SELECTED CARTELAS TRAY (3D Luxury White Curved Section Docked above bottom navigation) ── */}
         {myCartelas.length > 0 && (
           <div
-            className="fixed bottom-16 left-0 right-0 z-30 px-2.5 pt-2 pb-2 rounded-t-[28px] border-t select-none transition-all"
+            className="fixed bottom-16 left-0 right-0 z-30 px-2 pt-1.5 pb-1.5 rounded-t-[22px] border-t select-none transition-all"
             style={{
               background: 'linear-gradient(180deg, #ffffff 0%, #f8fafc 55%, #edf2f7 100%)',
               borderTop: '2px solid rgba(245, 158, 11, 0.6)',
-              boxShadow: '0 -10px 30px rgba(0, 0, 0, 0.45), 0 -2px 8px rgba(0, 0, 0, 0.2), inset 0 2px 0 #ffffff',
+              boxShadow: '0 -8px 25px rgba(0, 0, 0, 0.4), 0 -2px 6px rgba(0, 0, 0, 0.15), inset 0 2px 0 #ffffff',
             }}
           >
-            {/* Top Handle Pill */}
-            <div className="w-10 h-1 bg-slate-300 rounded-full mx-auto mb-1.5 opacity-70" />
-
             {/* Header: Title and picked count */}
-            <div className="flex items-center justify-between mb-1.5 px-1">
+            <div className="flex items-center justify-between mb-1 px-1">
               <div className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-sm" />
-                <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-wider">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-sm" />
+                <h3 className="text-[10px] font-black text-slate-800 uppercase tracking-wider">
                   {language === 'am' ? 'የመረጡት ካርቴላዎች' : 'Your Selected Cartelas'}
                 </h3>
               </div>
-              <div className="px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-700 font-mono font-black text-[10px] shadow-xs">
+              <div className="px-1.5 py-0.2 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-700 font-mono font-black text-[9.5px]">
                 <span>{myCartelas.length}</span>
                 <span className="text-slate-400 mx-0.5">/</span>
                 <span>{maxCartelasPerUser}</span>
@@ -2331,14 +2350,14 @@ export default function BingoGame() {
         <Header />
         {!showCallingBoard && (
           <div
-            className="px-3 pt-2.5 pb-2.5"
+            className="px-3 pt-1 pb-1"
             style={{
               background: 'linear-gradient(180deg, #0a0e1e 0%, #060814 100%)',
               borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
               boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
             }}
           >
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-2 mb-1">
               <button
                 onClick={() => setSelectedStake(null)}
                 className="h-9 w-10 flex items-center justify-center rounded-xl transition-all active:translate-y-0.5 cursor-pointer"
@@ -2425,7 +2444,7 @@ export default function BingoGame() {
             <div className="grid grid-cols-5 gap-1.5">
               {/* Stake */}
               <div
-                className="rounded-xl py-1.5 px-0.5 text-center"
+                className="rounded-xl py-1 px-0.5 text-center"
                 style={{
                   background: 'linear-gradient(180deg, #1e293b 0%, #0b1120 100%)',
                   border: '1px solid rgba(255, 255, 255, 0.08)',
@@ -2438,7 +2457,7 @@ export default function BingoGame() {
 
               {/* Players */}
               <div
-                className="rounded-xl py-1.5 px-0.5 text-center"
+                className="rounded-xl py-1 px-0.5 text-center"
                 style={{
                   background: 'linear-gradient(180deg, #1e293b 0%, #0b1120 100%)',
                   border: '1px solid rgba(52, 211, 153, 0.25)',
@@ -2451,7 +2470,7 @@ export default function BingoGame() {
 
               {/* Cartelas */}
               <div
-                className="rounded-xl py-1.5 px-0.5 text-center"
+                className="rounded-xl py-1 px-0.5 text-center"
                 style={{
                   background: 'linear-gradient(180deg, #1e293b 0%, #0b1120 100%)',
                   border: '1px solid rgba(56, 189, 248, 0.25)',
@@ -2464,7 +2483,7 @@ export default function BingoGame() {
 
               {/* Derash (Prize Pool) */}
               <div
-                className="rounded-xl py-1.5 px-0.5 text-center"
+                className="rounded-xl py-1 px-0.5 text-center"
                 style={{
                   background: 'linear-gradient(180deg, #2d2006 0%, #140d02 100%)',
                   border: '1px solid rgba(250, 204, 21, 0.4)',
@@ -2477,7 +2496,7 @@ export default function BingoGame() {
 
               {/* Status */}
               <div
-                className="rounded-xl py-1.5 px-0.5 text-center"
+                className="rounded-xl py-1 px-0.5 text-center"
                 style={{
                   background: 'linear-gradient(180deg, #1e293b 0%, #0b1120 100%)',
                   border: '1px solid rgba(255, 255, 255, 0.08)',
