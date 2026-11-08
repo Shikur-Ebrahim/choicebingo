@@ -19,7 +19,15 @@ interface BGame {
 interface MyCard { cartela_number: number; card_matrix: number[][]; }
 interface Celebration { winner_name: string; winner_cartela: number; winner_prize: number; winner_matrix: number[][] | null; iWon: boolean; called: number[]; winners_list?: {first_name: string, cartela_number: number, card_matrix: number[][]}[] }
 
-const hdrs = () => ({ "Content-Type": "application/json", "x-telegram-init-data": WebApp?.initData ?? "" });
+const hdrs = () => {
+  const initData = typeof window !== 'undefined' ? (window as any).Telegram?.WebApp?.initData || '' : '';
+  const pwaPhone = typeof window !== 'undefined' ? localStorage.getItem('cb_pwa_phone') || '' : '';
+  return {
+    "Content-Type": "application/json",
+    "x-telegram-init-data": initData || (pwaPhone ? `pwa_phone=${encodeURIComponent(pwaPhone)}` : ''),
+    "x-pwa-phone": pwaPhone,
+  };
+};
 
 const ROW_COLORS = [
   "from-blue-500 to-blue-700","from-purple-500 to-purple-700","from-cyan-500 to-cyan-700",
@@ -2077,266 +2085,261 @@ export default function BingoGame() {
 
   const renderCartelaPicker = () => {
     const myNums = myCartelas.map(c => c.cartela_number);
-    const displayPlayers = Math.min(150, maxPlayers || 150);
+    const displayPlayers = maxPlayers || 150;
     const canPickMore = myCartelas.length < maxCartelasPerUser;
+    const currentStake = selectedStake || game?.stake || 10;
 
     return (
-      <div className="flex-1 overflow-y-auto relative p-2.5 pb-20 select-none">
-        {/* 3D Header Bar: Status Capsule & Picked Badge */}
-        <div className="flex items-center justify-between mb-2.5 gap-2">
+      <>
+        {/* Scrollable Number Board Container */}
+        <div className={`flex-1 overflow-y-auto relative p-2.5 ${myCartelas.length > 0 ? 'pb-56' : 'pb-20'} select-none`}>
+          {/* 3D Header Bar: Status Capsule & Picked Badge */}
+          <div className="flex items-center justify-between mb-2.5 gap-2">
+            <div
+              className="flex items-center gap-1.5 px-3 py-1 rounded-full shadow-md"
+              style={{
+                background: 'linear-gradient(180deg, #0e2238 0%, #061320 100%)',
+                border: '1px solid rgba(34, 211, 238, 0.45)',
+                boxShadow: '0 2px 0 #020b12, inset 0 1px 1px rgba(255, 255, 255, 0.15)',
+              }}
+            >
+              <div className={`w-2 h-2 rounded-full ${canPickMore ? 'bg-cyan-400 animate-ping' : 'bg-emerald-400'}`} />
+              <p className="text-[9.5px] text-cyan-300 font-black uppercase tracking-wider">
+                {canPickMore ? `TAP TO PICK — ${taken.length}/${displayPlayers} TAKEN` : `ALL CARTELAS SELECTED ✓`}
+              </p>
+            </div>
+
+            <div
+              className="px-3 py-1 rounded-full text-center"
+              style={{
+                background: 'linear-gradient(180deg, #fef08a 0%, #facc15 40%, #ca8a04 100%)',
+                boxShadow: '0 2.5px 0 #854d0e, inset 0 1px 1px rgba(255,255,255,0.9)',
+                border: '1px solid #fef08a',
+              }}
+            >
+              <p className="text-[9.5px] text-[#451a03] font-black tracking-wider uppercase drop-shadow-sm">
+                {myCartelas.length}/{maxCartelasPerUser} PICKED
+              </p>
+            </div>
+          </div>
+
+          {/* My Cartelas chips */}
+          {myNums.length > 0 && (
+            <div className="flex gap-2 mb-2.5 flex-wrap">
+              {myNums.map(n => (
+                <span
+                  key={n}
+                  onClick={() => releaseCartela(n)}
+                  className="px-3 py-1 text-white text-xs font-black rounded-full flex items-center gap-1 cursor-pointer active:scale-95 transition-transform"
+                  style={{
+                    background: 'linear-gradient(180deg, #10b981 0%, #059669 100%)',
+                    boxShadow: '0 3px 0 #047857, inset 0 1px 1px rgba(255,255,255,0.7), 0 0 10px rgba(16,185,129,0.5)',
+                    border: '1.5px solid #fef08a',
+                  }}
+                  title={language === 'am' ? 'ካርቴላውን ለመልቀቅ ይጫኑ' : 'Tap to release'}
+                >
+                  <span>CARTELA #{n}</span>
+                  <span className="text-yellow-300 font-black">✓</span>
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* 3D Casino Board Container */}
           <div
-            className="flex items-center gap-1.5 px-3 py-1 rounded-full shadow-md"
+            className="rounded-2xl p-1.5"
             style={{
-              background: 'linear-gradient(180deg, #0e2238 0%, #061320 100%)',
-              border: '1px solid rgba(34, 211, 238, 0.45)',
-              boxShadow: '0 2px 0 #020b12, inset 0 1px 1px rgba(255, 255, 255, 0.15)',
+              background: 'linear-gradient(180deg, #0b1329 0%, #020617 100%)',
+              border: '2px solid rgba(34, 211, 238, 0.65)',
+              boxShadow: '0 0 25px rgba(6, 182, 212, 0.35), inset 0 3px 8px rgba(0,0,0,0.8), 0 8px 24px rgba(0,0,0,0.7)',
             }}
           >
-            <div className={`w-2 h-2 rounded-full ${canPickMore ? 'bg-cyan-400 animate-ping' : 'bg-emerald-400'}`} />
-            <p className="text-[9.5px] text-cyan-300 font-black uppercase tracking-wider">
-              {canPickMore ? `TAP TO PICK — ${taken.length}/${displayPlayers} TAKEN` : `ALL CARTELAS SELECTED ✓`}
-            </p>
-          </div>
+            <div className="grid gap-[3px]" style={{ gridTemplateColumns: "repeat(10, 1fr)" }}>
+              {Array.from({ length: displayPlayers }, (_, i) => {
+                const n = i + 1;
+                const isTaken = taken.includes(n);
+                const isMine = myNums.includes(n);
+                const isBuying = buying === n;
+                const isReleasing = releasing === n;
+                
+                if (isMine) {
+                  return (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => handleSeatClick(n)}
+                      disabled={isReleasing}
+                      className="aspect-square flex flex-col items-center justify-center rounded-[6px] font-black z-10 select-none cursor-pointer active:scale-95 transition-all"
+                      style={{
+                        background: 'radial-gradient(circle at 35% 25%, #34d399 0%, #10b981 50%, #047857 100%)',
+                        boxShadow: '0 2.5px 0 #064e3b, 0 0 12px rgba(16,185,129,0.85), inset 0 1px 2px rgba(255,255,255,0.85)',
+                        border: '1.5px solid #fef08a',
+                        color: '#ffffff',
+                      }}
+                      title={language === 'am' ? 'ካርቴላውን ለመልቀቅ ደግመው ይጫኑ' : 'Double tap to release'}
+                    >
+                      {isReleasing ? (
+                        <span className="animate-spin text-[10px]">⏳</span>
+                      ) : (
+                        <>
+                          <span className="text-[10px] leading-none font-black">{n}</span>
+                          <span className="text-[8px] text-yellow-300 leading-none font-black">✓</span>
+                        </>
+                      )}
+                    </button>
+                  );
+                }
+                
+                if (isTaken) {
+                  return (
+                    <div
+                      key={n}
+                      className="aspect-square flex items-center justify-center rounded-[6px] text-[9.5px] font-black select-none"
+                      style={{
+                        background: 'linear-gradient(180deg, #3b0707 0%, #1c0505 100%)',
+                        boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.85), 0 1px 0 rgba(255,255,255,0.05)',
+                        border: '1px solid rgba(239, 68, 68, 0.25)',
+                        color: 'rgba(248, 113, 113, 0.4)',
+                      }}
+                    >
+                      <span className="line-through">{n}</span>
+                    </div>
+                  );
+                }
 
-          <div
-            className="px-3 py-1 rounded-full text-center"
-            style={{
-              background: 'linear-gradient(180deg, #fef08a 0%, #facc15 40%, #ca8a04 100%)',
-              boxShadow: '0 2.5px 0 #854d0e, inset 0 1px 1px rgba(255,255,255,0.9)',
-              border: '1px solid #fef08a',
-            }}
-          >
-            <p className="text-[9.5px] text-[#451a03] font-black tracking-wider uppercase drop-shadow-sm">
-              {myCartelas.length}/{maxCartelasPerUser} PICKED
-            </p>
-          </div>
-        </div>
-
-        {/* My Cartelas chips */}
-        {myNums.length > 0 && (
-          <div className="flex gap-2 mb-2.5 flex-wrap">
-            {myNums.map(n => (
-              <span
-                key={n}
-                onClick={() => releaseCartela(n)}
-                className="px-3 py-1 text-white text-xs font-black rounded-full flex items-center gap-1 cursor-pointer active:scale-95 transition-transform"
-                style={{
-                  background: 'linear-gradient(180deg, #10b981 0%, #059669 100%)',
-                  boxShadow: '0 3px 0 #047857, inset 0 1px 1px rgba(255,255,255,0.7), 0 0 10px rgba(16,185,129,0.5)',
-                  border: '1.5px solid #fef08a',
-                }}
-                title={language === 'am' ? 'ካርቴላውን ለመልቀቅ ይጫኑ' : 'Tap to release'}
-              >
-                <span>CARTELA #{n}</span>
-                <span className="text-yellow-300 font-black">✓</span>
-              </span>
-            ))}
-          </div>
-        )}
-
-        {/* 3D Casino Board Container */}
-        <div
-          className="rounded-2xl p-1.5"
-          style={{
-            background: 'linear-gradient(180deg, #0b1329 0%, #020617 100%)',
-            border: '2px solid rgba(34, 211, 238, 0.65)',
-            boxShadow: '0 0 25px rgba(6, 182, 212, 0.35), inset 0 3px 8px rgba(0,0,0,0.8), 0 8px 24px rgba(0,0,0,0.7)',
-          }}
-        >
-          <div className="grid gap-[3px]" style={{ gridTemplateColumns: "repeat(10, 1fr)" }}>
-            {Array.from({ length: displayPlayers }, (_, i) => {
-              const n = i + 1;
-              const isTaken = taken.includes(n);
-              const isMine = myNums.includes(n);
-              const isBuying = buying === n;
-              const isReleasing = releasing === n;
-              
-              if (isMine) {
                 return (
                   <button
                     key={n}
                     type="button"
+                    disabled={buying !== null || !canPickMore}
                     onClick={() => handleSeatClick(n)}
-                    disabled={isReleasing}
-                    className="aspect-square flex flex-col items-center justify-center rounded-[6px] font-black z-10 select-none cursor-pointer active:scale-95 transition-all"
-                    style={{
-                      background: 'radial-gradient(circle at 35% 25%, #34d399 0%, #10b981 50%, #047857 100%)',
-                      boxShadow: '0 2.5px 0 #064e3b, 0 0 12px rgba(16,185,129,0.85), inset 0 1px 2px rgba(255,255,255,0.85)',
-                      border: '1.5px solid #fef08a',
-                      color: '#ffffff',
-                    }}
-                    title={language === 'am' ? 'ካርቴላውን ለመልቀቅ ደግመው ይጫኑ' : 'Double tap to release'}
+                    className={`aspect-square flex items-center justify-center rounded-[6px] text-[10.5px] font-black transition-all select-none ${
+                      !canPickMore
+                        ? 'cursor-not-allowed opacity-40'
+                        : isBuying
+                        ? 'opacity-50 scale-90'
+                        : 'cursor-pointer active:translate-y-[2px]'
+                    }`}
+                    style={
+                      !canPickMore
+                        ? {
+                            background: 'linear-gradient(180deg, #334155 0%, #1e293b 100%)',
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            color: 'rgba(255,255,255,0.3)',
+                          }
+                        : {
+                            background: 'linear-gradient(180deg, #ffffff 0%, #f8fafc 45%, #e2e8f0 85%, #cbd5e1 100%)',
+                            boxShadow: '0 2.5px 0 #94a3b8, 0 3px 5px rgba(0,0,0,0.35), inset 0 1px 0 #ffffff',
+                            border: '1px solid #e2e8f0',
+                            color: '#0f172a',
+                          }
+                    }
                   >
-                    {isReleasing ? (
+                    {isBuying ? (
                       <span className="animate-spin text-[10px]">⏳</span>
                     ) : (
-                      <>
-                        <span className="text-[10px] leading-none font-black">{n}</span>
-                        <span className="text-[8px] text-yellow-300 leading-none font-black">✓</span>
-                      </>
+                      <span>{n}</span>
                     )}
                   </button>
                 );
-              }
-              
-              if (isTaken) {
-                return (
-                  <div
-                    key={n}
-                    className="aspect-square flex items-center justify-center rounded-[6px] text-[9.5px] font-black select-none"
-                    style={{
-                      background: 'linear-gradient(180deg, #3b0707 0%, #1c0505 100%)',
-                      boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.85), 0 1px 0 rgba(255,255,255,0.05)',
-                      border: '1px solid rgba(239, 68, 68, 0.25)',
-                      color: 'rgba(248, 113, 113, 0.4)',
-                    }}
-                  >
-                    <span className="line-through">{n}</span>
-                  </div>
-                );
-              }
-
-              return (
-                <button
-                  key={n}
-                  type="button"
-                  disabled={buying !== null || !canPickMore}
-                  onClick={() => handleSeatClick(n)}
-                  className={`aspect-square flex items-center justify-center rounded-[6px] text-[10.5px] font-black transition-all select-none ${
-                    !canPickMore
-                      ? 'cursor-not-allowed opacity-40'
-                      : isBuying
-                      ? 'opacity-50 scale-90'
-                      : 'cursor-pointer active:translate-y-[2px]'
-                  }`}
-                  style={
-                    !canPickMore
-                      ? {
-                          background: 'linear-gradient(180deg, #334155 0%, #1e293b 100%)',
-                          border: '1px solid rgba(255,255,255,0.1)',
-                          color: 'rgba(255,255,255,0.3)',
-                        }
-                      : {
-                          background: 'linear-gradient(180deg, #ffffff 0%, #f8fafc 45%, #e2e8f0 85%, #cbd5e1 100%)',
-                          boxShadow: '0 2.5px 0 #94a3b8, 0 3px 5px rgba(0,0,0,0.35), inset 0 1px 0 #ffffff',
-                          border: '1px solid #e2e8f0',
-                          color: '#0f172a',
-                        }
-                  }
-                >
-                  {isBuying ? (
-                    <span className="animate-spin text-[10px]">⏳</span>
-                  ) : (
-                    <span>{n}</span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* ── SELECTED CARTELAS TRAY ("የመረጡት ካርቴላዎች") ── */}
-        <div className="mt-3.5 pt-3 border-t border-white/10">
-          <div className="flex items-center justify-between mb-2.5 px-1">
-            <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-amber-400" />
-              <h3 className="text-xs font-black text-white/95 uppercase tracking-wide">
-                {language === 'am' ? 'የመረጡት ካርቴላዎች' : 'Your Selected Cartelas'}
-              </h3>
+              })}
             </div>
-            {myCartelas.length > 0 && (
-              <span className="text-[10px] text-amber-400/80 font-medium">
-                {language === 'am' ? 'ለመልቀቅ ደግመው ይጫኑ' : 'Double tap to release'}
-              </span>
-            )}
-          </div>
-
-          {/* 4 Cartela Slots */}
-          <div className="flex gap-2.5 overflow-x-auto pb-2 no-scrollbar" style={{ scrollbarWidth: 'none' }}>
-            {Array.from({ length: maxCartelasPerUser }).map((_, slotIdx) => {
-              const cartela = myCartelas[slotIdx];
-              if (cartela) {
-                return (
-                  <div
-                    key={cartela.cartela_number}
-                    onClick={() => releaseCartela(cartela.cartela_number)}
-                    className="relative bg-white rounded-xl p-1.5 shadow-xl border border-slate-300 w-[140px] shrink-0 select-none cursor-pointer active:scale-95 transition-transform"
-                    title={language === 'am' ? 'ካርቴላውን ለመልቀቅ ይጫኑ' : 'Tap to release'}
-                  >
-                    {/* Release Button */}
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        releaseCartela(cartela.cartela_number);
-                      }}
-                      className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 hover:bg-red-600 active:scale-90 text-white rounded-full flex items-center justify-center text-[10px] font-black shadow-md z-20 cursor-pointer border border-white"
-                      title={language === 'am' ? 'ካርቴላውን ልቀቅ' : 'Release Cartela'}
-                    >
-                      ✕
-                    </button>
-
-                    {/* Top Row: "ሁሉ ካርቴላ" & "#Num" */}
-                    <div className="flex items-center justify-between px-1 mb-1">
-                      <span className="text-[9.5px] font-black text-slate-800">
-                        {language === 'am' ? 'ሁሉ ካርቴላ' : 'Bingo Card'}
-                      </span>
-                      <span className="text-[11px] font-black text-slate-900 font-mono">
-                        #{cartela.cartela_number}
-                      </span>
-                    </div>
-
-                    {/* B I N G O Header Row */}
-                    <div className="grid grid-cols-5 text-center font-black text-[9px] text-white rounded-t overflow-hidden">
-                      <div className="bg-[#2563eb] py-0.5">B</div>
-                      <div className="bg-[#dc2626] py-0.5">I</div>
-                      <div className="bg-[#475569] py-0.5">N</div>
-                      <div className="bg-[#059669] py-0.5">G</div>
-                      <div className="bg-[#d97706] py-0.5">O</div>
-                    </div>
-
-                    {/* 5x5 Number Grid */}
-                    <div className="grid grid-cols-5 gap-[1px] bg-slate-200 border-x border-b border-slate-200 rounded-b overflow-hidden">
-                      {cartela.card_matrix.map((row, r) =>
-                        row.map((num, c) => {
-                          const isCenter = r === 2 && c === 2;
-                          return (
-                            <div
-                              key={`${r}-${c}`}
-                              className={`aspect-square flex items-center justify-center text-[8.5px] font-black ${
-                                isCenter ? 'bg-amber-100 text-amber-800 font-black' : 'bg-white text-slate-900'
-                              }`}
-                            >
-                              {isCenter ? 'F' : num}
-                            </div>
-                          );
-                        })
-                      )}
-                    </div>
-                  </div>
-                );
-              }
-
-              return (
-                <div
-                  key={`empty-${slotIdx}`}
-                  className="bg-slate-900/50 rounded-xl p-2 border-2 border-dashed border-slate-700/60 w-[140px] shrink-0 flex flex-col items-center justify-center text-center select-none min-h-[145px]"
-                >
-                  <div className="w-8 h-8 rounded-full bg-slate-800/80 border border-slate-700 flex items-center justify-center text-slate-400 mb-1.5 shadow-inner">
-                    <span className="text-base font-bold">+</span>
-                  </div>
-                  <p className="text-[10px] font-bold text-slate-400">
-                    {language === 'am' ? `ካርቴላ ${slotIdx + 1}` : `Slot ${slotIdx + 1}`}
-                  </p>
-                  <span className="text-[8px] text-slate-500 font-medium mt-0.5">
-                    {language === 'am' ? 'ቁጥር ይምረጡ' : 'Tap number'}
-                  </span>
-                </div>
-              );
-            })}
           </div>
         </div>
-      </div>
+
+        {/* ── FIXED SELECTED CARTELAS TRAY (Docked right above bottom navigation bar) ── */}
+        {myCartelas.length > 0 && (
+          <div
+            className="fixed bottom-16 left-0 right-0 z-30 px-3 py-2 border-t"
+            style={{
+              background: 'linear-gradient(180deg, rgba(10, 15, 30, 0.98) 0%, rgba(5, 8, 22, 0.99) 100%)',
+              backdropFilter: 'blur(12px)',
+              borderColor: 'rgba(34, 211, 238, 0.35)',
+              boxShadow: '0 -8px 25px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+            }}
+          >
+            <div className="flex items-center justify-between mb-1.5 px-0.5">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                <span className="text-[11px] font-black text-white uppercase tracking-wider">
+                  {language === 'am' ? 'የመረጡት ካርቴላዎች' : 'Your Selected Cartelas'}
+                </span>
+                <span className="px-1.5 py-0.2 rounded-full bg-amber-400/20 border border-amber-400/40 text-[9.5px] font-mono font-black text-amber-300">
+                  {myCartelas.length}/{maxCartelasPerUser}
+                </span>
+              </div>
+              <span className="text-[9.5px] text-amber-400/80 font-bold">
+                {language === 'am' ? 'ለመልቀቅ ይጫኑ (✕)' : 'Tap ✕ to release'}
+              </span>
+            </div>
+
+            {/* Horizontal Cartelas Row (Up to 4 cartelas displayed side by side) */}
+            <div className="flex gap-2.5 overflow-x-auto pb-0.5 no-scrollbar" style={{ scrollbarWidth: 'none' }}>
+              {myCartelas.map((cartela) => (
+                <div
+                  key={cartela.cartela_number}
+                  className="relative bg-white rounded-xl p-1.5 shadow-2xl border border-slate-300 w-[130px] shrink-0 select-none cursor-pointer active:scale-95 transition-transform"
+                  onClick={() => releaseCartela(cartela.cartela_number)}
+                  title={language === 'am' ? 'ካርቴላውን ለመልቀቅ ይጫኑ' : 'Tap to release'}
+                >
+                  {/* Release Button */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      releaseCartela(cartela.cartela_number);
+                    }}
+                    className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 hover:bg-red-600 active:scale-90 text-white rounded-full flex items-center justify-center text-[10px] font-black shadow-md z-20 cursor-pointer border border-white"
+                    title={language === 'am' ? 'ካርቴላውን ልቀቅ' : 'Release Cartela'}
+                  >
+                    ✕
+                  </button>
+
+                  {/* Top Row: "Choice" & "#Num" */}
+                  <div className="flex items-center justify-between px-1 mb-1">
+                    <span className="text-[9.5px] font-black text-amber-600 uppercase tracking-tight">
+                      Choice
+                    </span>
+                    <span className="text-[11px] font-black text-slate-900 font-mono">
+                      #{cartela.cartela_number}
+                    </span>
+                  </div>
+
+                  {/* B I N G O Header Row */}
+                  <div className="grid grid-cols-5 text-center font-black text-[9px] text-white rounded-t overflow-hidden">
+                    <div className="bg-[#2563eb] py-0.5">B</div>
+                    <div className="bg-[#dc2626] py-0.5">I</div>
+                    <div className="bg-[#475569] py-0.5">N</div>
+                    <div className="bg-[#059669] py-0.5">G</div>
+                    <div className="bg-[#d97706] py-0.5">O</div>
+                  </div>
+
+                  {/* 5x5 Number Grid with Stake in Center */}
+                  <div className="grid grid-cols-5 gap-[1px] bg-slate-200 border-x border-b border-slate-200 rounded-b overflow-hidden">
+                    {cartela.card_matrix.map((row, r) =>
+                      row.map((num, c) => {
+                        const isCenter = r === 2 && c === 2;
+                        return (
+                          <div
+                            key={`${r}-${c}`}
+                            className={`aspect-square flex items-center justify-center text-[8.5px] font-black ${
+                              isCenter
+                                ? 'bg-gradient-to-br from-amber-200 to-amber-400 text-amber-950 font-black shadow-inner'
+                                : 'bg-white text-slate-900'
+                            }`}
+                          >
+                            {isCenter ? currentStake : num}
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </>
     );
   };
 

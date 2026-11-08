@@ -66,10 +66,15 @@ export default function AdminBingoGames() {
   const [saving, setSaving]     = useState(false);
   const [saveMsg, setSaveMsg]   = useState("");
 
-  const hdrs = () => ({
-    "Content-Type": "application/json",
-    "x-telegram-init-data": WebApp?.initData ?? "",
-  });
+  const hdrs = () => {
+    const initData = typeof window !== 'undefined' ? (window as any).Telegram?.WebApp?.initData || '' : '';
+    const pwaPhone = typeof window !== 'undefined' ? localStorage.getItem('cb_pwa_phone') || '' : '';
+    return {
+      "Content-Type": "application/json",
+      "x-telegram-init-data": initData || (pwaPhone ? `pwa_phone=${encodeURIComponent(pwaPhone)}` : ''),
+      "x-pwa-phone": pwaPhone,
+    };
+  };
 
   const fetchGames = useCallback(async () => {
     setLoading(true);

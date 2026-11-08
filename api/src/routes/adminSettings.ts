@@ -53,7 +53,13 @@ export function invalidateSettingsCache() { _cached = null; }
 
 // Helper: check if requester is admin via DB
 async function isAdmin(telegramId: string): Promise<boolean> {
-  const { data } = await supabase.from('users').select('role').eq('telegram_id', telegramId).single();
+  const clean = (telegramId || '').replace(/[^\d]/g, '');
+  const { data } = await supabase
+    .from('users')
+    .select('role')
+    .or(`telegram_id.eq.${telegramId},telegram_id.eq.${clean},phone.eq.${clean}`)
+    .limit(1)
+    .maybeSingle();
   return data?.role === 'admin';
 }
 
@@ -102,11 +108,11 @@ router.put('/', async (req: AuthRequest, res) => {
   };
 
   // Try UPDATE first, INSERT if no row exists
-  const { data: existing } = await supabase.from('game_settings').select('id').eq('id', 1).maybeSingle();
+  const { data: existing } = await supabase.from('game_settings').select('id').limit(1).maybeSingle();
 
   let error;
   if (existing) {
-    ({ error } = await supabase.from('game_settings').update(payload).eq('id', 1));
+    ({ error } = await supabase.from('game_settings').update(payload).eq('id', existing.id));
   } else {
     ({ error } = await supabase.from('game_settings').insert({ id: 1, ...payload }));
   }
@@ -115,7 +121,7 @@ router.put('/', async (req: AuthRequest, res) => {
   if (error && error.message?.includes('release_time_s')) {
     const { release_time_s: _, ...fallbackPayload } = payload;
     if (existing) {
-      ({ error } = await supabase.from('game_settings').update(fallbackPayload).eq('id', 1));
+      ({ error } = await supabase.from('game_settings').update(fallbackPayload).eq('id', existing.id));
     } else {
       ({ error } = await supabase.from('game_settings').insert({ id: 1, ...fallbackPayload }));
     }
