@@ -18,6 +18,7 @@ export default function AdminQrCode() {
   const [devPhone, setDevPhone] = useState('0904174741');
   const [devTitle, setDevTitle] = useState('ለማሰራት');
   const [devCallToAction, setDevCallToAction] = useState('ያናግሩኝ');
+  const [developerName, setDeveloperName] = useState('Developer Shikur Ebrahim');
   const [showDevContact, setShowDevContact] = useState(true);
   const [showOptions, setShowOptions] = useState(false);
   const [toast, setToast] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
@@ -383,13 +384,13 @@ export default function AdminQrCode() {
     drawRoundRect(ctx, devCardX + 5, devCardY + 5, devCardW - 10, devCardH - 10, devCardR - 5);
     ctx.stroke();
 
-    // Top Header: "✨ የቢንጎ ሲስተም / ቦት ለማሰራት (BINGO DEVELOPER) ✨"
+    // Top Header: "✨ የቢንጎ ሲስተም / ቦት ለማሰራት (Development) ✨"
     const titleClean = devTitle.trim() || 'ለማሰራት';
     ctx.font = '900 21px "Noto Sans Ethiopic", "Abyssinica SIL", sans-serif';
     ctx.fillStyle = '#FDE68A';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(`✨ የቢንጎ ሲስተም / ቦት ${titleClean} (Developer) ✨`, W / 2, devCardY + 32);
+    ctx.fillText(`✨ የቢንጎ ሲስተም / ቦት ${titleClean} (Development) ✨`, W / 2, devCardY + 32);
 
     // Center 3D Raised Phone Button: "📞 0904174741"
     const phoneClean = devPhone.trim() || '0904174741';
@@ -428,13 +429,13 @@ export default function AdminQrCode() {
     ctx.textBaseline = 'middle';
     ctx.fillText(`📞  ${phoneClean}`, W / 2, phoneBtnY + phoneBtnH / 2);
 
-    // Bottom Call to Action: "💬 ያናግሩኝ • DIRECT CALL / TELEGRAM"
+    // Bottom Call to Action: "💬 ያናግሩኝ • ስልክ ወይም ቴሌግራም" (Removed trailing rocket icon)
     const ctaClean = devCallToAction.trim() || 'ያናግሩኝ';
     ctx.font = '800 17px "Noto Sans Ethiopic", "Abyssinica SIL", sans-serif';
     ctx.fillStyle = '#38BDF8';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(`💬 ${ctaClean}  •  ስልክ ወይም ቴሌግራም  🚀`, W / 2, devCardY + 132);
+    ctx.fillText(`💬 ${ctaClean}  •  ስልክ ወይም ቴሌግራም`, W / 2, devCardY + 132);
 
     // 12. Script Motto
     const mottoY = 1435;
@@ -464,12 +465,20 @@ export default function AdminQrCode() {
     ctx.fillText(`@${botUsername.replace(/^@/, '')}`, W / 2, botPillY + botPillH / 2);
 
     // 14. Footer Credits
-    const footerY = 1600;
+    const footerY = 1595;
     ctx.fillStyle = '#8C7853';
     ctx.font = '600 16px sans-serif';
     ctx.fillText('Official Partner Network  •  Powered by CHOICE BINGO', W / 2, footerY);
 
-    // 15. Bottom Elegant Decorative Corner Arcs
+    // 15. English Developer Work Attribution
+    const devAttributionY = 1648;
+    ctx.fillStyle = '#6E5D3F';
+    ctx.font = '700 20px "Times New Roman", Georgia, serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(developerName.trim() || 'Developer Shikur Ebrahim', W / 2, devAttributionY);
+
+    // 16. Bottom Elegant Decorative Corner Arcs
     ctx.strokeStyle = '#C5A059';
     ctx.lineWidth = 1.5;
 
@@ -494,7 +503,7 @@ export default function AdminQrCode() {
     } catch (e) {
       console.error('DataURL error:', e);
     }
-  }, [botUsername, roomTitle, startParam, devPhone, devTitle, devCallToAction, showDevContact, getFullTelegramUrl]);
+  }, [botUsername, roomTitle, startParam, devPhone, devTitle, devCallToAction, developerName, showDevContact, getFullTelegramUrl]);
 
   useEffect(() => {
     renderPoster();
@@ -660,6 +669,7 @@ export default function AdminQrCode() {
                   setDevPhone('0904174741');
                   setDevTitle('ለማሰራት');
                   setDevCallToAction('ያናግሩኝ');
+                  setDeveloperName('Developer Shikur Ebrahim');
                   setShowDevContact(true);
                 }}
                 className="text-[10px] text-slate-500 hover:text-slate-800 font-bold flex items-center gap-1"
@@ -759,6 +769,17 @@ export default function AdminQrCode() {
                           placeholder="ያናግሩኝ"
                         />
                       </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[9.5px] font-bold text-slate-600 uppercase mb-0.5">Developer Signature (English)</label>
+                      <input
+                        type="text"
+                        value={developerName}
+                        onChange={(e) => setDeveloperName(e.target.value)}
+                        className="w-full bg-white border border-slate-200 focus:border-amber-500 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-900 outline-none"
+                        placeholder="Developer Shikur Ebrahim"
+                      />
                     </div>
                   </div>
                 )}
