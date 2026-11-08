@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, ChevronDown, Gift, RefreshCw, Users, Clock, Trophy, Volume2, VolumeX, RotateCcw, LayoutGrid, Wand2, Hand } from "lucide-react";
+import { ArrowLeft, ChevronDown, Gift, RefreshCw, Users, Clock, Trophy, Volume2, VolumeX, RotateCcw, LayoutGrid, Wand2, Hand, Play } from "lucide-react";
 import WebApp from "@twa-dev/sdk";
 import { supabase } from "../lib/supabase";
 import { useGameStore } from "../store/gameStore";
 import { t } from '../lib/translations';
+import VideoGuideModal from "../components/VideoGuideModal";
 
 const API = import.meta.env.VITE_API_URL || "/api";
 
@@ -173,6 +174,7 @@ export default function BingoGame() {
   const [claimErrMsg, setClaimErrMsg] = useState("");
   const [isClaiming, setIsClaiming] = useState(false);
   const [celebrationSecondsLeft, setCelebrationSecondsLeft] = useState(5);
+  const [showVideoGuide, setShowVideoGuide] = useState(false);
 
   // False claim penalty cooldown timer
   useEffect(() => {
@@ -2548,6 +2550,21 @@ export default function BingoGame() {
                   {(game.game_id || game.id?.slice(0, 8) || '').toUpperCase()}
                 </span>
               </div>
+
+              {/* 3D Tutorial Pill */}
+              <button
+                onClick={() => setShowVideoGuide(true)}
+                className="h-9 px-2.5 flex items-center gap-1 rounded-xl transition-all active:translate-y-0.5 cursor-pointer text-white font-black text-[11px] shrink-0"
+                style={{
+                  background: 'linear-gradient(180deg, #7c3aed 0%, #4f46e5 100%)',
+                  boxShadow: '0 3px 0 #312e81, inset 0 1px 1px rgba(255,255,255,0.25)',
+                  border: '1px solid rgba(196, 181, 253, 0.4)',
+                }}
+                title="How to play video tutorial"
+              >
+                <Play size={11} className="fill-white" />
+                <span className="hidden sm:inline">{language === 'am' ? 'መመሪያ' : 'Guide'}</span>
+              </button>
             </div>
 
             {/* 5-pod 3D Stats Matrix */}
@@ -2907,6 +2924,13 @@ export default function BingoGame() {
           </div>
         </div>
       )}
+
+      {/* ── HOW TO PLAY VIDEO GUIDE MODAL ── */}
+      <VideoGuideModal
+        isOpen={showVideoGuide}
+        onClose={() => setShowVideoGuide(false)}
+        category="how_to_play"
+      />
 
     </div>
   );
