@@ -146,7 +146,7 @@ export default function BingoGame() {
   const urlStake = searchParams.get("stake");
   const [selectedStake, setSelectedStake] = useState<number | null>(urlStake ? Number(urlStake) : null);
   const [showStakeDropdown, setShowStakeDropdown] = useState(false);
-  const [maxPlayers, setMaxPlayers] = useState<number>(150);
+  const [maxPlayers, setMaxPlayers] = useState<number>(200);
   const [maxCartelasPerUser, setMaxCartelasPerUser] = useState<number>(4);
   const [myCartelas, setMyCartelas] = useState<Array<{
     cartela_number: number;
@@ -607,7 +607,7 @@ export default function BingoGame() {
           }
           isCelebratingRef.current = true;
         }
-        if (d.max_players) setMaxPlayers(Math.min(150, Number(d.max_players)));
+        if (d.max_players) setMaxPlayers(Math.min(500, Number(d.max_players)));
         if (d.max_cartelas_per_user) setMaxCartelasPerUser(Number(d.max_cartelas_per_user));
         
         // Merge server cartelas with any pending local optimistic cartelas (avoids flicker!)
@@ -2217,7 +2217,7 @@ export default function BingoGame() {
 
   const renderCartelaPicker = () => {
     const myNums = myCartelas.map(c => c.cartela_number);
-    const displayPlayers = maxPlayers || 150;
+    const displayPlayers = maxPlayers || 200;
     const canPickMore = myCartelas.length < maxCartelasPerUser;
     const currentStake = selectedStake || game?.stake || 10;
 

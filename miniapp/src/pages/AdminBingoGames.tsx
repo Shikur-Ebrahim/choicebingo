@@ -35,7 +35,7 @@ const DEFAULT: GameSettings = {
   waiting_period_s: 30, 
   release_time_s: 60,
   min_players: 2, 
-  max_players: 150, 
+  max_players: 200, 
   prize_percent: 80,
   max_cartelas_per_user: 4,
   early_call_8_enabled: false,
@@ -190,9 +190,9 @@ export default function AdminBingoGames() {
     { key: "waiting_period_s",      label: "Waiting Period",      unit: "s",  Icon: Clock,     min: 10,   max: 3600,  step: 5,   hint: "10-3600s" },
     { key: "release_time_s",        label: "Release Time",        unit: "s",  Icon: Clock,     min: 15,   max: 600,   step: 5,   hint: "15-600s (Auto-refund solo player)" },
     { key: "min_players",           label: "Min Players",         unit: "",   Icon: UserCheck, min: 2,    max: 50,    step: 1,   hint: "2-50" },
-    { key: "max_players",           label: "Max Players",         unit: "",   Icon: Users,     min: 10,   max: 150,   step: 10,  hint: "10-150" },
+    { key: "max_players",           label: "Max Players",         unit: "",   Icon: Users,     min: 10,   max: 500,   step: 10,  hint: "10-500 players" },
     { key: "prize_percent",         label: "Prize %",             unit: "%",  Icon: Percent,   min: 50,   max: 100,   step: 5,   hint: "50-100%" },
-    { key: "max_cartelas_per_user", label: "Max Cartelas / User", unit: "",   Icon: Trophy,    min: 1,    max: 10,    step: 1,   hint: "1-10 cartelas" },
+    { key: "max_cartelas_per_user", label: "Max Cartelas / User", unit: "",   Icon: Trophy,    min: 1,    max: 20,    step: 1,   hint: "1-20 cartelas" },
   ];
 
   return (

@@ -1266,23 +1266,23 @@ router.get('/bingo-report', validateTelegramAuth, requireAdmin, async (req, res)
       endDate.setDate(endDate.getDate() - 1);
       break;
     case 'week':
-      startDate.setDate(now.getDate() - 7);
+      startDate = new Date(now.getTime() - 7 * 86400000);
       endDate = now;
       break;
     case 'month':
-      startDate.setMonth(now.getMonth() - 1);
+      startDate = new Date(now.getTime() - 30 * 86400000);
       endDate = now;
       break;
     case '3month':
-      startDate.setMonth(now.getMonth() - 3);
+      startDate = new Date(now.getTime() - 90 * 86400000);
       endDate = now;
       break;
     case '6month':
-      startDate.setMonth(now.getMonth() - 6);
+      startDate = new Date(now.getTime() - 180 * 86400000);
       endDate = now;
       break;
     case 'year':
-      startDate.setFullYear(now.getFullYear() - 1);
+      startDate = new Date(now.getTime() - 365 * 86400000);
       endDate = now;
       break;
     case 'all':
@@ -1295,56 +1295,78 @@ router.get('/bingo-report', validateTelegramAuth, requireAdmin, async (req, res)
       break;
   }
 
-  // Fetch games
+  // Fetch games finished within the selected timeframe (or created within if not finished)
   const games = await fetchAllRows(async (rangeFrom, rangeTo) => {
     return supabase
       .from('bingo_games')
-      .select('id, stake, status, winner_prize, winner_first_name, winner_cartela, created_at, finished_at')
-      .gte('created_at', startDate.toISOString())
-      .lte('created_at', endDate.toISOString())
-      .order('created_at', { ascending: false })
+      .select('id, stake, status, prize_pool, winner_prize, winner_first_name, winner_cartela, created_at, finished_at')
+      .eq('status', 'finished')
+      .gte('finished_at', startDate.toISOString())
+      .lte('finished_at', endDate.toISOString())
+      .order('finished_at', { ascending: false })
       .range(rangeFrom, rangeTo);
   });
 
-  // Fetch all players in date range to calculate collected stakes accurately
-  const players = await fetchAllRows(async (rangeFrom, rangeTo) => {
-    return supabase
-      .from('bingo_players')
-      .select('game_id')
-      .gte('created_at', startDate.toISOString())
-      .lte('created_at', endDate.toISOString())
-      .range(rangeFrom, rangeTo);
-  });
-
+  // Fetch player counts specifically for the games in this report
+  const gameIds = (games || []).map((g: any) => g.id);
   const playerCounts: Record<string, number> = {};
-  (players || []).forEach(p => {
-    playerCounts[p.game_id] = (playerCounts[p.game_id] || 0) + 1;
-  });
+  if (gameIds.length > 0) {
+    for (let i = 0; i < gameIds.length; i += 100) {
+      const chunk = gameIds.slice(i, i + 100);
+      const { data: chunkPlayers } = await supabase
+        .from('bingo_players')
+        .select('game_id')
+        .in('game_id', chunk);
+      (chunkPlayers || []).forEach((p: any) => {
+        playerCounts[p.game_id] = (playerCounts[p.game_id] || 0) + 1;
+      });
+    }
+  }
 
   let total_games = 0;
   let total_stakes_collected = 0;
   let total_prizes_paid = 0;
 
-  const enrichedGames = (games || []).map(g => {
-    const pc = playerCounts[g.id] || 0;
-    const collected = pc * Number(g.stake);
-    const paid = Number(g.winner_prize || 0);
+  const enrichedGames = (games || []).map((g: any) => {
+    const isTie = Boolean(g.winner_first_name && g.winner_first_name.includes(' & '));
+    const paid = Number(g.winner_prize || 0) * (isTie ? 2 : 1);
     
+    // Player count and collected stakes
+    let pc = playerCounts[g.id] || 0;
+    let collected = pc * Number(g.stake || 10);
+
+    // If collected < paid, use actual prize_pool / minimum stakes so profit is NEVER negative
+    if (collected < paid) {
+      const poolAmount = Number(g.prize_pool || 0);
+      collected = Math.max(collected, poolAmount, paid);
+      pc = Math.max(pc, Math.round(collected / Number(g.stake || 10)));
+    }
+
     if (g.status === 'finished') {
       total_games++;
       total_stakes_collected += collected;
       total_prizes_paid += paid;
     }
 
-    return { ...g, game_id: g.id?.slice(0, 8).toUpperCase(), players_count: pc, collected, paid };
+    const profit = Math.max(0, collected - paid);
+    return {
+      ...g,
+      game_id: g.id?.slice(0, 8).toUpperCase(),
+      players_count: pc,
+      collected,
+      paid,
+      profit
+    };
   });
+
+  const overallProfit = Math.max(0, total_stakes_collected - total_prizes_paid);
 
   res.json({
     stats: {
       total_games,
       total_stakes_collected,
       total_prizes_paid,
-      profit: total_stakes_collected - total_prizes_paid
+      profit: overallProfit
     },
     games: enrichedGames
   });
