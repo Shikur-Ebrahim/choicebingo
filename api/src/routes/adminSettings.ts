@@ -34,7 +34,7 @@ export async function getSettings(): Promise<typeof DEFAULT_SETTINGS> {
       waiting_period_s: data.waiting_period_s ?? DEFAULT_SETTINGS.waiting_period_s,
       release_time_s:   data.release_time_s   ?? DEFAULT_SETTINGS.release_time_s,
       min_players:      data.min_players      ?? DEFAULT_SETTINGS.min_players,
-      max_players:      data.max_players      ?? DEFAULT_SETTINGS.max_players,
+      max_players:      Math.min(150, Math.max(10, Number(data.max_players ?? DEFAULT_SETTINGS.max_players))),
       prize_percent:    data.prize_percent     ?? DEFAULT_SETTINGS.prize_percent,
       max_cartelas_per_user: data.max_cartelas_per_user ?? DEFAULT_SETTINGS.max_cartelas_per_user,
       early_call_8_enabled:  data.early_call_8_enabled ?? DEFAULT_SETTINGS.early_call_8_enabled,
@@ -82,7 +82,7 @@ router.put('/', async (req: AuthRequest, res) => {
   const wp  = Math.max(10,    Math.min(3600,  Number(waiting_period_s)  || DEFAULT_SETTINGS.waiting_period_s));
   const rt  = Math.max(15,    Math.min(600,   Number(release_time_s)    || DEFAULT_SETTINGS.release_time_s));
   const mnp = Math.max(2,     Math.min(50,    Number(min_players)       || DEFAULT_SETTINGS.min_players));
-  const mxp = Math.max(10,    Math.min(500,   Number(max_players)       || DEFAULT_SETTINGS.max_players));
+  const mxp = Math.max(10,    Math.min(150,   Number(max_players)       || DEFAULT_SETTINGS.max_players));
   const pp  = Math.max(50,    Math.min(100,   Number(prize_percent)     || DEFAULT_SETTINGS.prize_percent));
   const mcu = Math.max(1,     Math.min(20,    Number(max_cartelas_per_user) || DEFAULT_SETTINGS.max_cartelas_per_user));
 

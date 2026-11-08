@@ -124,7 +124,8 @@ router.get('/current', validateTelegramAuth, async (req: AuthRequest, res) => {
   const my_card = my_cartelas.length > 0 ? my_cartelas[0] : null;
 
   const cfg = await getSettings();
-  res.json({ game, taken_cartelas, unique_players, my_card, my_cartelas, max_players: cfg.max_players, max_cartelas_per_user: cfg.max_cartelas_per_user });
+  const maxPlayersAllowed = Math.min(150, cfg.max_players || 150);
+  res.json({ game, taken_cartelas, unique_players, my_card, my_cartelas, max_players: maxPlayersAllowed, max_cartelas_per_user: cfg.max_cartelas_per_user });
 });
 
 // ── POST /api/bingo/join ────────────────────────────────────────────────────
@@ -133,9 +134,10 @@ router.post('/join', validateTelegramAuth, async (req: AuthRequest, res) => {
   const { cartela_number } = req.body;
   const seat = Number(cartela_number);
   const cfg = await getSettings();
+  const maxPlayersAllowed = Math.min(150, cfg.max_players || 150);
 
-  if (!seat || seat < 1 || seat > cfg.max_players) {
-    res.status(400).json({ error: `Pick a cartela between 1 and ${cfg.max_players}` }); return;
+  if (!seat || seat < 1 || seat > maxPlayersAllowed) {
+    res.status(400).json({ error: `Pick a cartela between 1 and ${maxPlayersAllowed}` }); return;
   }
 
   const requestedStake = req.body.stake || 10;

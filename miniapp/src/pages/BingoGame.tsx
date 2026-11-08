@@ -599,7 +599,7 @@ export default function BingoGame() {
           }
           isCelebratingRef.current = true;
         }
-        if (d.max_players) setMaxPlayers(Number(d.max_players));
+        if (d.max_players) setMaxPlayers(Math.min(150, Number(d.max_players)));
         if (d.max_cartelas_per_user) setMaxCartelasPerUser(Number(d.max_cartelas_per_user));
         if (d.my_cartelas) setMyCartelas(d.my_cartelas);
         if (d.unique_players !== undefined) setUniquePlayers(Number(d.unique_players));
@@ -2077,38 +2077,74 @@ export default function BingoGame() {
 
   const renderCartelaPicker = () => {
     const myNums = myCartelas.map(c => c.cartela_number);
+    const displayPlayers = Math.min(150, maxPlayers || 150);
     const canPickMore = myCartelas.length < maxCartelasPerUser;
-    const currentStake = selectedStake || game?.stake || 10;
 
     return (
       <div className="flex-1 overflow-y-auto relative p-2.5 pb-20 select-none">
-        {/* Header Bar: "ካርቴላ ይምረጡ (XX ብር)" & "X/4" */}
-        <div className="flex items-center justify-between mb-2 px-1">
-          <div className="flex items-center gap-2">
-            <h2 className="text-sm font-black text-white tracking-wide">
-              {language === 'am'
-                ? `ካርቴላ ይምረጡ (${currentStake} ብር)`
-                : `Pick Cartela (${currentStake} ETB)`}
-            </h2>
-            <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-cyan-950/60 border border-cyan-500/30 text-[9px] font-bold text-cyan-300">
-              <span className={`w-1.5 h-1.5 rounded-full ${canPickMore ? 'bg-cyan-400 animate-ping' : 'bg-emerald-400'}`} />
-              <span>{taken.length}/{maxPlayers}</span>
-            </div>
+        {/* 3D Header Bar: Status Capsule & Picked Badge */}
+        <div className="flex items-center justify-between mb-2.5 gap-2">
+          <div
+            className="flex items-center gap-1.5 px-3 py-1 rounded-full shadow-md"
+            style={{
+              background: 'linear-gradient(180deg, #0e2238 0%, #061320 100%)',
+              border: '1px solid rgba(34, 211, 238, 0.45)',
+              boxShadow: '0 2px 0 #020b12, inset 0 1px 1px rgba(255, 255, 255, 0.15)',
+            }}
+          >
+            <div className={`w-2 h-2 rounded-full ${canPickMore ? 'bg-cyan-400 animate-ping' : 'bg-emerald-400'}`} />
+            <p className="text-[9.5px] text-cyan-300 font-black uppercase tracking-wider">
+              {canPickMore ? `TAP TO PICK — ${taken.length}/${displayPlayers} TAKEN` : `ALL CARTELAS SELECTED ✓`}
+            </p>
           </div>
 
-          <div className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400 font-mono font-black text-xs">
-            <span>{myCartelas.length}</span>
-            <span className="text-slate-500">/</span>
-            <span>{maxCartelasPerUser}</span>
+          <div
+            className="px-3 py-1 rounded-full text-center"
+            style={{
+              background: 'linear-gradient(180deg, #fef08a 0%, #facc15 40%, #ca8a04 100%)',
+              boxShadow: '0 2.5px 0 #854d0e, inset 0 1px 1px rgba(255,255,255,0.9)',
+              border: '1px solid #fef08a',
+            }}
+          >
+            <p className="text-[9.5px] text-[#451a03] font-black tracking-wider uppercase drop-shadow-sm">
+              {myCartelas.length}/{maxCartelasPerUser} PICKED
+            </p>
           </div>
         </div>
 
-        {/* 3D Casino Board Container (10 columns grid) */}
+        {/* My Cartelas chips */}
+        {myNums.length > 0 && (
+          <div className="flex gap-2 mb-2.5 flex-wrap">
+            {myNums.map(n => (
+              <span
+                key={n}
+                onClick={() => releaseCartela(n)}
+                className="px-3 py-1 text-white text-xs font-black rounded-full flex items-center gap-1 cursor-pointer active:scale-95 transition-transform"
+                style={{
+                  background: 'linear-gradient(180deg, #10b981 0%, #059669 100%)',
+                  boxShadow: '0 3px 0 #047857, inset 0 1px 1px rgba(255,255,255,0.7), 0 0 10px rgba(16,185,129,0.5)',
+                  border: '1.5px solid #fef08a',
+                }}
+                title={language === 'am' ? 'ካርቴላውን ለመልቀቅ ይጫኑ' : 'Tap to release'}
+              >
+                <span>CARTELA #{n}</span>
+                <span className="text-yellow-300 font-black">✓</span>
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* 3D Casino Board Container */}
         <div
-          className="rounded-2xl p-2 bg-[#090e1f] border border-cyan-500/30 shadow-[0_4px_20px_rgba(0,0,0,0.6)]"
+          className="rounded-2xl p-1.5"
+          style={{
+            background: 'linear-gradient(180deg, #0b1329 0%, #020617 100%)',
+            border: '2px solid rgba(34, 211, 238, 0.65)',
+            boxShadow: '0 0 25px rgba(6, 182, 212, 0.35), inset 0 3px 8px rgba(0,0,0,0.8), 0 8px 24px rgba(0,0,0,0.7)',
+          }}
         >
-          <div className="grid gap-1.5" style={{ gridTemplateColumns: "repeat(10, 1fr)" }}>
-            {Array.from({ length: maxPlayers }, (_, i) => {
+          <div className="grid gap-[3px]" style={{ gridTemplateColumns: "repeat(10, 1fr)" }}>
+            {Array.from({ length: displayPlayers }, (_, i) => {
               const n = i + 1;
               const isTaken = taken.includes(n);
               const isMine = myNums.includes(n);
@@ -2122,19 +2158,22 @@ export default function BingoGame() {
                     type="button"
                     onClick={() => handleSeatClick(n)}
                     disabled={isReleasing}
-                    className="aspect-square flex items-center justify-center rounded-lg font-black text-xs z-10 select-none cursor-pointer active:scale-95 transition-all"
+                    className="aspect-square flex flex-col items-center justify-center rounded-[6px] font-black z-10 select-none cursor-pointer active:scale-95 transition-all"
                     style={{
-                      background: 'linear-gradient(180deg, #fef08a 0%, #f59e0b 50%, #b45309 100%)',
-                      boxShadow: '0 0 12px rgba(245, 158, 11, 0.7), inset 0 1px 1px #ffffff',
+                      background: 'radial-gradient(circle at 35% 25%, #34d399 0%, #10b981 50%, #047857 100%)',
+                      boxShadow: '0 2.5px 0 #064e3b, 0 0 12px rgba(16,185,129,0.85), inset 0 1px 2px rgba(255,255,255,0.85)',
                       border: '1.5px solid #fef08a',
-                      color: '#0f172a',
+                      color: '#ffffff',
                     }}
                     title={language === 'am' ? 'ካርቴላውን ለመልቀቅ ደግመው ይጫኑ' : 'Double tap to release'}
                   >
                     {isReleasing ? (
                       <span className="animate-spin text-[10px]">⏳</span>
                     ) : (
-                      <span>{n}</span>
+                      <>
+                        <span className="text-[10px] leading-none font-black">{n}</span>
+                        <span className="text-[8px] text-yellow-300 leading-none font-black">✓</span>
+                      </>
                     )}
                   </button>
                 );
@@ -2144,7 +2183,13 @@ export default function BingoGame() {
                 return (
                   <div
                     key={n}
-                    className="aspect-square flex items-center justify-center rounded-lg text-[10px] font-bold select-none bg-[#0c1120] text-slate-600/40 border border-white/5"
+                    className="aspect-square flex items-center justify-center rounded-[6px] text-[9.5px] font-black select-none"
+                    style={{
+                      background: 'linear-gradient(180deg, #3b0707 0%, #1c0505 100%)',
+                      boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.85), 0 1px 0 rgba(255,255,255,0.05)',
+                      border: '1px solid rgba(239, 68, 68, 0.25)',
+                      color: 'rgba(248, 113, 113, 0.4)',
+                    }}
                   >
                     <span className="line-through">{n}</span>
                   </div>
@@ -2157,13 +2202,27 @@ export default function BingoGame() {
                   type="button"
                   disabled={buying !== null || !canPickMore}
                   onClick={() => handleSeatClick(n)}
-                  className={`aspect-square flex items-center justify-center rounded-lg text-xs font-bold transition-all select-none ${
+                  className={`aspect-square flex items-center justify-center rounded-[6px] text-[10.5px] font-black transition-all select-none ${
                     !canPickMore
-                      ? 'cursor-not-allowed opacity-35 bg-[#12182b] text-slate-500 border border-white/5'
+                      ? 'cursor-not-allowed opacity-40'
                       : isBuying
-                      ? 'opacity-60 scale-90 bg-amber-500/20 text-amber-300 border border-amber-400'
-                      : 'cursor-pointer bg-[#182035] hover:bg-[#222c48] active:scale-95 text-slate-200 border border-white/5 shadow-xs'
+                      ? 'opacity-50 scale-90'
+                      : 'cursor-pointer active:translate-y-[2px]'
                   }`}
+                  style={
+                    !canPickMore
+                      ? {
+                          background: 'linear-gradient(180deg, #334155 0%, #1e293b 100%)',
+                          border: '1px solid rgba(255,255,255,0.1)',
+                          color: 'rgba(255,255,255,0.3)',
+                        }
+                      : {
+                          background: 'linear-gradient(180deg, #ffffff 0%, #f8fafc 45%, #e2e8f0 85%, #cbd5e1 100%)',
+                          boxShadow: '0 2.5px 0 #94a3b8, 0 3px 5px rgba(0,0,0,0.35), inset 0 1px 0 #ffffff',
+                          border: '1px solid #e2e8f0',
+                          color: '#0f172a',
+                        }
+                  }
                 >
                   {isBuying ? (
                     <span className="animate-spin text-[10px]">⏳</span>
