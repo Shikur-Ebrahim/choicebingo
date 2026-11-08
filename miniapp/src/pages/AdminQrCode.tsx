@@ -15,6 +15,10 @@ export default function AdminQrCode() {
   const [botUsername, setBotUsername] = useState('choicebingo_bot');
   const [roomTitle, setRoomTitle] = useState('OFFICIAL CHOICE BINGO');
   const [startParam, setStartParam] = useState('qr');
+  const [devPhone, setDevPhone] = useState('0904174741');
+  const [devTitle, setDevTitle] = useState('ለማሰራት');
+  const [devCallToAction, setDevCallToAction] = useState('ያናግሩኝ');
+  const [showDevContact, setShowDevContact] = useState(true);
   const [showOptions, setShowOptions] = useState(false);
   const [toast, setToast] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [downloading, setDownloading] = useState(false);
@@ -344,43 +348,96 @@ export default function AdminQrCode() {
     ctx.font = '900 24px sans-serif';
     ctx.fillText('BINGO', W / 2, badgeY + 52);
 
-    // 11. Features Row under QR code
-    const featsY = 1285;
-    const features = [
-      { icon: '🏆', title: 'JACKPOT' },
-      { icon: '⚡', title: 'INSTANT PAY' },
-      { icon: '🎱', title: '75 BINGO' },
-      { icon: '🛡️', title: 'VERIFIED' },
-    ];
+    // 11. Advanced 3D Attention-Seeker Developer Card (Replacing horizontal icons directly under QR)
+    // "ለማሰራት  0904174741  ያናግሩኝ"
+    const devCardW = 740;
+    const devCardH = 156;
+    const devCardX = (W - devCardW) / 2;
+    const devCardY = 1230;
+    const devCardR = 28;
 
-    const colW = (W - 140) / 4;
-    features.forEach((feat, i) => {
-      const fx = 70 + i * colW + colW / 2;
+    // Card Ambient Glow & 3D Shadow
+    ctx.save();
+    ctx.shadowColor = 'rgba(217, 119, 6, 0.45)';
+    ctx.shadowBlur = 28;
+    ctx.shadowOffsetY = 8;
 
-      // Icon
-      ctx.font = '36px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(feat.icon, fx, featsY);
+    drawRoundRect(ctx, devCardX, devCardY, devCardW, devCardH, devCardR);
+    const devGrad = ctx.createLinearGradient(devCardX, devCardY, devCardX + devCardW, devCardY + devCardH);
+    devGrad.addColorStop(0, '#0F172A');
+    devGrad.addColorStop(0.5, '#1E293B');
+    devGrad.addColorStop(1, '#090D16');
+    ctx.fillStyle = devGrad;
+    ctx.fill();
+    ctx.restore();
 
-      // Label
-      ctx.fillStyle = '#5A4A32';
-      ctx.font = '900 15px sans-serif';
-      ctx.fillText(feat.title, fx, featsY + 36);
+    // Outer Polished Gold Border (3px)
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = '#D4AF37';
+    drawRoundRect(ctx, devCardX, devCardY, devCardW, devCardH, devCardR);
+    ctx.stroke();
 
-      // Divider line (except last)
-      if (i < 3) {
-        ctx.strokeStyle = '#E0CEAA';
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.moveTo(70 + (i + 1) * colW, featsY - 14);
-        ctx.lineTo(70 + (i + 1) * colW, featsY + 44);
-        ctx.stroke();
-      }
-    });
+    // Inner Fine Accent Border
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(251, 191, 36, 0.45)';
+    drawRoundRect(ctx, devCardX + 5, devCardY + 5, devCardW - 10, devCardH - 10, devCardR - 5);
+    ctx.stroke();
+
+    // Top Header: "✨ የቢንጎ ሲስተም / ቦት ለማሰራት (BINGO DEVELOPER) ✨"
+    const titleClean = devTitle.trim() || 'ለማሰራት';
+    ctx.font = '900 21px "Noto Sans Ethiopic", "Abyssinica SIL", sans-serif';
+    ctx.fillStyle = '#FDE68A';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`✨ የቢንጎ ሲስተም / ቦት ${titleClean} (Developer) ✨`, W / 2, devCardY + 32);
+
+    // Center 3D Raised Phone Button: "📞 0904174741"
+    const phoneClean = devPhone.trim() || '0904174741';
+    const phoneBtnW = 580;
+    const phoneBtnH = 58;
+    const phoneBtnX = (W - phoneBtnW) / 2;
+    const phoneBtnY = devCardY + 52;
+    const phoneBtnR = 29;
+
+    // 3D Button Drop Shadow
+    ctx.save();
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.55)';
+    ctx.shadowBlur = 12;
+    ctx.shadowOffsetY = 4;
+
+    drawRoundRect(ctx, phoneBtnX, phoneBtnY, phoneBtnW, phoneBtnH, phoneBtnR);
+    const phoneGrad = ctx.createLinearGradient(phoneBtnX, phoneBtnY, phoneBtnX + phoneBtnW, phoneBtnY + phoneBtnH);
+    phoneGrad.addColorStop(0, '#B45309');
+    phoneGrad.addColorStop(0.3, '#F59E0B');
+    phoneGrad.addColorStop(0.7, '#D97706');
+    phoneGrad.addColorStop(1, '#92400E');
+    ctx.fillStyle = phoneGrad;
+    ctx.fill();
+    ctx.restore();
+
+    // 3D Top Bevel Highlight
+    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = '#FEF3C7';
+    drawRoundRect(ctx, phoneBtnX, phoneBtnY, phoneBtnW, phoneBtnH, phoneBtnR);
+    ctx.stroke();
+
+    // Phone Text
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = '900 32px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`📞  ${phoneClean}`, W / 2, phoneBtnY + phoneBtnH / 2);
+
+    // Bottom Call to Action: "💬 ያናግሩኝ • DIRECT CALL / TELEGRAM"
+    const ctaClean = devCallToAction.trim() || 'ያናግሩኝ';
+    ctx.font = '800 17px "Noto Sans Ethiopic", "Abyssinica SIL", sans-serif';
+    ctx.fillStyle = '#38BDF8';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`💬 ${ctaClean}  •  ስልክ ወይም ቴሌግራም  🚀`, W / 2, devCardY + 132);
 
     // 12. Script Motto
-    const mottoY = 1410;
+    const mottoY = 1435;
     ctx.fillStyle = '#2C3E50';
     ctx.font = 'italic 700 36px "Times New Roman", serif';
     ctx.textAlign = 'center';
@@ -391,7 +448,7 @@ export default function AdminQrCode() {
     const botPillW = 420;
     const botPillH = 64;
     const botPillX = (W - botPillW) / 2;
-    const botPillY = 1475;
+    const botPillY = 1495;
 
     drawRoundRect(ctx, botPillX, botPillY, botPillW, botPillH, 32);
     ctx.fillStyle = '#FAF7F0';
@@ -407,9 +464,9 @@ export default function AdminQrCode() {
     ctx.fillText(`@${botUsername.replace(/^@/, '')}`, W / 2, botPillY + botPillH / 2);
 
     // 14. Footer Credits
-    const footerY = 1580;
+    const footerY = 1600;
     ctx.fillStyle = '#8C7853';
-    ctx.font = '600 17px sans-serif';
+    ctx.font = '600 16px sans-serif';
     ctx.fillText('Official Partner Network  •  Powered by CHOICE BINGO', W / 2, footerY);
 
     // 15. Bottom Elegant Decorative Corner Arcs
@@ -437,7 +494,7 @@ export default function AdminQrCode() {
     } catch (e) {
       console.error('DataURL error:', e);
     }
-  }, [botUsername, roomTitle, startParam, getFullTelegramUrl]);
+  }, [botUsername, roomTitle, startParam, devPhone, devTitle, devCallToAction, showDevContact, getFullTelegramUrl]);
 
   useEffect(() => {
     renderPoster();
@@ -600,6 +657,10 @@ export default function AdminQrCode() {
                   setBotUsername('choicebingo_bot');
                   setRoomTitle('OFFICIAL CHOICE BINGO');
                   setStartParam('qr');
+                  setDevPhone('0904174741');
+                  setDevTitle('ለማሰራት');
+                  setDevCallToAction('ያናግሩኝ');
+                  setShowDevContact(true);
                 }}
                 className="text-[10px] text-slate-500 hover:text-slate-800 font-bold flex items-center gap-1"
               >
@@ -645,6 +706,62 @@ export default function AdminQrCode() {
                   placeholder="qr"
                 />
                 <p className="text-[10px] text-slate-400 mt-1 font-medium">Scans will start: {getFullTelegramUrl()}</p>
+              </div>
+
+              {/* Developer Contact Section Settings */}
+              <div className="pt-2 border-t border-slate-100 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10.5px] font-black text-slate-700 uppercase flex items-center gap-1.5">
+                    <span>✨ Developer Contact Badge</span>
+                  </label>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={showDevContact}
+                      onChange={(e) => setShowDevContact(e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-8 h-4 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-amber-500" />
+                  </label>
+                </div>
+
+                {showDevContact && (
+                  <div className="space-y-2 bg-amber-50/50 p-2.5 rounded-xl border border-amber-200/60">
+                    <div>
+                      <label className="block text-[9.5px] font-bold text-slate-600 uppercase mb-0.5">Phone Number</label>
+                      <input
+                        type="text"
+                        value={devPhone}
+                        onChange={(e) => setDevPhone(e.target.value)}
+                        className="w-full bg-white border border-slate-200 focus:border-amber-500 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-900 outline-none"
+                        placeholder="0904174741"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[9.5px] font-bold text-slate-600 uppercase mb-0.5">Title Text</label>
+                        <input
+                          type="text"
+                          value={devTitle}
+                          onChange={(e) => setDevTitle(e.target.value)}
+                          className="w-full bg-white border border-slate-200 focus:border-amber-500 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-900 outline-none"
+                          placeholder="ለማሰራት"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[9.5px] font-bold text-slate-600 uppercase mb-0.5">Call-to-Action</label>
+                        <input
+                          type="text"
+                          value={devCallToAction}
+                          onChange={(e) => setDevCallToAction(e.target.value)}
+                          className="w-full bg-white border border-slate-200 focus:border-amber-500 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-900 outline-none"
+                          placeholder="ያናግሩኝ"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
