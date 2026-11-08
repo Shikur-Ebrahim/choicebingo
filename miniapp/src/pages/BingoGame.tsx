@@ -2092,7 +2092,7 @@ export default function BingoGame() {
     return (
       <>
         {/* Scrollable Number Board Container */}
-        <div className={`flex-1 overflow-y-auto relative p-2.5 ${myCartelas.length > 0 ? 'pb-56' : 'pb-20'} select-none`}>
+        <div className={`flex-1 overflow-y-auto relative p-2.5 ${myCartelas.length > 0 ? 'pb-36' : 'pb-20'} select-none`}>
           {/* 3D Header Bar: Status Capsule & Picked Badge */}
           <div className="flex items-center justify-between mb-2.5 gap-2">
             <div
@@ -2122,28 +2122,6 @@ export default function BingoGame() {
               </p>
             </div>
           </div>
-
-          {/* My Cartelas chips */}
-          {myNums.length > 0 && (
-            <div className="flex gap-2 mb-2.5 flex-wrap">
-              {myNums.map(n => (
-                <span
-                  key={n}
-                  onClick={() => releaseCartela(n)}
-                  className="px-3 py-1 text-white text-xs font-black rounded-full flex items-center gap-1 cursor-pointer active:scale-95 transition-transform"
-                  style={{
-                    background: 'linear-gradient(180deg, #10b981 0%, #059669 100%)',
-                    boxShadow: '0 3px 0 #047857, inset 0 1px 1px rgba(255,255,255,0.7), 0 0 10px rgba(16,185,129,0.5)',
-                    border: '1.5px solid #fef08a',
-                  }}
-                  title={language === 'am' ? 'ካርቴላውን ለመልቀቅ ይጫኑ' : 'Tap to release'}
-                >
-                  <span>CARTELA #{n}</span>
-                  <span className="text-yellow-300 font-black">✓</span>
-                </span>
-              ))}
-            </div>
-          )}
 
           {/* 3D Casino Board Container */}
           <div
@@ -2250,35 +2228,35 @@ export default function BingoGame() {
         {/* ── FIXED SELECTED CARTELAS TRAY (Docked right above bottom navigation bar) ── */}
         {myCartelas.length > 0 && (
           <div
-            className="fixed bottom-16 left-0 right-0 z-30 px-3 py-2 border-t"
+            className="fixed bottom-16 left-0 right-0 z-30 px-2 py-1.5 border-t"
             style={{
               background: 'linear-gradient(180deg, rgba(10, 15, 30, 0.98) 0%, rgba(5, 8, 22, 0.99) 100%)',
               backdropFilter: 'blur(12px)',
               borderColor: 'rgba(34, 211, 238, 0.35)',
-              boxShadow: '0 -8px 25px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+              boxShadow: '0 -6px 20px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
             }}
           >
-            <div className="flex items-center justify-between mb-1.5 px-0.5">
+            <div className="flex items-center justify-between mb-1 px-1">
               <div className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-                <span className="text-[11px] font-black text-white uppercase tracking-wider">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                <span className="text-[10px] font-black text-white uppercase tracking-wider">
                   {language === 'am' ? 'የመረጡት ካርቴላዎች' : 'Your Selected Cartelas'}
                 </span>
-                <span className="px-1.5 py-0.2 rounded-full bg-amber-400/20 border border-amber-400/40 text-[9.5px] font-mono font-black text-amber-300">
+                <span className="px-1.5 py-0.2 rounded-full bg-amber-400/20 border border-amber-400/40 text-[9px] font-mono font-black text-amber-300">
                   {myCartelas.length}/{maxCartelasPerUser}
                 </span>
               </div>
-              <span className="text-[9.5px] text-amber-400/80 font-bold">
+              <span className="text-[9px] text-amber-400/80 font-bold">
                 {language === 'am' ? 'ለመልቀቅ ይጫኑ (✕)' : 'Tap ✕ to release'}
               </span>
             </div>
 
-            {/* Horizontal Cartelas Row (Up to 4 cartelas displayed side by side) */}
-            <div className="flex gap-2.5 overflow-x-auto pb-0.5 no-scrollbar" style={{ scrollbarWidth: 'none' }}>
+            {/* All 4 Selected Cartelas fit fully across the screen (halved/compact size) */}
+            <div className="grid grid-cols-4 gap-1.5 w-full">
               {myCartelas.map((cartela) => (
                 <div
                   key={cartela.cartela_number}
-                  className="relative bg-white rounded-xl p-1.5 shadow-2xl border border-slate-300 w-[130px] shrink-0 select-none cursor-pointer active:scale-95 transition-transform"
+                  className="relative bg-white rounded-lg p-1 shadow-md border border-slate-300 select-none cursor-pointer active:scale-95 transition-transform"
                   onClick={() => releaseCartela(cartela.cartela_number)}
                   title={language === 'am' ? 'ካርቴላውን ለመልቀቅ ይጫኑ' : 'Tap to release'}
                 >
@@ -2289,46 +2267,46 @@ export default function BingoGame() {
                       e.stopPropagation();
                       releaseCartela(cartela.cartela_number);
                     }}
-                    className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 hover:bg-red-600 active:scale-90 text-white rounded-full flex items-center justify-center text-[10px] font-black shadow-md z-20 cursor-pointer border border-white"
+                    className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 hover:bg-red-600 active:scale-90 text-white rounded-full flex items-center justify-center text-[8.5px] font-black shadow-md z-20 cursor-pointer border border-white"
                     title={language === 'am' ? 'ካርቴላውን ልቀቅ' : 'Release Cartela'}
                   >
                     ✕
                   </button>
 
                   {/* Top Row: "Choice" & "#Num" */}
-                  <div className="flex items-center justify-between px-1 mb-1">
-                    <span className="text-[9.5px] font-black text-amber-600 uppercase tracking-tight">
+                  <div className="flex items-center justify-between px-0.5 mb-0.5">
+                    <span className="text-[7.5px] font-black text-amber-600 uppercase tracking-tight">
                       Choice
                     </span>
-                    <span className="text-[11px] font-black text-slate-900 font-mono">
+                    <span className="text-[8.5px] font-black text-slate-900 font-mono">
                       #{cartela.cartela_number}
                     </span>
                   </div>
 
                   {/* B I N G O Header Row */}
-                  <div className="grid grid-cols-5 text-center font-black text-[9px] text-white rounded-t overflow-hidden">
-                    <div className="bg-[#2563eb] py-0.5">B</div>
-                    <div className="bg-[#dc2626] py-0.5">I</div>
-                    <div className="bg-[#475569] py-0.5">N</div>
-                    <div className="bg-[#059669] py-0.5">G</div>
-                    <div className="bg-[#d97706] py-0.5">O</div>
+                  <div className="grid grid-cols-5 text-center font-black text-[7px] text-white rounded-t overflow-hidden leading-tight">
+                    <div className="bg-[#2563eb] py-[1px]">B</div>
+                    <div className="bg-[#dc2626] py-[1px]">I</div>
+                    <div className="bg-[#475569] py-[1px]">N</div>
+                    <div className="bg-[#059669] py-[1px]">G</div>
+                    <div className="bg-[#d97706] py-[1px]">O</div>
                   </div>
 
-                  {/* 5x5 Number Grid with Stake in Center */}
-                  <div className="grid grid-cols-5 gap-[1px] bg-slate-200 border-x border-b border-slate-200 rounded-b overflow-hidden">
+                  {/* 5x5 Number Grid with Star Icon in Center for all stakes */}
+                  <div className="grid grid-cols-5 gap-[0.5px] bg-slate-200 border-x border-b border-slate-200 rounded-b overflow-hidden">
                     {cartela.card_matrix.map((row, r) =>
                       row.map((num, c) => {
                         const isCenter = r === 2 && c === 2;
                         return (
                           <div
                             key={`${r}-${c}`}
-                            className={`aspect-square flex items-center justify-center text-[8.5px] font-black ${
+                            className={`aspect-square flex items-center justify-center text-[6.5px] font-black leading-none ${
                               isCenter
                                 ? 'bg-gradient-to-br from-amber-200 to-amber-400 text-amber-950 font-black shadow-inner'
                                 : 'bg-white text-slate-900'
                             }`}
                           >
-                            {isCenter ? currentStake : num}
+                            {isCenter ? '★' : num}
                           </div>
                         );
                       })
