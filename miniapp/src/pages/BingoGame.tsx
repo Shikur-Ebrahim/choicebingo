@@ -933,11 +933,104 @@ export default function BingoGame() {
     return card;
   };
 
-  const openPreview = (seat: number) => {
-    if (myCartelas.length >= maxCartelasPerUser) { setErrMsg(`Max ${maxCartelasPerUser} cartela${maxCartelasPerUser > 1 ? 's' : ''} per game`); return; }
-    if (taken.includes(seat)) { setErrMsg("Taken! Pick another."); return; }
+  const [releasing, setReleasing] = useState<number | null>(null);
+  const lastSeatClickTimeRef = useRef<{ [seat: number]: number }>({});
+
+  const releaseCartela = async (seat: number) => {
+    if (!game || game.status !== 'waiting' || releasing !== null) return;
+    initWebAudio();
+
+    const stakeAmt = Number(game.stake || selectedStake || 10);
+    setReleasing(seat);
+    setErrMsg("");
+
+    // Optimistic remove
+    const prevMyCartelas = myCartelas;
+    const prevTaken = taken;
+    const prevUser = user;
+    const newCartelas = myCartelas.filter(c => c.cartela_number !== seat);
+    setMyCartelas(newCartelas);
+    setTaken(prev => prev.filter(n => n !== seat));
+    if (newCartelas.length > 0) {
+      setMyCard(newCartelas[0]);
+    } else {
+      setMyCard(null);
+    }
+
+    // Optimistic refund to main balance
+    useGameStore.setState(s => ({
+      user: s.user ? { ...s.user, main_balance: Number(s.user.main_balance || 0) + stakeAmt } : s.user
+    }));
+
+    try {
+      const res = await fetch(`${API}/bingo/release`, {
+        method: "POST",
+        headers: hdrs(),
+        body: JSON.stringify({ cartela_number: seat, game_id: game.id })
+      });
+      const data = await res.json().catch(() => null);
+
+      if (res.ok && data?.success) {
+        if (WebApp?.HapticFeedback) {
+          WebApp.HapticFeedback.notificationOccurred("success");
+        }
+        if (data.unique_players !== undefined) setUniquePlayers(Number(data.unique_players));
+        if (data.total_cartelas !== undefined) {
+          const rawPool = data.total_cartelas * stakeAmt;
+          setGame(prev => prev ? { ...prev, prize_pool: data.prize_pool || (data.unique_players < 3 ? rawPool : Math.floor(rawPool * 0.8)) } : prev);
+        }
+        refreshUser();
+        fetchState();
+      } else {
+        // Rollback on failure
+        setMyCartelas(prevMyCartelas);
+        setTaken(prevTaken);
+        useGameStore.setState({ user: prevUser });
+        setErrMsg(data?.error || "Could not release cartela");
+        fetchState();
+      }
+    } catch (err: any) {
+      setMyCartelas(prevMyCartelas);
+      setTaken(prevTaken);
+      useGameStore.setState({ user: prevUser });
+      setErrMsg("Network error while releasing cartela");
+    } finally {
+      setReleasing(null);
+    }
+  };
+
+  const handleSeatClick = (seat: number) => {
+    const isMine = myCartelas.some(c => c.cartela_number === seat);
+    if (isMine) {
+      // Check double click / tap within 450ms
+      const now = Date.now();
+      const lastClick = lastSeatClickTimeRef.current[seat] || 0;
+      if (now - lastClick < 450) {
+        releaseCartela(seat);
+        lastSeatClickTimeRef.current[seat] = 0;
+      } else {
+        lastSeatClickTimeRef.current[seat] = now;
+        if (WebApp?.HapticFeedback) {
+          WebApp.HapticFeedback.impactOccurred("light");
+        }
+      }
+      return;
+    }
+
+    if (taken.includes(seat) || buying !== null) return;
+
+    if (myCartelas.length >= maxCartelasPerUser) {
+      setErrMsg(language === 'am' ? `ቢበዛ ${maxCartelasPerUser} ካርቴላ መምረጥ ይችላሉ` : `Max ${maxCartelasPerUser} cartelas allowed`);
+      return;
+    }
+
+    // Direct buy without preview popup!
     const matrix = generateBingoCard();
-    setPreviewCartela({ seat, matrix });
+    joinGame(seat, matrix);
+  };
+
+  const openPreview = (seat: number) => {
+    handleSeatClick(seat);
   };
 
   const joinGame = async (seat: number, matrix: number[][]) => {
@@ -1985,87 +2078,65 @@ export default function BingoGame() {
   const renderCartelaPicker = () => {
     const myNums = myCartelas.map(c => c.cartela_number);
     const canPickMore = myCartelas.length < maxCartelasPerUser;
+    const currentStake = selectedStake || game?.stake || 10;
+
     return (
-      <div className="flex-1 overflow-y-auto relative p-2.5 pb-16">
-        {/* 3D Header Bar: Status Capsule & Picked Badge */}
-        <div className="flex items-center justify-between mb-2.5 gap-2">
-          <div
-            className="flex items-center gap-1.5 px-3 py-1 rounded-full shadow-md"
-            style={{
-              background: 'linear-gradient(180deg, #0e2238 0%, #061320 100%)',
-              border: '1px solid rgba(34, 211, 238, 0.45)',
-              boxShadow: '0 2px 0 #020b12, inset 0 1px 1px rgba(255, 255, 255, 0.15)',
-            }}
-          >
-            <div className={`w-2 h-2 rounded-full ${canPickMore ? 'bg-cyan-400 animate-ping' : 'bg-emerald-400'}`} />
-            <p className="text-[9.5px] text-cyan-300 font-black uppercase tracking-wider">
-              {canPickMore ? `TAP TO PICK — ${taken.length}/${maxPlayers} TAKEN` : `ALL CARTELAS SELECTED ✓`}
-            </p>
+      <div className="flex-1 overflow-y-auto relative p-2.5 pb-20 select-none">
+        {/* Header Bar: "ካርቴላ ይምረጡ (XX ብር)" & "X/4" */}
+        <div className="flex items-center justify-between mb-2 px-1">
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-black text-white tracking-wide">
+              {language === 'am'
+                ? `ካርቴላ ይምረጡ (${currentStake} ብር)`
+                : `Pick Cartela (${currentStake} ETB)`}
+            </h2>
+            <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-cyan-950/60 border border-cyan-500/30 text-[9px] font-bold text-cyan-300">
+              <span className={`w-1.5 h-1.5 rounded-full ${canPickMore ? 'bg-cyan-400 animate-ping' : 'bg-emerald-400'}`} />
+              <span>{taken.length}/{maxPlayers}</span>
+            </div>
           </div>
 
-          <div
-            className="px-3 py-1 rounded-full text-center"
-            style={{
-              background: 'linear-gradient(180deg, #fef08a 0%, #facc15 40%, #ca8a04 100%)',
-              boxShadow: '0 2.5px 0 #854d0e, inset 0 1px 1px rgba(255,255,255,0.9)',
-              border: '1px solid #fef08a',
-            }}
-          >
-            <p className="text-[9.5px] text-[#451a03] font-black tracking-wider uppercase drop-shadow-sm">
-              {myCartelas.length}/{maxCartelasPerUser} PICKED
-            </p>
+          <div className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400 font-mono font-black text-xs">
+            <span>{myCartelas.length}</span>
+            <span className="text-slate-500">/</span>
+            <span>{maxCartelasPerUser}</span>
           </div>
         </div>
 
-        {/* My Cartelas chips */}
-        {myNums.length > 0 && (
-          <div className="flex gap-2 mb-2.5 flex-wrap">
-            {myNums.map(n => (
-              <span
-                key={n}
-                className="px-3 py-1 text-white text-xs font-black rounded-full flex items-center gap-1"
-                style={{
-                  background: 'linear-gradient(180deg, #10b981 0%, #059669 100%)',
-                  boxShadow: '0 3px 0 #047857, inset 0 1px 1px rgba(255,255,255,0.7), 0 0 10px rgba(16,185,129,0.5)',
-                  border: '1.5px solid #fef08a',
-                }}
-              >
-                <span>CARTELA #{n}</span>
-                <span className="text-yellow-300 font-black">✓</span>
-              </span>
-            ))}
-          </div>
-        )}
-
-        {/* 3D Casino Board Container */}
+        {/* 3D Casino Board Container (10 columns grid) */}
         <div
-          className="rounded-2xl p-1.5"
-          style={{
-            background: 'linear-gradient(180deg, #0b1329 0%, #020617 100%)',
-            border: '2px solid rgba(34, 211, 238, 0.65)',
-            boxShadow: '0 0 25px rgba(6, 182, 212, 0.35), inset 0 3px 8px rgba(0,0,0,0.8), 0 8px 24px rgba(0,0,0,0.7)',
-          }}
+          className="rounded-2xl p-2 bg-[#090e1f] border border-cyan-500/30 shadow-[0_4px_20px_rgba(0,0,0,0.6)]"
         >
-          <div className="grid gap-[3px]" style={{ gridTemplateColumns: "repeat(10, 1fr)" }}>
+          <div className="grid gap-1.5" style={{ gridTemplateColumns: "repeat(10, 1fr)" }}>
             {Array.from({ length: maxPlayers }, (_, i) => {
               const n = i + 1;
-              const isTaken = taken.includes(n), isMine = myNums.includes(n), isBuying = buying === n;
+              const isTaken = taken.includes(n);
+              const isMine = myNums.includes(n);
+              const isBuying = buying === n;
+              const isReleasing = releasing === n;
               
               if (isMine) {
                 return (
-                  <div
+                  <button
                     key={n}
-                    className="aspect-square flex flex-col items-center justify-center rounded-[6px] font-black z-10 select-none"
+                    type="button"
+                    onClick={() => handleSeatClick(n)}
+                    disabled={isReleasing}
+                    className="aspect-square flex items-center justify-center rounded-lg font-black text-xs z-10 select-none cursor-pointer active:scale-95 transition-all"
                     style={{
-                      background: 'radial-gradient(circle at 35% 25%, #34d399 0%, #10b981 50%, #047857 100%)',
-                      boxShadow: '0 2.5px 0 #064e3b, 0 0 12px rgba(16,185,129,0.85), inset 0 1px 2px rgba(255,255,255,0.85)',
+                      background: 'linear-gradient(180deg, #fef08a 0%, #f59e0b 50%, #b45309 100%)',
+                      boxShadow: '0 0 12px rgba(245, 158, 11, 0.7), inset 0 1px 1px #ffffff',
                       border: '1.5px solid #fef08a',
-                      color: '#ffffff',
+                      color: '#0f172a',
                     }}
+                    title={language === 'am' ? 'ካርቴላውን ለመልቀቅ ደግመው ይጫኑ' : 'Double tap to release'}
                   >
-                    <span className="text-[10px] leading-none">{n}</span>
-                    <span className="text-[8px] text-yellow-300 leading-none">✓</span>
-                  </div>
+                    {isReleasing ? (
+                      <span className="animate-spin text-[10px]">⏳</span>
+                    ) : (
+                      <span>{n}</span>
+                    )}
+                  </button>
                 );
               }
               
@@ -2073,13 +2144,7 @@ export default function BingoGame() {
                 return (
                   <div
                     key={n}
-                    className="aspect-square flex items-center justify-center rounded-[6px] text-[9.5px] font-black select-none"
-                    style={{
-                      background: 'linear-gradient(180deg, #3b0707 0%, #1c0505 100%)',
-                      boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.85), 0 1px 0 rgba(255,255,255,0.05)',
-                      border: '1px solid rgba(239, 68, 68, 0.25)',
-                      color: 'rgba(248, 113, 113, 0.4)',
-                    }}
+                    className="aspect-square flex items-center justify-center rounded-lg text-[10px] font-bold select-none bg-[#0c1120] text-slate-600/40 border border-white/5"
                   >
                     <span className="line-through">{n}</span>
                   </div>
@@ -2089,32 +2154,125 @@ export default function BingoGame() {
               return (
                 <button
                   key={n}
+                  type="button"
                   disabled={buying !== null || !canPickMore}
-                  onClick={() => openPreview(n)}
-                  className={`aspect-square flex items-center justify-center rounded-[6px] text-[10.5px] font-black transition-all select-none ${
+                  onClick={() => handleSeatClick(n)}
+                  className={`aspect-square flex items-center justify-center rounded-lg text-xs font-bold transition-all select-none ${
                     !canPickMore
-                      ? 'cursor-not-allowed opacity-40'
+                      ? 'cursor-not-allowed opacity-35 bg-[#12182b] text-slate-500 border border-white/5'
                       : isBuying
-                      ? 'opacity-50 scale-90'
-                      : 'cursor-pointer active:translate-y-[2px]'
+                      ? 'opacity-60 scale-90 bg-amber-500/20 text-amber-300 border border-amber-400'
+                      : 'cursor-pointer bg-[#182035] hover:bg-[#222c48] active:scale-95 text-slate-200 border border-white/5 shadow-xs'
                   }`}
-                  style={
-                    !canPickMore
-                      ? {
-                          background: 'linear-gradient(180deg, #334155 0%, #1e293b 100%)',
-                          border: '1px solid rgba(255,255,255,0.1)',
-                          color: 'rgba(255,255,255,0.3)',
-                        }
-                      : {
-                          background: 'linear-gradient(180deg, #ffffff 0%, #f8fafc 45%, #e2e8f0 85%, #cbd5e1 100%)',
-                          boxShadow: '0 2.5px 0 #94a3b8, 0 3px 5px rgba(0,0,0,0.35), inset 0 1px 0 #ffffff',
-                          border: '1px solid #e2e8f0',
-                          color: '#0f172a',
-                        }
-                  }
                 >
-                  {n}
+                  {isBuying ? (
+                    <span className="animate-spin text-[10px]">⏳</span>
+                  ) : (
+                    <span>{n}</span>
+                  )}
                 </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ── SELECTED CARTELAS TRAY ("የመረጡት ካርቴላዎች") ── */}
+        <div className="mt-3.5 pt-3 border-t border-white/10">
+          <div className="flex items-center justify-between mb-2.5 px-1">
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-amber-400" />
+              <h3 className="text-xs font-black text-white/95 uppercase tracking-wide">
+                {language === 'am' ? 'የመረጡት ካርቴላዎች' : 'Your Selected Cartelas'}
+              </h3>
+            </div>
+            {myCartelas.length > 0 && (
+              <span className="text-[10px] text-amber-400/80 font-medium">
+                {language === 'am' ? 'ለመልቀቅ ደግመው ይጫኑ' : 'Double tap to release'}
+              </span>
+            )}
+          </div>
+
+          {/* 4 Cartela Slots */}
+          <div className="flex gap-2.5 overflow-x-auto pb-2 no-scrollbar" style={{ scrollbarWidth: 'none' }}>
+            {Array.from({ length: maxCartelasPerUser }).map((_, slotIdx) => {
+              const cartela = myCartelas[slotIdx];
+              if (cartela) {
+                return (
+                  <div
+                    key={cartela.cartela_number}
+                    onClick={() => releaseCartela(cartela.cartela_number)}
+                    className="relative bg-white rounded-xl p-1.5 shadow-xl border border-slate-300 w-[140px] shrink-0 select-none cursor-pointer active:scale-95 transition-transform"
+                    title={language === 'am' ? 'ካርቴላውን ለመልቀቅ ይጫኑ' : 'Tap to release'}
+                  >
+                    {/* Release Button */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        releaseCartela(cartela.cartela_number);
+                      }}
+                      className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 hover:bg-red-600 active:scale-90 text-white rounded-full flex items-center justify-center text-[10px] font-black shadow-md z-20 cursor-pointer border border-white"
+                      title={language === 'am' ? 'ካርቴላውን ልቀቅ' : 'Release Cartela'}
+                    >
+                      ✕
+                    </button>
+
+                    {/* Top Row: "ሁሉ ካርቴላ" & "#Num" */}
+                    <div className="flex items-center justify-between px-1 mb-1">
+                      <span className="text-[9.5px] font-black text-slate-800">
+                        {language === 'am' ? 'ሁሉ ካርቴላ' : 'Bingo Card'}
+                      </span>
+                      <span className="text-[11px] font-black text-slate-900 font-mono">
+                        #{cartela.cartela_number}
+                      </span>
+                    </div>
+
+                    {/* B I N G O Header Row */}
+                    <div className="grid grid-cols-5 text-center font-black text-[9px] text-white rounded-t overflow-hidden">
+                      <div className="bg-[#2563eb] py-0.5">B</div>
+                      <div className="bg-[#dc2626] py-0.5">I</div>
+                      <div className="bg-[#475569] py-0.5">N</div>
+                      <div className="bg-[#059669] py-0.5">G</div>
+                      <div className="bg-[#d97706] py-0.5">O</div>
+                    </div>
+
+                    {/* 5x5 Number Grid */}
+                    <div className="grid grid-cols-5 gap-[1px] bg-slate-200 border-x border-b border-slate-200 rounded-b overflow-hidden">
+                      {cartela.card_matrix.map((row, r) =>
+                        row.map((num, c) => {
+                          const isCenter = r === 2 && c === 2;
+                          return (
+                            <div
+                              key={`${r}-${c}`}
+                              className={`aspect-square flex items-center justify-center text-[8.5px] font-black ${
+                                isCenter ? 'bg-amber-100 text-amber-800 font-black' : 'bg-white text-slate-900'
+                              }`}
+                            >
+                              {isCenter ? 'F' : num}
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                );
+              }
+
+              return (
+                <div
+                  key={`empty-${slotIdx}`}
+                  className="bg-slate-900/50 rounded-xl p-2 border-2 border-dashed border-slate-700/60 w-[140px] shrink-0 flex flex-col items-center justify-center text-center select-none min-h-[145px]"
+                >
+                  <div className="w-8 h-8 rounded-full bg-slate-800/80 border border-slate-700 flex items-center justify-center text-slate-400 mb-1.5 shadow-inner">
+                    <span className="text-base font-bold">+</span>
+                  </div>
+                  <p className="text-[10px] font-bold text-slate-400">
+                    {language === 'am' ? `ካርቴላ ${slotIdx + 1}` : `Slot ${slotIdx + 1}`}
+                  </p>
+                  <span className="text-[8px] text-slate-500 font-medium mt-0.5">
+                    {language === 'am' ? 'ቁጥር ይምረጡ' : 'Tap number'}
+                  </span>
+                </div>
               );
             })}
           </div>
@@ -2579,118 +2737,6 @@ export default function BingoGame() {
         </div>
       )}
 
-      {/* 3D Luxury Casino Preview Modal */}
-      {previewCartela && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md" onClick={() => setPreviewCartela(null)}>
-          <div
-            className="rounded-3xl p-5 w-full max-w-[320px] select-none"
-            onClick={e => e.stopPropagation()}
-            style={{
-              background: 'linear-gradient(180deg, #1e293b 0%, #0a0f1e 100%)',
-              border: '1.5px solid rgba(34, 211, 238, 0.45)',
-              boxShadow: '0 25px 60px rgba(0,0,0,0.95), 0 0 35px rgba(6,182,212,0.3), inset 0 1px 1px rgba(255,255,255,0.2)',
-            }}
-          >
-            <div className="flex flex-col items-center mb-3">
-              <span
-                className="text-[9.5px] font-black text-cyan-300 uppercase tracking-widest px-3 py-0.5 rounded-full mb-1"
-                style={{
-                  background: 'linear-gradient(180deg, rgba(6,182,212,0.2) 0%, rgba(6,182,212,0.05) 100%)',
-                  border: '1px solid rgba(34, 211, 238, 0.35)',
-                  boxShadow: '0 2px 0 #020b12',
-                }}
-              >
-                {t[language].bingo.previewNumbers}
-              </span>
-              <h3 className="text-2xl font-black text-white text-center tracking-wider drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
-                {t[language].bingo.cartelaNum}{previewCartela.seat}
-              </h3>
-            </div>
-            
-            {/* 3D Cartela Preview Card */}
-            <div
-              className="rounded-2xl overflow-hidden mb-4 p-1.5"
-              style={{
-                background: 'linear-gradient(180deg, #0f172a 0%, #020617 100%)',
-                border: '1.5px solid rgba(250, 204, 21, 0.4)',
-                boxShadow: '0 8px 20px rgba(0,0,0,0.6), inset 0 2px 6px rgba(0,0,0,0.7)',
-              }}
-            >
-              <div className="grid grid-cols-5 gap-[1.5px] mb-1.5">
-                {BINGO_LETTERS.map(l => (
-                  <div
-                    key={l}
-                    className="flex items-center justify-center py-1 font-black text-white text-sm rounded-md"
-                    style={{
-                      background: `linear-gradient(180deg, ${LETTER_BG[l]} 0%, #0f172a 100%)`,
-                      boxShadow: '0 1.5px 0 rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.4)',
-                    }}
-                  >
-                    {l}
-                  </div>
-                ))}
-              </div>
-              <div className="grid grid-cols-5 gap-[2.5px]">
-                {Array.from({ length: 5 }).flatMap((_, r) =>
-                  Array.from({ length: 5 }, (_, c) => {
-                    const num = previewCartela.matrix[r][c];
-                    const isFree = num === 0;
-                    return (
-                      <div
-                        key={`${r}-${c}`}
-                        className="aspect-square flex items-center justify-center font-black text-xs rounded-md"
-                        style={
-                          isFree
-                            ? {
-                                background: 'radial-gradient(circle at 35% 25%, #fef08a 0%, #facc15 50%, #ca8a04 100%)',
-                                boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.9), inset 0 -2px 3px rgba(161,98,7,0.7)',
-                                border: '1px solid #fef08a',
-                                color: '#713f12',
-                              }
-                            : {
-                                background: 'linear-gradient(180deg, #ffffff 0%, #f8fafc 50%, #e2e8f0 100%)',
-                                boxShadow: '0 1.5px 2px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.9)',
-                                border: '1px solid #cbd5e1',
-                                color: '#0f172a',
-                              }
-                        }
-                      >
-                        {isFree ? '★' : num}
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-
-            <div className="flex gap-2.5">
-              <button
-                onClick={() => setPreviewCartela(null)}
-                className="flex-1 py-2.5 rounded-xl text-slate-300 font-black text-sm active:translate-y-0.5 transition-all select-none cursor-pointer"
-                style={{
-                  background: 'linear-gradient(180deg, #334155 0%, #1e293b 100%)',
-                  boxShadow: '0 3px 0 #0f172a, inset 0 1px 1px rgba(255,255,255,0.2)',
-                  border: '1px solid rgba(255,255,255,0.15)',
-                }}
-              >
-                {t[language].bingo.cancel}
-              </button>
-              <button
-                onClick={() => joinGame(previewCartela.seat, previewCartela.matrix)}
-                className="flex-1 py-2.5 rounded-xl text-white font-black text-sm active:translate-y-0.5 transition-all select-none cursor-pointer flex items-center justify-center gap-1.5"
-                style={{
-                  background: 'linear-gradient(180deg, #34d399 0%, #10b981 40%, #059669 100%)',
-                  boxShadow: '0 3.5px 0 #047857, inset 0 1px 1px rgba(255,255,255,0.8), 0 0 15px rgba(16,185,129,0.4)',
-                  border: '1px solid #6ee7b7',
-                }}
-              >
-                <span>🛒</span>
-                <span>{t[language].bingo.buy.replace('{stake}', String(game?.stake || 0))}</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
