@@ -612,27 +612,45 @@ export default function BingoGame() {
         if (d.max_players) setMaxPlayers(Math.min(500, Number(d.max_players)));
         if (d.max_cartelas_per_user) setMaxCartelasPerUser(Number(d.max_cartelas_per_user));
         
-        // Merge server cartelas with any pending local optimistic cartelas (avoids flicker!)
+        // Merge server cartelas with in-flight optimistic joins only (avoids flicker during join)
         if (d.my_cartelas && Array.isArray(d.my_cartelas)) {
+          const hadCartelasBefore = myCartelasRef.current.length > 0;
+          const serverNums = new Set(d.my_cartelas.map((c: any) => c.cartela_number));
+
           setMyCartelas(prev => {
-            const serverNums = new Set(d.my_cartelas.map((c: any) => c.cartela_number));
-            const pendingOptimistic = prev.filter(c => !serverNums.has(c.cartela_number));
-            return [...d.my_cartelas, ...pendingOptimistic];
+            const inFlightOptimistic = prev.filter(c =>
+              pendingSeatsRef.current.has(c.cartela_number) && !serverNums.has(c.cartela_number)
+            );
+            return [...d.my_cartelas, ...inFlightOptimistic];
           });
+
+          if (d.my_cartelas.length === 0 && pendingSeatsRef.current.size === 0) {
+            setMyCard(null);
+            if (hadCartelasBefore) {
+              // Server auto-refunded solo player or game reset
+              refreshUser();
+            }
+          } else if (d.my_cartelas.length > 0) {
+            setMyCard(d.my_cartelas[0]);
+          }
         }
         if (d.unique_players !== undefined) setUniquePlayers(Number(d.unique_players));
 
-        // Preserve optimistic cartela numbers in taken list
+        // Preserve in-flight optimistic numbers in taken list
         const mergeTaken = (serverTaken: number[] = []) => {
-          const combined = new Set([...serverTaken, ...myCartelasRef.current.map(c => c.cartela_number)]);
+          const inFlight = Array.from(pendingSeatsRef.current);
+          const combined = new Set([...serverTaken, ...inFlight]);
           return Array.from(combined);
         };
 
         if (d.game && d.game.id !== gameIdRef.current) {
-          setGame(d.game);
-          setTaken(mergeTaken(d.taken_cartelas ?? []));
-          if (d.my_card) setMyCard(d.my_card);
           gameIdRef.current = d.game.id;
+          pendingSeatsRef.current.clear();
+          setGame(d.game);
+          setTaken(d.taken_cartelas ?? []);
+          setMyCartelas(d.my_cartelas ?? []);
+          myCartelasRef.current = d.my_cartelas ?? [];
+          setMyCard(d.my_card ?? null);
           prevCalledLenRef.current = d.game.called_numbers?.length || 0;
           setManuallyMarked(new Set()); // Reset manual marks on new game
           if (d.game.status !== 'finished') {
@@ -677,12 +695,15 @@ export default function BingoGame() {
               bonus_used: Number(p.bonus_used || 0),
               main_used: Number(p.main_used || 0),
             }));
+            const serverNums = new Set(myCart.map((c: any) => c.cartela_number));
             setMyCartelas(prev => {
-              const serverNums = new Set(myCart.map((c: any) => c.cartela_number));
-              const pendingOptimistic = prev.filter(c => !serverNums.has(c.cartela_number));
-              return [...myCart, ...pendingOptimistic];
+              const inFlightOptimistic = prev.filter(c =>
+                pendingSeatsRef.current.has(c.cartela_number) && !serverNums.has(c.cartela_number)
+              );
+              return [...myCart, ...inFlightOptimistic];
             });
             if (myCart.length > 0) setMyCard(myCart[0]);
+            else if (pendingSeatsRef.current.size === 0) setMyCard(null);
           }
         }
       }
@@ -754,6 +775,10 @@ export default function BingoGame() {
             fetchState();
           }
         }
+      })
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "bingo_players" }, () => {
+        fetchState();
+        refreshUser();
       }).subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [selectedStake, fetchState]);
@@ -1042,13 +1067,27 @@ export default function BingoGame() {
         refreshUser();
         fetchState();
       } else {
-        // Rollback on failure
-        setMyCartelas(prevMyCartelas);
-        myCartelasRef.current = prevMyCartelas;
-        setTaken(prevTaken);
-        useGameStore.setState({ user: prevUser });
-        setErrMsg(data?.error || "Could not release cartela");
-        fetchState();
+        const errStr = String(data?.error || '');
+        if (errStr.toLowerCase().includes('not found') || errStr.toLowerCase().includes('already')) {
+          // The cartela was already refunded/deleted on server (e.g. by timeout/engine solo refund)
+          // Keep it removed from UI! Do NOT roll back!
+          setMyCartelas(newCartelas);
+          myCartelasRef.current = newCartelas;
+          setTaken(prev => prev.filter(n => n !== seat));
+          if (newCartelas.length > 0) setMyCard(newCartelas[0]);
+          else setMyCard(null);
+          setErrMsg("");
+          refreshUser();
+          fetchState();
+        } else {
+          // Real server failure - rollback
+          setMyCartelas(prevMyCartelas);
+          myCartelasRef.current = prevMyCartelas;
+          setTaken(prevTaken);
+          useGameStore.setState({ user: prevUser });
+          setErrMsg(data?.error || "Could not release cartela");
+          fetchState();
+        }
       }
     } catch (err: any) {
       setMyCartelas(prevMyCartelas);
