@@ -21,8 +21,19 @@ export default function Home() {
   // Auto-prompt phone login once on first load in PWA / browser mode
   useEffect(() => {
     const isTg = typeof WebApp !== 'undefined' && Boolean(WebApp.initDataUnsafe?.user?.id);
-    const pwaPhone = localStorage.getItem('cb_pwa_phone');
-    const alreadyPrompted = sessionStorage.getItem('cb_pwa_prompted');
+    const pwaPhone = typeof window !== 'undefined' ? localStorage.getItem('cb_pwa_phone') : null;
+    const alreadyPrompted = typeof window !== 'undefined' ? sessionStorage.getItem('cb_pwa_prompted') : null;
+    const hasSeenHowToUse = typeof window !== 'undefined' ? (
+      localStorage.getItem('cb_seen_video_how_to_use') === 'true' ||
+      (user?.telegram_id ? localStorage.getItem(`cb_seen_video_how_to_use_${user.telegram_id}`) === 'true' : false)
+    ) : true;
+
+    // If first-time user and "How to Use" video guide hasn't been seen yet,
+    // let the video tutorial display FIRST! The register modal will open right after the user completes/closes the video.
+    if (!isTg && !pwaPhone && !hasSeenHowToUse) {
+      return;
+    }
+
     if (!isTg && !pwaPhone && !alreadyPrompted) {
       sessionStorage.setItem('cb_pwa_prompted', 'true');
       const timer = setTimeout(() => {
@@ -30,7 +41,7 @@ export default function Home() {
       }, 700);
       return () => clearTimeout(timer);
     }
-  }, [setIsPhoneModalOpen]);
+  }, [setIsPhoneModalOpen, user?.telegram_id]);
 
   const [homeGames, setHomeGames] = useState<Record<number, { pool: number; start_at?: string; status: string; players: number }>>({});
   const [homeTimeLeft, setHomeTimeLeft] = useState<Record<number, number>>({});
@@ -40,10 +51,14 @@ export default function Home() {
 
   // 🌟 Video Guides State (How to Use & How to Play)
   const [activeVideoCategory, setActiveVideoCategory] = useState<'how_to_use' | 'how_to_play' | null>(null);
+  const isFirstTimeHowToUseRef = useRef(false);
 
   // Auto-open "How to Use" video guide on user's first time opening the MiniApp
   useAutoVideoGuide('how_to_use', (open) => {
-    if (open) setActiveVideoCategory('how_to_use');
+    if (open) {
+      isFirstTimeHowToUseRef.current = true;
+      setActiveVideoCategory('how_to_use');
+    }
   }, user?.telegram_id);
 
   // 🌟 Active Rewards Alert Banner State
@@ -383,7 +398,23 @@ export default function Home() {
       {activeVideoCategory && (
         <VideoGuideModal
           isOpen={true}
-          onClose={() => setActiveVideoCategory(null)}
+          onClose={() => {
+            const wasFirstTimeGuide = isFirstTimeHowToUseRef.current;
+            isFirstTimeHowToUseRef.current = false;
+            setActiveVideoCategory(null);
+
+            // If a new PWA guest just completed/closed the first-time "How to Use" video tutorial,
+            // seamlessly open the Register modal so the user sees the register form next!
+            const isTg = typeof WebApp !== 'undefined' && Boolean(WebApp.initDataUnsafe?.user?.id);
+            const pwaPhone = typeof window !== 'undefined' ? localStorage.getItem('cb_pwa_phone') : null;
+
+            if (wasFirstTimeGuide && !isTg && !pwaPhone) {
+              sessionStorage.setItem('cb_pwa_prompted', 'true');
+              setTimeout(() => {
+                setIsPhoneModalOpen(true);
+              }, 350);
+            }
+          }}
           category={activeVideoCategory}
         />
       )}

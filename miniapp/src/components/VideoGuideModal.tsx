@@ -266,7 +266,7 @@ export default function VideoGuideModal({ isOpen, onClose, category }: VideoGuid
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/85 backdrop-blur-xl animate-fade-in"
+      className="fixed inset-0 z-[95] flex items-center justify-center p-2 sm:p-4 bg-black/85 backdrop-blur-xl animate-fade-in"
       onClick={onClose}
     >
       {/* ── FULL VERTICAL ATTRACTIVE CARD ── */}
