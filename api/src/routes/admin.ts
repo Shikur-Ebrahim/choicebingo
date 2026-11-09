@@ -682,6 +682,132 @@ async function fetchAllRows<T = any>(buildQuery: (from: number, to: number) => a
   return allRows;
 }
 
+// ─── HELPER: Fetch and calculate consistent Bingo Game statistics & commission ───
+export async function getBingoGameStatsAndList(from?: string, to?: string) {
+  const games = await fetchAllRows(async (rangeFrom, rangeTo) => {
+    let q = supabase
+      .from('bingo_games')
+      .select('id, stake, status, prize_pool, winner_prize, winner_first_name, winner_cartela, created_at, finished_at')
+      .eq('status', 'finished')
+      .order('finished_at', { ascending: false })
+      .range(rangeFrom, rangeTo);
+    if (from) q = q.gte('finished_at', from);
+    if (to)   q = q.lte('finished_at', to);
+    return q;
+  });
+
+  const gameIds = games.map((g: any) => g.id);
+  const playerCounts: Record<string, number> = {};
+  const uniquePlayers: Record<string, number> = {};
+
+  if (gameIds.length > 0) {
+    const CHUNK_SIZE = 50;
+    const chunks: string[][] = [];
+    for (let i = 0; i < gameIds.length; i += CHUNK_SIZE) {
+      chunks.push(gameIds.slice(i, i + CHUNK_SIZE));
+    }
+
+    const BATCH_CONCURRENCY = 6;
+    for (let i = 0; i < chunks.length; i += BATCH_CONCURRENCY) {
+      const batch = chunks.slice(i, i + BATCH_CONCURRENCY);
+      await Promise.all(
+        batch.map(async (chunk) => {
+          const pRows = await fetchAllRows(async (rangeFrom, rangeTo) => {
+            return supabase
+              .from('bingo_players')
+              .select('game_id, telegram_id, cartela_number')
+              .in('game_id', chunk)
+              .range(rangeFrom, rangeTo);
+          });
+
+          const uMap: Record<string, Set<string>> = {};
+          (pRows || []).forEach((p: any) => {
+            playerCounts[p.game_id] = (playerCounts[p.game_id] || 0) + 1;
+            if (!uMap[p.game_id]) uMap[p.game_id] = new Set();
+            uMap[p.game_id].add(p.telegram_id);
+          });
+          Object.keys(uMap).forEach((gid) => {
+            uniquePlayers[gid] = uMap[gid].size;
+          });
+        })
+      );
+    }
+  }
+
+  let total_games = games.length;
+  let total_stakes_collected = 0;
+  let total_prizes_paid = 0;
+  let total_commission = 0;
+  let commission_games = 0;
+
+  const enrichedGames = games.map((g: any) => {
+    const isRematch = !g.winner_first_name || g.winner_first_name === 'REMATCH' || (g.winner_first_name || '').startsWith('REMATCH');
+    const isTie = Boolean(g.winner_first_name && g.winner_first_name.includes(' & '));
+    const totalCartelas = playerCounts[g.id] || 0;
+    const uniqueCount = uniquePlayers[g.id] || 0;
+    const stakeAmt = Number(g.stake || 10);
+
+    let paid = 0;
+    let collected = 0;
+    let commission = 0;
+
+    if (!isRematch) {
+      // For tie games, each winner was awarded winner_prize, so total paid is winner_prize * 2 (or prize_pool)
+      paid = isTie
+        ? (Number(g.prize_pool) > 0 ? Number(g.prize_pool) : Number(g.winner_prize || 0) * 2)
+        : Number(g.winner_prize || g.prize_pool || 0);
+
+      collected = totalCartelas * stakeAmt;
+      if (collected < paid) {
+        collected = Math.max(collected, Number(g.prize_pool || 0), paid);
+      }
+
+      // CRITICAL CHOICE BINGO RULE:
+      // Game commission (20%) ONLY applies when there are 3 OR MORE UNIQUE PLAYERS (uniqueCount >= 3).
+      // If there are fewer than 3 players (1 or 2 players), the winner receives 100% of the pot (0% commission).
+      if (uniqueCount >= 3 && totalCartelas > 0 && stakeAmt > 0) {
+        commission = Math.max(0, collected - paid);
+      } else {
+        // 1 or 2 players: 100% payout, 0% commission
+        collected = paid;
+        commission = 0;
+      }
+    } else {
+      // REMATCH: All stakes were refunded to players in BingoEngine, net commission = 0
+      collected = 0;
+      paid = 0;
+      commission = 0;
+    }
+
+    total_stakes_collected += collected;
+    total_prizes_paid += paid;
+    total_commission += commission;
+    if (commission > 0) commission_games++;
+
+    return {
+      ...g,
+      game_id: g.id?.slice(0, 8).toUpperCase(),
+      players_count: totalCartelas,
+      unique_players_count: uniqueCount,
+      collected,
+      paid,
+      profit: commission,
+      commission,
+      is_rematch: isRematch,
+      is_tie: isTie
+    };
+  });
+
+  return {
+    total_games,
+    total_stakes_collected,
+    total_prizes_paid,
+    total_commission,
+    commission_games,
+    games: enrichedGames
+  };
+}
+
 // ─── TRANSACTION REPORT ────────────────────────────────────────────────────────
 router.get('/tx-report', validateTelegramAuth, requireAdmin, async (req, res) => {
   const { from, to } = req.query;
@@ -888,89 +1014,19 @@ router.get('/tx-report', validateTelegramAuth, requireAdmin, async (req, res) =>
   }
 
   // ─── Bingo Game Commissions (House Profit from finished games) ──────────────
-  // Fetch ALL finished games in the date range with prize > 0
-  const allFinishedGames = await fetchAllRows(async (rangeFrom, rangeTo) => {
-    let q = supabase
-      .from('bingo_games')
-      .select('id, stake, status, winner_prize, prize_pool, winner_first_name, finished_at, created_at')
-      .eq('status', 'finished')
-      .or('winner_prize.gt.0,prize_pool.gt.0')
-      .order('finished_at', { ascending: false })
-      .range(rangeFrom, rangeTo);
-    if (from) q = q.gte('finished_at', from);
-    if (to)   q = q.lte('finished_at', to);
-    return q;
-  });
+  const bingoStats = await getBingoGameStatsAndList(from as string, to as string);
+  const totalGameCommission = bingoStats.total_commission;
+  const totalCommissionGames = bingoStats.commission_games;
+  const totalFinishedGames = bingoStats.total_games;
 
-  const fGameIds = allFinishedGames.map((g: any) => g.id);
-  const gamePlayerCounts: Record<string, number> = {};
-  const gameUniquePlayers: Record<string, number> = {};
-
-  if (fGameIds.length > 0) {
-    const CHUNK_SIZE = 50;
-    const chunks: string[][] = [];
-    for (let i = 0; i < fGameIds.length; i += CHUNK_SIZE) {
-      chunks.push(fGameIds.slice(i, i + CHUNK_SIZE));
-    }
-
-    const BATCH_CONCURRENCY = 6;
-    for (let i = 0; i < chunks.length; i += BATCH_CONCURRENCY) {
-      const batch = chunks.slice(i, i + BATCH_CONCURRENCY);
-      await Promise.all(
-        batch.map(async (chunk) => {
-          const pRows = await fetchAllRows(async (rangeFrom, rangeTo) => {
-            return supabase
-              .from('bingo_players')
-              .select('game_id, telegram_id, cartela_number')
-              .in('game_id', chunk)
-              .range(rangeFrom, rangeTo);
-          });
-
-          const uMap: Record<string, Set<string>> = {};
-          (pRows || []).forEach((p: any) => {
-            gamePlayerCounts[p.game_id] = (gamePlayerCounts[p.game_id] || 0) + 1;
-            if (!uMap[p.game_id]) uMap[p.game_id] = new Set();
-            uMap[p.game_id].add(p.telegram_id);
-          });
-          Object.keys(uMap).forEach(gid => {
-            gameUniquePlayers[gid] = uMap[gid].size;
-          });
-        })
-      );
-    }
-  }
-
-  let totalGameCommission = 0;
-  let totalCommissionGames = 0;
-  let totalFinishedGames = allFinishedGames.length;
-
-  allFinishedGames.forEach((g: any) => {
-    const totalCartelas = gamePlayerCounts[g.id] || 0;
-    const uniqueCount = gameUniquePlayers[g.id] || 0;
-    const stakeAmt = Number(g.stake || 0);
-    const prize = Number(g.winner_prize || g.prize_pool || 0);
-
-    let commission = 0;
-    let labelInfo = '';
-
-    // CRITICAL CHOICE BINGO RULE:
-    // Game commission ONLY exists when there are 3 OR MORE UNIQUE PLAYERS (uniqueCount >= 3).
-    // If there are fewer than 3 players (1 or 2 players), the winner receives 100% of the pot (0% commission).
-    // The commission must NEVER add any fake or additional cartela; it strictly uses the exact total cartelas.
-    if (uniqueCount >= 3 && totalCartelas > 0 && stakeAmt > 0) {
-      const totalCollected = totalCartelas * stakeAmt;
-      commission = Math.max(0, totalCollected - prize);
-      labelInfo = `${totalCartelas} cards, ${uniqueCount} players (20% cut)`;
-    }
-
-    if (commission > 0) {
-      totalGameCommission += commission;
-      totalCommissionGames++;
-      const shortId = g.id.slice(0, 8).toUpperCase();
+  bingoStats.games.forEach((g: any) => {
+    if (g.commission > 0) {
+      const shortId = g.game_id || g.id.slice(0, 8).toUpperCase();
+      const labelInfo = `${g.players_count} cards, ${g.unique_players_count} players (20% cut)`;
       txList.push({
         id: g.id + '_comm',
         type: 'game_commission',
-        amount: commission,
+        amount: g.commission,
         status: 'approved',
         created_at: g.finished_at || g.created_at,
         username: `Game #${shortId} (${labelInfo})`,
@@ -1250,125 +1306,64 @@ router.get('/bingo-games/:id/players', validateTelegramAuth, requireAdmin, async
 
 // GET /admin/bingo-report — advanced report with time filters
 router.get('/bingo-report', validateTelegramAuth, requireAdmin, async (req, res) => {
-  const period = req.query.period as string || 'today';
-  
-  let startDate = new Date();
-  startDate.setHours(0,0,0,0); // Start of today
+  let from = req.query.from as string;
+  let to = req.query.to as string;
 
-  let endDate = new Date();
-  endDate.setHours(23,59,59,999); // End of today
+  if (!from || !to) {
+    const period = req.query.period as string || 'today';
+    const now = new Date();
+    let startDate = new Date();
+    startDate.setHours(0, 0, 0, 0);
+    let endDate = new Date();
+    endDate.setHours(23, 59, 59, 999);
 
-  const now = new Date();
-
-  switch(period) {
-    case 'yesterday':
-      startDate.setDate(startDate.getDate() - 1);
-      endDate.setDate(endDate.getDate() - 1);
-      break;
-    case 'week':
-      startDate = new Date(now.getTime() - 7 * 86400000);
-      endDate = now;
-      break;
-    case 'month':
-      startDate = new Date(now.getTime() - 30 * 86400000);
-      endDate = now;
-      break;
-    case '3month':
-      startDate = new Date(now.getTime() - 90 * 86400000);
-      endDate = now;
-      break;
-    case '6month':
-      startDate = new Date(now.getTime() - 180 * 86400000);
-      endDate = now;
-      break;
-    case 'year':
-      startDate = new Date(now.getTime() - 365 * 86400000);
-      endDate = now;
-      break;
-    case 'all':
-      startDate = new Date(0); // 1970
-      endDate = now;
-      break;
-    case 'today':
-    default:
-      // already set
-      break;
+    switch (period) {
+      case 'yesterday':
+        startDate.setDate(startDate.getDate() - 1);
+        endDate.setDate(endDate.getDate() - 1);
+        break;
+      case 'week':
+        startDate = new Date(now.getTime() - 7 * 86400000);
+        endDate = now;
+        break;
+      case 'month':
+        startDate = new Date(now.getTime() - 30 * 86400000);
+        endDate = now;
+        break;
+      case '3month':
+        startDate = new Date(now.getTime() - 90 * 86400000);
+        endDate = now;
+        break;
+      case '6month':
+        startDate = new Date(now.getTime() - 180 * 86400000);
+        endDate = now;
+        break;
+      case 'year':
+        startDate = new Date(now.getTime() - 365 * 86400000);
+        endDate = now;
+        break;
+      case 'all':
+        startDate = new Date(0);
+        endDate = now;
+        break;
+      case 'today':
+      default:
+        break;
+    }
+    from = startDate.toISOString();
+    to = endDate.toISOString();
   }
 
-  // Fetch games finished within the selected timeframe (or created within if not finished)
-  const games = await fetchAllRows(async (rangeFrom, rangeTo) => {
-    return supabase
-      .from('bingo_games')
-      .select('id, stake, status, prize_pool, winner_prize, winner_first_name, winner_cartela, created_at, finished_at')
-      .eq('status', 'finished')
-      .gte('finished_at', startDate.toISOString())
-      .lte('finished_at', endDate.toISOString())
-      .order('finished_at', { ascending: false })
-      .range(rangeFrom, rangeTo);
-  });
-
-  // Fetch player counts specifically for the games in this report
-  const gameIds = (games || []).map((g: any) => g.id);
-  const playerCounts: Record<string, number> = {};
-  if (gameIds.length > 0) {
-    for (let i = 0; i < gameIds.length; i += 100) {
-      const chunk = gameIds.slice(i, i + 100);
-      const { data: chunkPlayers } = await supabase
-        .from('bingo_players')
-        .select('game_id')
-        .in('game_id', chunk);
-      (chunkPlayers || []).forEach((p: any) => {
-        playerCounts[p.game_id] = (playerCounts[p.game_id] || 0) + 1;
-      });
-    }
-  }
-
-  let total_games = 0;
-  let total_stakes_collected = 0;
-  let total_prizes_paid = 0;
-
-  const enrichedGames = (games || []).map((g: any) => {
-    const isTie = Boolean(g.winner_first_name && g.winner_first_name.includes(' & '));
-    const paid = Number(g.winner_prize || 0) * (isTie ? 2 : 1);
-    
-    // Player count and collected stakes
-    let pc = playerCounts[g.id] || 0;
-    let collected = pc * Number(g.stake || 10);
-
-    // If collected < paid, use actual prize_pool / minimum stakes so profit is NEVER negative
-    if (collected < paid) {
-      const poolAmount = Number(g.prize_pool || 0);
-      collected = Math.max(collected, poolAmount, paid);
-      pc = Math.max(pc, Math.round(collected / Number(g.stake || 10)));
-    }
-
-    if (g.status === 'finished') {
-      total_games++;
-      total_stakes_collected += collected;
-      total_prizes_paid += paid;
-    }
-
-    const profit = Math.max(0, collected - paid);
-    return {
-      ...g,
-      game_id: g.id?.slice(0, 8).toUpperCase(),
-      players_count: pc,
-      collected,
-      paid,
-      profit
-    };
-  });
-
-  const overallProfit = Math.max(0, total_stakes_collected - total_prizes_paid);
+  const result = await getBingoGameStatsAndList(from, to);
 
   res.json({
     stats: {
-      total_games,
-      total_stakes_collected,
-      total_prizes_paid,
-      profit: overallProfit
+      total_games: result.total_games,
+      total_stakes_collected: result.total_stakes_collected,
+      total_prizes_paid: result.total_prizes_paid,
+      profit: result.total_commission
     },
-    games: enrichedGames
+    games: result.games
   });
 });
 

@@ -96,7 +96,44 @@ export default function AdminBingoGames() {
   const fetchReport = useCallback(async () => {
     setReportLoading(true);
     try {
-      const r = await fetch(`${API}/admin/bingo-report?period=${reportPeriod}`, { headers: hdrs() });
+      const now = new Date();
+      const startOf = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0).toISOString();
+      const endOf = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999).toISOString();
+
+      let fromIso = startOf(now);
+      let toIso = endOf(now);
+
+      if (reportPeriod === 'yesterday') {
+        const y = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+        fromIso = startOf(y);
+        toIso = endOf(y);
+      } else if (reportPeriod === 'week') {
+        const f = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6);
+        fromIso = startOf(f);
+        toIso = endOf(now);
+      } else if (reportPeriod === 'month') {
+        const f = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+        fromIso = startOf(f);
+        toIso = endOf(now);
+      } else if (reportPeriod === '3month') {
+        const f = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
+        fromIso = startOf(f);
+        toIso = endOf(now);
+      } else if (reportPeriod === '6month') {
+        const f = new Date(now.getFullYear(), now.getMonth() - 6, now.getDate());
+        fromIso = startOf(f);
+        toIso = endOf(now);
+      } else if (reportPeriod === 'year') {
+        const f = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+        fromIso = startOf(f);
+        toIso = endOf(now);
+      } else if (reportPeriod === 'all') {
+        fromIso = '2024-01-01T00:00:00.000Z';
+        toIso = endOf(now);
+      }
+
+      const params = new URLSearchParams({ period: reportPeriod, from: fromIso, to: toIso });
+      const r = await fetch(`${API}/admin/bingo-report?${params}`, { headers: hdrs() });
       if (r.ok) {
         const data = await r.json();
         setReportStats(data.stats);
