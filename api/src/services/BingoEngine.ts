@@ -462,7 +462,7 @@ class BingoEngine {
 
       const { data: claim, error: claimErr } = await supabase.from('bingo_games').update({
         status:             'finished',
-        winner_telegram_id: w1.telegram_id,
+        winner_telegram_id: `${w1.telegram_id},${w2.telegram_id}`,
         winner_first_name:  `${w1.first_name} & ${w2.first_name}`,
         winner_cartela:     w1.cartela_number,
         winner_prize:       splitPrize,
