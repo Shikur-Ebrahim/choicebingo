@@ -61,7 +61,7 @@ function ImageZoomModal({
   }, [onClose]);
 
   const handleZoom = (newScale: number) => {
-    const clamped = Math.min(Math.max(newScale, 1), 4);
+    const clamped = Math.min(Math.max(newScale, 1), 5);
     setScale(clamped);
     if (clamped === 1) {
       setPosition({ x: 0, y: 0 });
@@ -202,8 +202,9 @@ function ImageZoomModal({
           style={{
             transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
             transition: isDragging ? 'none' : 'transform 0.15s ease-out',
+            imageRendering: '-webkit-optimize-contrast',
           }}
-          className="max-h-[85vh] max-w-[95vw] object-contain rounded-lg shadow-2xl"
+          className="max-h-[85vh] max-w-[95vw] object-contain rounded-lg shadow-2xl select-none"
         />
       </div>
 
@@ -247,8 +248,17 @@ function ImageZoomModal({
           </button>
 
           <button
+            onClick={() => handleZoom(4)}
+            className={`px-3 py-1 text-xs font-bold rounded-full transition-colors ${
+              scale === 4 ? 'bg-yellow-400 text-slate-900' : 'text-white/80 hover:text-white bg-white/10 hover:bg-white/20'
+            }`}
+          >
+            4x
+          </button>
+
+          <button
             onClick={zoomIn}
-            disabled={scale >= 4}
+            disabled={scale >= 5}
             className="p-2 text-white hover:text-yellow-400 disabled:opacity-30 disabled:hover:text-white transition-colors"
             title="Zoom In"
           >

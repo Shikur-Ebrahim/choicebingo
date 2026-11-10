@@ -22,7 +22,7 @@ import { Link } from 'react-router-dom';
 import WebApp from '@twa-dev/sdk';
 import { useGameStore } from '../store/gameStore';
 import { t } from '../lib/translations';
-import { uploadImage } from '../lib/upload';
+import { uploadImage, uploadScreenshot } from '../lib/upload';
 import { supabase } from '../lib/supabase';
 import VideoGuideModal, { useAutoVideoGuide } from '../components/VideoGuideModal';
 
@@ -353,7 +353,7 @@ export default function Deposit() {
       let finalScreenshotUrl = '';
 
       if (proofType === 'screenshot' && file) {
-        finalScreenshotUrl = await uploadImage(file);
+        finalScreenshotUrl = await uploadScreenshot(file);
       }
 
       const payload = {
