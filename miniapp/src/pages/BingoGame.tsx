@@ -168,7 +168,10 @@ export default function BingoGame() {
     return true;
   });
   const [volume, setVolume] = useState(1.0);
-  const [autoMark, setAutoMark] = useState(false); // default: manual play mode as requested
+  const [autoMark, setAutoMark] = useState<boolean>(() => {
+    const saved = localStorage.getItem('bingo_auto_mark');
+    return saved !== null ? saved === 'true' : false; // default is manual (false)
+  });
   const [manuallyMarked, setManuallyMarked] = useState<Set<number>>(new Set());
   const [claimLockSeconds, setClaimLockSeconds] = useState(0);
   const [claimErrMsg, setClaimErrMsg] = useState("");
@@ -568,7 +571,6 @@ export default function BingoGame() {
       }
     } catch {}
     setManuallyMarked(new Set());
-    setAutoMark(false);
     setClaimLockSeconds(0);
     setClaimErrMsg("");
     setIsClaiming(false);
@@ -654,7 +656,6 @@ export default function BingoGame() {
           setMyCard(d.my_card ?? null);
           prevCalledLenRef.current = d.game.called_numbers?.length || 0;
           setManuallyMarked(new Set()); // Reset manual marks on new game
-          setAutoMark(false);
           if (d.game.status !== 'finished') {
             hasCelebratedRef.current = null;
           }
@@ -680,7 +681,6 @@ export default function BingoGame() {
             gameIdRef.current = dbGame.id;
             prevCalledLenRef.current = dbGame.called_numbers?.length || 0;
             setManuallyMarked(new Set());
-            setAutoMark(false);
           }
           const { data: pRows } = await supabase
             .from('bingo_players')
@@ -728,7 +728,6 @@ export default function BingoGame() {
             gameIdRef.current = dbGame.id;
             prevCalledLenRef.current = dbGame.called_numbers?.length || 0;
             setManuallyMarked(new Set());
-            setAutoMark(false);
           }
         }
       } catch {}
@@ -1765,34 +1764,34 @@ export default function BingoGame() {
             </div>
           </div>
 
-          {/* Caller Row with 3D Glossy Bingo Ball & Controls — INCREASED */}
+          {/* Caller Row with 3D Glossy Bingo Ball & Controls — FANTASTIC PROMINENT SIZE */}
           <div
-            className="shrink-0 rounded-xl px-2.5 py-1 w-full max-w-[360px] mx-auto shadow-md"
+            className="shrink-0 rounded-2xl px-3 py-1.5 w-full max-w-[380px] mx-auto shadow-lg"
             style={{
               background: 'linear-gradient(180deg, #141e33 0%, #0a0f1e 100%)',
-              border: '1px solid rgba(255, 255, 255, 0.12)',
-              boxShadow: 'inset 0 1px 2px rgba(255, 255, 255, 0.1), 0 4px 10px rgba(0, 0, 0, 0.5)'
+              border: '1.5px solid rgba(255, 255, 255, 0.15)',
+              boxShadow: 'inset 0 1px 3px rgba(255, 255, 255, 0.12), 0 6px 14px rgba(0, 0, 0, 0.6)'
             }}
           >
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center justify-between gap-2.5">
               {/* Left / Center: 3D Glossy Bingo Ball + Spoken Amharic + Previous Balls */}
-              <div className="flex items-center gap-2.5 min-w-0">
+              <div className="flex items-center gap-3 min-w-0">
                 {lastNum ? (
                   <div
                     className="rounded-full flex flex-col items-center justify-center shrink-0 relative select-none animate-bounce"
                     style={{
-                      width: '44px',
-                      height: '44px',
+                      width: '54px',
+                      height: '54px',
                       background: 'radial-gradient(circle at 35% 25%, #ffffff 0%, #f8fafc 25%, #e2e8f0 55%, #94a3b8 85%, #475569 100%)',
-                      boxShadow: 'inset -3px -3px 6px rgba(15, 23, 42, 0.5), inset 2px 3px 4px rgba(255, 255, 255, 0.95), 0 4px 8px rgba(0, 0, 0, 0.6), 0 0 8px rgba(255, 255, 255, 0.25)',
-                      border: '1.5px solid rgba(255, 255, 255, 0.95)',
+                      boxShadow: 'inset -4px -4px 8px rgba(15, 23, 42, 0.5), inset 2px 3px 5px rgba(255, 255, 255, 0.95), 0 5px 12px rgba(0, 0, 0, 0.65), 0 0 10px rgba(255, 255, 255, 0.3)',
+                      border: '2px solid rgba(255, 255, 255, 0.95)',
                       animationDuration: '2.5s',
                     }}
                   >
-                    <span className="text-[7.5px] font-black leading-none text-amber-500 font-mono -mt-0.5 drop-shadow-sm">
+                    <span className="text-[8px] font-black leading-none text-amber-500 font-mono -mt-1 drop-shadow-sm">
                       {currentLetter}
                     </span>
-                    <span className="text-slate-950 font-black text-lg leading-none tracking-tight font-sans">
+                    <span className="text-slate-950 font-black text-xl leading-none tracking-tight font-sans">
                       {lastNum}
                     </span>
                   </div>
@@ -1800,45 +1799,45 @@ export default function BingoGame() {
                   <div
                     className="rounded-full flex flex-col items-center justify-center shrink-0 relative select-none animate-bounce"
                     style={{
-                      width: '44px',
-                      height: '44px',
+                      width: '54px',
+                      height: '54px',
                       background: 'radial-gradient(circle at 35% 25%, #ffffff 0%, #f8fafc 25%, #e2e8f0 55%, #94a3b8 85%, #475569 100%)',
-                      boxShadow: 'inset -3px -3px 6px rgba(15, 23, 42, 0.5), inset 2px 3px 4px rgba(255, 255, 255, 0.95), 0 4px 8px rgba(0, 0, 0, 0.6), 0 0 8px rgba(245, 158, 11, 0.45)',
-                      border: '1.5px solid rgba(255, 255, 255, 0.95)',
+                      boxShadow: 'inset -4px -4px 8px rgba(15, 23, 42, 0.5), inset 2px 3px 5px rgba(255, 255, 255, 0.95), 0 5px 12px rgba(0, 0, 0, 0.65), 0 0 10px rgba(245, 158, 11, 0.45)',
+                      border: '2px solid rgba(255, 255, 255, 0.95)',
                       animationDuration: '2.5s',
                     }}
                   >
-                    <span className="text-[6.5px] font-black leading-none text-amber-500 font-mono -mt-0.5 drop-shadow-sm">
+                    <span className="text-[7.5px] font-black leading-none text-amber-500 font-mono -mt-1 drop-shadow-sm">
                       BINGO
                     </span>
-                    <span className="text-slate-950 font-black text-lg leading-none tracking-tight font-sans animate-pulse">
+                    <span className="text-slate-950 font-black text-xl leading-none tracking-tight font-sans animate-pulse">
                       ?
                     </span>
                   </div>
                 )}
 
                 <div className="flex flex-col justify-center min-w-0">
-                  <span className="text-yellow-400 font-black text-sm tracking-wide truncate drop-shadow-sm">
+                  <span className="text-yellow-400 font-black text-base tracking-wide truncate drop-shadow-sm">
                     {currentAmharic || (recent.length === 0 ? 'በመጠበቅ ላይ...' : '')}
                   </span>
                   
                   {/* Previous Called Balls — mini 3D spheres */}
-                  <div className="flex items-center gap-1 mt-0.5">
+                  <div className="flex items-center gap-1.5 mt-1">
                     {recent.length > 0 ? (
                       recent.slice(1, 5).map((num, idx) => {
                         const l = getLetter(num);
                         return (
                           <div
                             key={`${num}-${idx}`}
-                            className="w-[21px] h-[21px] rounded-full flex flex-col items-center justify-center shadow select-none shrink-0"
+                            className="w-[23px] h-[23px] rounded-full flex flex-col items-center justify-center shadow select-none shrink-0"
                             style={{
                               background: 'radial-gradient(circle at 35% 25%, #ffffff 0%, #f1f5f9 35%, #cbd5e1 70%, #64748b 100%)',
                               boxShadow: 'inset -1.5px -1.5px 2px rgba(15, 23, 42, 0.4), inset 1px 1px 1.5px rgba(255, 255, 255, 0.9), 0 1.5px 3px rgba(0, 0, 0, 0.4)',
                               border: '0.8px solid rgba(255, 255, 255, 0.7)',
                             }}
                           >
-                            <span className="text-[4.5px] font-black leading-none text-amber-500 font-mono">{l}</span>
-                            <span className="text-[8.5px] font-black leading-none text-slate-900">{num}</span>
+                            <span className="text-[5px] font-black leading-none text-amber-500 font-mono">{l}</span>
+                            <span className="text-[9.5px] font-black leading-none text-slate-900">{num}</span>
                           </div>
                         );
                       })
@@ -1846,7 +1845,7 @@ export default function BingoGame() {
                       Array.from({ length: 4 }).map((_, i) => (
                         <div
                           key={i}
-                          className="w-[21px] h-[21px] rounded-full flex items-center justify-center select-none shrink-0"
+                          className="w-[23px] h-[23px] rounded-full flex items-center justify-center select-none shrink-0"
                           style={{
                             background: 'radial-gradient(circle at 35% 25%, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.08) 50%, rgba(0,0,0,0.35) 100%)',
                             border: '0.8px solid rgba(255, 255, 255, 0.18)',
@@ -1862,7 +1861,7 @@ export default function BingoGame() {
               </div>
 
               {/* Right Side: Sound Toggle + Auto/Manual Controls */}
-              <div className="flex flex-col items-center gap-1.5 shrink-0 pl-2 border-l border-white/10">
+              <div className="flex flex-col items-center gap-1.5 shrink-0 pl-2.5 border-l border-white/10">
                 <button
                   type="button"
                   onClick={() => {
@@ -1891,6 +1890,7 @@ export default function BingoGame() {
                   onClick={() => {
                     const next = !autoMark;
                     setAutoMark(next);
+                    localStorage.setItem('bingo_auto_mark', String(next));
                     if (WebApp?.HapticFeedback) WebApp.HapticFeedback.selectionChanged();
                     if (game?.id) {
                       fetch(`${API}/bingo/mode`, {
@@ -1900,24 +1900,24 @@ export default function BingoGame() {
                       }).catch(() => {});
                     }
                   }}
-                  className="px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-wider active:translate-y-0.5 transition-all flex items-center gap-1 shadow-sm select-none"
+                  className="px-2.5 py-1 rounded-lg text-[8.5px] font-black uppercase tracking-wider active:translate-y-0.5 transition-all flex items-center gap-1.5 shadow-sm select-none"
                   style={
                     !autoMark
                       ? {
-                          background: 'linear-gradient(180deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%)',
-                          boxShadow: '0 2px 0 #b45309, 0 2px 4px rgba(245,158,11,0.4), inset 0 1px 1px rgba(255,255,255,0.7)',
-                          border: '1px solid #fde68a',
+                          background: 'linear-gradient(180deg, #1e293b 0%, #0f172a 100%)',
+                          boxShadow: '0 2px 0 #020617, 0 2px 5px rgba(0,0,0,0.4), inset 0 1px 1px rgba(255,255,255,0.2)',
+                          border: '1px solid rgba(16, 185, 129, 0.5)',
                           color: '#ffffff',
                         }
                       : {
-                          background: 'linear-gradient(180deg, #34d399 0%, #10b981 50%, #059669 100%)',
-                          boxShadow: '0 2px 0 #047857, 0 2px 4px rgba(16,185,129,0.4), inset 0 1px 1px rgba(255,255,255,0.7)',
-                          border: '1px solid #6ee7b7',
-                          color: '#ffffff',
+                          background: 'linear-gradient(180deg, #334155 0%, #1e293b 100%)',
+                          boxShadow: '0 2px 0 #0f172a, inset 0 1px 0 rgba(255,255,255,0.1)',
+                          border: '1px solid rgba(148, 163, 184, 0.25)',
+                          color: '#94a3b8',
                         }
                   }
                 >
-                  <span className={`w-1.5 h-1.5 rounded-full ${!autoMark ? 'bg-amber-100 shadow-[0_0_4px_#ffffff]' : 'bg-emerald-100 shadow-[0_0_4px_#ffffff]'}`} />
+                  <span className={`w-2 h-2 rounded-full ${!autoMark ? 'bg-emerald-400 shadow-[0_0_8px_#10b981] animate-pulse' : 'bg-slate-400 border border-slate-500'}`} />
                   <span>{!autoMark ? 'MANUAL ON' : 'MANUAL OFF'}</span>
                 </button>
               </div>
@@ -2101,7 +2101,7 @@ export default function BingoGame() {
                                     });
                                     if (WebApp?.HapticFeedback) WebApp.HapticFeedback.selectionChanged();
                                   }}
-                                  className={`h-[clamp(20px,2.9vh,24px)] flex items-center justify-center font-black text-[clamp(10px,1.4vh,11.5px)] rounded-[3px] transition-all duration-150 select-none ${
+                                  className={`h-[clamp(22px,3.2vh,27px)] flex items-center justify-center font-black text-[clamp(11px,1.5vh,12.5px)] rounded-[3px] transition-all duration-150 select-none ${
                                     isLast && autoMark ? 'scale-105 z-10' : ''
                                   } ${!autoMark && marked ? 'active:scale-95 cursor-pointer' : ''}`}
                                   style={
@@ -2220,10 +2220,27 @@ export default function BingoGame() {
             </div>
           )}
 
-          {/* Manual Mode: 3D Deluxe Casino BINGO Button directly below cartelas with no gap */}
-          {!autoMark && myCartelas.length > 0 && (
+          {/* 3D Deluxe Casino BINGO Button — always anchored to bottom, disabled/dark in auto mode */}
+          {myCartelas.length > 0 && (
             <div className="mt-auto shrink-0 w-full max-w-[320px] mx-auto pt-0.5 pb-0 px-2 z-20">
-              {claimLockSeconds > 0 ? (
+              {autoMark ? (
+                /* Auto Mode: Dark / disabled 3D button */
+                <button
+                  type="button"
+                  disabled={true}
+                  className="w-full py-2.5 px-4 rounded-xl font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 select-none cursor-not-allowed pointer-events-none opacity-85 shadow-md"
+                  style={{
+                    background: 'linear-gradient(180deg, #1e293b 0%, #0f172a 100%)',
+                    boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.08), 0 2px 4px rgba(0,0,0,0.5)',
+                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                    color: '#94a3b8',
+                  }}
+                >
+                  <span className="text-base opacity-70">🤖</span>
+                  <span className="font-black text-xs tracking-wider text-slate-300">AUTO BINGO ACTIVE</span>
+                  <span className="text-base opacity-70">⚡</span>
+                </button>
+              ) : claimLockSeconds > 0 ? (
                 <div className="flex flex-col items-center gap-0.5 w-full">
                   <div
                     className="w-full py-2 px-3 rounded-xl flex items-center justify-center gap-1.5 select-none"
@@ -2247,7 +2264,7 @@ export default function BingoGame() {
                   type="button"
                   disabled={isClaiming}
                   onClick={handleClaimBingo}
-                  className="w-full py-2.5 px-4 rounded-xl font-black text-sm uppercase tracking-wider active:translate-y-0.5 transition-all flex items-center justify-center gap-2 select-none cursor-pointer shadow-lg"
+                  className="w-full py-2.5 px-4 rounded-xl font-black text-sm uppercase tracking-wider active:translate-y-0.5 transition-all flex items-center justify-center gap-2 select-none cursor-pointer shadow-lg animate-pulse"
                   style={{
                     background: 'linear-gradient(180deg, #fef08a 0%, #facc15 30%, #eab308 70%, #ca8a04 100%)',
                     boxShadow: '0 4px 0 #854d0e, 0 6px 14px rgba(234,179,8,0.4), inset 0 1px 2px rgba(255,255,255,0.95)',
