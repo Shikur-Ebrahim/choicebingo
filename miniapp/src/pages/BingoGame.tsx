@@ -162,10 +162,9 @@ export default function BingoGame() {
   const [previewCartela, setPreviewCartela] = useState<{ seat: number; matrix: number[][] } | null>(null);
   const [homeGames, setHomeGames] = useState<Record<number, { pool: number; start_at?: string; status: string; players: number }>>({});
   const [homeTimeLeft, setHomeTimeLeft] = useState<Record<number, number>>({});
-  const [soundEnabled, setSoundEnabled] = useState(() => {
-    // v2: default is ALWAYS ON. Wipe any old stored 'false' so every user hears calls.
-    localStorage.setItem('bingo_sound_enabled', 'true');
-    return true;
+  const [soundEnabled, setSoundEnabled] = useState<boolean>(() => {
+    const saved = localStorage.getItem('bingo_sound_enabled');
+    return saved !== null ? saved === 'true' : true; // default is ON (true) until user turns it off
   });
   const [volume, setVolume] = useState(1.0);
   const [autoMark, setAutoMark] = useState<boolean>(() => {
