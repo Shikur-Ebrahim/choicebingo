@@ -1683,43 +1683,43 @@ export default function BingoGame() {
 
         {/* Top Calling Header Group (Info Bar + Tracker + Caller Row) */}
         <div className="flex flex-col gap-1 shrink-0 w-full">
-          {/* 3D Top Info Bar */}
+          {/* 3D Top Info Bar — SLIGHTLY INCREASED & CLEARER */}
           <div
-            className="flex items-center justify-between px-2 py-0.5 rounded-lg shrink-0"
+            className="flex items-center justify-between px-2.5 py-1 rounded-xl shrink-0"
             style={{
               background: 'linear-gradient(180deg, #1e293b 0%, #0f172a 100%)',
               boxShadow: 'inset 0 1px 1px rgba(255, 255, 255, 0.15), 0 2px 4px rgba(0, 0, 0, 0.4)',
-              border: '1px solid rgba(255, 255, 255, 0.08)'
+              border: '1px solid rgba(255, 255, 255, 0.1)'
             }}
           >
-            <div className="text-slate-400 text-[8.5px] font-bold font-mono">ID: {(game.game_id || game.id?.slice(0, 8) || '').toUpperCase()}</div>
-            <div className="flex items-center gap-1 text-yellow-300 text-[8.5px] font-black px-1.5 py-0.25 rounded-full bg-yellow-500/15 border border-yellow-500/30 shadow-sm">
-              <Trophy size={9} className="text-yellow-400 drop-shadow" /> {game.prize_pool} ETB
+            <div className="text-slate-300 text-[10px] font-bold font-mono tracking-tight">ID: {(game.game_id || game.id?.slice(0, 8) || '').toUpperCase()}</div>
+            <div className="flex items-center gap-1.5 text-yellow-300 text-[10px] font-black px-2 py-0.5 rounded-full bg-yellow-500/15 border border-yellow-500/30 shadow-sm">
+              <Trophy size={11} className="text-yellow-400 drop-shadow" /> {game.prize_pool} ETB
             </div>
-            <div className="flex items-center gap-1 text-blue-300 text-[8.5px] font-bold">
-              <LayoutGrid size={9} /> {taken.length}
+            <div className="flex items-center gap-1 text-blue-300 text-[10px] font-bold">
+              <LayoutGrid size={11} /> {taken.length}
             </div>
-            <div className="flex items-center gap-1 text-emerald-300 text-[8.5px] font-bold">
-              <Clock size={9} /> {called.length}/75
+            <div className="flex items-center gap-1 text-emerald-300 text-[10px] font-bold">
+              <Clock size={11} /> {called.length}/75
             </div>
-            <div className="text-[7.5px] bg-red-500/20 text-red-400 px-1.5 py-0.25 rounded-full font-black animate-pulse border border-red-500/30 shadow-[0_0_6px_rgba(239,68,68,0.3)]">
+            <div className="text-[8.5px] bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full font-black animate-pulse border border-red-500/30 shadow-[0_0_6px_rgba(239,68,68,0.3)]">
               LIVE
             </div>
           </div>
 
-          {/* 1-75 Tracker Board — INCREASED prominent 3D matrix */}
+          {/* 1-75 Tracker Board — INCREASED & CRYSTAL CLEAR NUMBERS */}
           <div
             className="rounded-xl px-1.5 py-1 shrink-0"
             style={{
               background: 'linear-gradient(180deg, #0f172a 0%, #020617 100%)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
+              border: '1px solid rgba(255, 255, 255, 0.12)',
               boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.6), 0 2px 6px rgba(0, 0, 0, 0.4)'
             }}
           >
             <div className="flex flex-col gap-[2px]">
               {BINGO_LETTERS.map((letter, rowIndex) => (
                 <div key={letter} className="flex items-center gap-0.5">
-                  <div className="w-3.5 flex-shrink-0 flex items-center justify-center font-black text-[8.5px] drop-shadow" style={{ color: LETTER_COLOR[letter] }}>{letter}</div>
+                  <div className="w-4 flex-shrink-0 flex items-center justify-center font-black text-[10px] drop-shadow" style={{ color: LETTER_COLOR[letter] }}>{letter}</div>
                   <div className="flex-1 grid gap-[2px]" style={{ gridTemplateColumns: 'repeat(15, minmax(0, 1fr))' }}>
                     {Array.from({ length: 15 }, (_, i) => {
                       const num = rowIndex * 15 + i + 1;
@@ -1728,29 +1728,29 @@ export default function BingoGame() {
                       return (
                         <div
                           key={num}
-                          className={`h-[clamp(14px,2.1vh,17px)] rounded-[3px] flex items-center justify-center text-[8px] font-black transition-all ${
-                            isLatest ? 'scale-105 z-10' : ''
+                          className={`h-[clamp(16px,2.3vh,19.5px)] rounded-[3px] flex items-center justify-center text-[9.5px] font-black transition-all ${
+                            isLatest ? 'scale-110 z-10' : ''
                           }`}
                           style={
                             isLatest
                               ? {
-                                  background: 'radial-gradient(circle at 35% 25%, #ffffff 0%, #e2e8f0 55%, #94a3b8 100%)',
-                                  boxShadow: '0 0 6px rgba(255,255,255,0.9), inset 0 1px 1px rgba(255,255,255,1)',
-                                  border: '1px solid #ffffff',
+                                  background: 'radial-gradient(circle at 35% 25%, #ffffff 0%, #f1f5f9 50%, #cbd5e1 100%)',
+                                  boxShadow: '0 0 10px rgba(255,255,255,1), inset 0 1px 1px rgba(255,255,255,1)',
+                                  border: '1.2px solid #ffffff',
                                   color: '#020617',
                                 }
                               : isCalled
                               ? {
                                   background: 'radial-gradient(circle at 35% 25%, #fef08a 0%, #facc15 50%, #ca8a04 100%)',
-                                  boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.8), inset 0 -1px 1px rgba(161,98,7,0.7), 0 1px 2px rgba(0,0,0,0.3)',
-                                  border: '0.5px solid #fef08a',
-                                  color: '#451a03',
+                                  boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.9), inset 0 -1px 1px rgba(161,98,7,0.8), 0 1px 3px rgba(0,0,0,0.4)',
+                                  border: '0.6px solid #fef08a',
+                                  color: '#3b1a03',
                                 }
                               : {
                                   background: 'linear-gradient(180deg, #1e293b 0%, #0f172a 100%)',
-                                  boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 1px 2px rgba(0,0,0,0.3)',
-                                  border: '0.5px solid rgba(255, 255, 255, 0.05)',
-                                  color: '#64748b',
+                                  boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 1px 2px rgba(0,0,0,0.3)',
+                                  border: '0.5px solid rgba(255, 255, 255, 0.08)',
+                                  color: '#cbd5e1',
                                 }
                           }
                         >
@@ -1986,7 +1986,7 @@ export default function BingoGame() {
                               });
                               if (WebApp?.HapticFeedback) WebApp.HapticFeedback.selectionChanged();
                             }}
-                            className={`h-[28px] flex items-center justify-center font-black text-xs rounded transition-all duration-150 select-none ${
+                            className={`h-[clamp(30px,4.2vh,38px)] flex items-center justify-center font-black text-sm rounded transition-all duration-150 select-none ${
                               isLast && autoMark ? 'scale-105 z-10' : ''
                             } ${!autoMark && marked ? 'active:scale-95 cursor-pointer' : ''}`}
                             style={
@@ -2101,7 +2101,7 @@ export default function BingoGame() {
                                     });
                                     if (WebApp?.HapticFeedback) WebApp.HapticFeedback.selectionChanged();
                                   }}
-                                  className={`h-[clamp(22px,3.2vh,27px)] flex items-center justify-center font-black text-[clamp(11px,1.5vh,12.5px)] rounded-[3px] transition-all duration-150 select-none ${
+                                  className={`h-[clamp(24px,3.5vh,29px)] flex items-center justify-center font-black text-[clamp(11.5px,1.6vh,13px)] rounded-[3px] transition-all duration-150 select-none ${
                                     isLast && autoMark ? 'scale-105 z-10' : ''
                                   } ${!autoMark && marked ? 'active:scale-95 cursor-pointer' : ''}`}
                                   style={
