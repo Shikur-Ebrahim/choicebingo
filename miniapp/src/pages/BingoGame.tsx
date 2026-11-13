@@ -1680,7 +1680,7 @@ export default function BingoGame() {
     const currentAmharic = lastNum ? AMHARIC_NUM[lastNum] : null;
 
     return (
-      <div className="h-full flex flex-col justify-between px-1 pt-0.5 pb-1 gap-1 select-none overflow-hidden">
+      <div className="h-full flex flex-col justify-start px-1 pt-0.5 pb-1 gap-1 select-none overflow-hidden">
 
         {/* 3D Top Info Bar */}
         <div
@@ -1898,24 +1898,25 @@ export default function BingoGame() {
                     }).catch(() => {});
                   }
                 }}
-                className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider active:translate-y-0.5 transition-all flex items-center justify-center"
+                className="px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-wider active:translate-y-0.5 transition-all flex items-center gap-1 shadow-sm select-none"
                 style={
-                  autoMark
+                  !autoMark
                     ? {
-                        background: 'linear-gradient(180deg, #34d399 0%, #10b981 50%, #059669 100%)',
-                        boxShadow: '0 2px 0 #047857, 0 2px 4px rgba(16,185,129,0.4), inset 0 1px 1px rgba(255,255,255,0.7)',
-                        border: '0.8px solid #6ee7b7',
+                        background: 'linear-gradient(180deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%)',
+                        boxShadow: '0 2px 0 #b45309, 0 2px 4px rgba(245,158,11,0.4), inset 0 1px 1px rgba(255,255,255,0.7)',
+                        border: '1px solid #fde68a',
                         color: '#ffffff',
                       }
                     : {
-                        background: 'linear-gradient(180deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%)',
-                        boxShadow: '0 2px 0 #b45309, 0 2px 4px rgba(245,158,11,0.4), inset 0 1px 1px rgba(255,255,255,0.7)',
-                        border: '0.8px solid #fde68a',
+                        background: 'linear-gradient(180deg, #34d399 0%, #10b981 50%, #059669 100%)',
+                        boxShadow: '0 2px 0 #047857, 0 2px 4px rgba(16,185,129,0.4), inset 0 1px 1px rgba(255,255,255,0.7)',
+                        border: '1px solid #6ee7b7',
                         color: '#ffffff',
                       }
                 }
               >
-                {autoMark ? 'AUTO' : 'MANUAL'}
+                <span className={`w-1.5 h-1.5 rounded-full ${!autoMark ? 'bg-amber-100 shadow-[0_0_4px_#ffffff]' : 'bg-emerald-100 shadow-[0_0_4px_#ffffff]'}`} />
+                <span>{!autoMark ? 'MANUAL ON' : 'MANUAL OFF'}</span>
               </button>
             </div>
 
@@ -1923,8 +1924,8 @@ export default function BingoGame() {
         </div>
 
         {/* Cartelas Area — compact & optimized to fit all 4 cartelas with 0 scrolling */}
-        <div className="flex-1 min-h-0 flex flex-col justify-center overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
-        <div className={`w-full ${myCartelas.length > 1 ? 'max-w-[420px]' : 'max-w-[220px]'} mx-auto flex flex-col gap-0.5`}>
+        <div className="flex-1 min-h-0 flex flex-col justify-start overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
+        <div className={`w-full ${myCartelas.length > 1 ? 'max-w-[420px]' : 'max-w-[220px]'} mx-auto flex flex-col gap-1 pt-0.5`}>
 
           {/* My Cards — dynamic layout: 1 card = centered; 2-4 cards = 2x2 grid */}
           {myCartelas.length > 0 ? (
@@ -2039,9 +2040,9 @@ export default function BingoGame() {
             ) : (
               /* 2 to 4 Cartelas — 3D Side-by-side grid, compact to fit all without scrolling */
               <div className="w-full flex flex-col gap-0.5 px-0.5">
-                <div className="flex items-center justify-between px-1">
-                  <span className="text-white/60 text-[9px] font-bold tracking-wider uppercase">CARTELAS ({myCartelas.length})</span>
-                  <span className="text-emerald-400 text-[7.5px] font-black uppercase tracking-wider bg-emerald-500/10 px-1.5 py-0.25 rounded-full border border-emerald-500/20 shadow-sm">All Active</span>
+                <div className="flex items-center justify-between px-1 mb-0.5">
+                  <span className="text-white/70 text-[9.5px] font-bold tracking-wider uppercase">CARTELAS ({myCartelas.length})</span>
+                  <span className="text-emerald-400 text-[8px] font-black uppercase tracking-wider bg-emerald-500/10 px-1.5 py-0.25 rounded-full border border-emerald-500/20 shadow-sm">All Active</span>
                 </div>
                 <div className="grid grid-cols-2 gap-1.5 w-full">
                   {myCartelas.map((card) => (
@@ -2097,7 +2098,7 @@ export default function BingoGame() {
                                     });
                                     if (WebApp?.HapticFeedback) WebApp.HapticFeedback.selectionChanged();
                                   }}
-                                  className={`h-[18px] flex items-center justify-center font-black text-[10px] rounded-[3px] transition-all duration-150 select-none ${
+                                  className={`h-[clamp(20px,2.9vh,24px)] flex items-center justify-center font-black text-[clamp(10px,1.4vh,11.5px)] rounded-[3px] transition-all duration-150 select-none ${
                                     isLast && autoMark ? 'scale-105 z-10' : ''
                                   } ${!autoMark && marked ? 'active:scale-95 cursor-pointer' : ''}`}
                                   style={
@@ -2215,51 +2216,52 @@ export default function BingoGame() {
               </div>
             </div>
           )}
-        </div>
-        </div>
 
-        {/* Manual Mode: 3D Deluxe Casino BINGO Button (Always Visible!) */}
-        {!autoMark && myCartelas.length > 0 && (
-          <div className="shrink-0 w-full max-w-[280px] mx-auto pt-0.5 pb-0 px-2 z-20">
-            {claimLockSeconds > 0 ? (
-              <div className="flex flex-col items-center gap-0.5 w-full">
-                <div
-                  className="w-full py-1.5 px-3 rounded-xl flex items-center justify-center gap-1.5 select-none"
+          {/* Manual Mode: 3D Deluxe Casino BINGO Button directly below cartelas with no gap */}
+          {!autoMark && myCartelas.length > 0 && (
+            <div className="shrink-0 w-full max-w-[280px] mx-auto pt-0.5 pb-1 px-2 z-20">
+              {claimLockSeconds > 0 ? (
+                <div className="flex flex-col items-center gap-0.5 w-full">
+                  <div
+                    className="w-full py-1.5 px-3 rounded-xl flex items-center justify-center gap-1.5 select-none"
+                    style={{
+                      background: 'linear-gradient(180deg, #7f1d1d 0%, #450a0a 100%)',
+                      boxShadow: '0 2.5px 0 #3b0707, inset 0 1px 1px rgba(255,255,255,0.2)',
+                      border: '1px solid #ef4444',
+                    }}
+                  >
+                    <span className="text-red-300 text-sm animate-pulse">🔒</span>
+                    <span className="text-red-100 font-black text-[11px] tracking-widest uppercase">
+                      {t[language].bingo.locked} ({claimLockSeconds}s)
+                    </span>
+                  </div>
+                  <p className="text-red-400 text-[8px] font-bold text-center animate-pulse px-2 bg-black/50 rounded py-0.25">
+                    {claimErrMsg || t[language].bingo.falseBingoLocked.replace('{s}', String(claimLockSeconds))}
+                  </p>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  disabled={isClaiming}
+                  onClick={handleClaimBingo}
+                  className="w-full py-2 px-4 rounded-xl font-black text-sm uppercase tracking-wider active:translate-y-0.5 transition-all flex items-center justify-center gap-2 select-none cursor-pointer"
                   style={{
-                    background: 'linear-gradient(180deg, #7f1d1d 0%, #450a0a 100%)',
-                    boxShadow: '0 2.5px 0 #3b0707, inset 0 1px 1px rgba(255,255,255,0.2)',
-                    border: '1px solid #ef4444',
+                    background: 'linear-gradient(180deg, #fef08a 0%, #facc15 30%, #eab308 70%, #ca8a04 100%)',
+                    boxShadow: '0 4px 0 #854d0e, 0 6px 14px rgba(234,179,8,0.4), inset 0 1px 2px rgba(255,255,255,0.95)',
+                    border: '1px solid #fef08a',
+                    color: '#451a03',
                   }}
                 >
-                  <span className="text-red-300 text-sm animate-pulse">🔒</span>
-                  <span className="text-red-100 font-black text-[11px] tracking-widest uppercase">
-                    {t[language].bingo.locked} ({claimLockSeconds}s)
-                  </span>
-                </div>
-                <p className="text-red-400 text-[8px] font-bold text-center animate-pulse px-2 bg-black/50 rounded py-0.25">
-                  {claimErrMsg || t[language].bingo.falseBingoLocked.replace('{s}', String(claimLockSeconds))}
-                </p>
-              </div>
-            ) : (
-              <button
-                type="button"
-                disabled={isClaiming}
-                onClick={handleClaimBingo}
-                className="w-full py-2 px-4 rounded-xl font-black text-sm uppercase tracking-wider active:translate-y-0.5 transition-all flex items-center justify-center gap-2 select-none cursor-pointer"
-                style={{
-                  background: 'linear-gradient(180deg, #fef08a 0%, #facc15 30%, #eab308 70%, #ca8a04 100%)',
-                  boxShadow: '0 4px 0 #854d0e, 0 6px 14px rgba(234,179,8,0.4), inset 0 1px 2px rgba(255,255,255,0.95)',
-                  border: '1px solid #fef08a',
-                  color: '#451a03',
-                }}
-              >
-                <span className="text-base">🏆</span>
-                <span className="drop-shadow-sm font-black text-sm">{t[language].bingo.claimBingo}</span>
-                <span className="text-base">🎉</span>
-              </button>
-            )}
-          </div>
-        )}
+                  <span className="text-base">🏆</span>
+                  <span className="drop-shadow-sm font-black text-sm">{t[language].bingo.claimBingo}</span>
+                  <span className="text-base">🎉</span>
+                </button>
+              )}
+            </div>
+          )}
+
+        </div>
+        </div>
       </div>
     );
   };
