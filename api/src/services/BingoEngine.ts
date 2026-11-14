@@ -8,6 +8,8 @@ import {
   getActiveSystemPlayersPool,
   isSystemPlayer,
   recordSystemPlayerWin,
+  ensureDefaultSystemPlayersSeeded,
+  DEFAULT_STAKE_RANGES,
 } from './systemPlayers';
 
 const TICK_MS = 500; // 500ms tick for exact call_interval_ms execution
@@ -66,6 +68,10 @@ class BingoEngine {
     if (this.timer) return;
     this.timer = setInterval(() => this.tick(), TICK_MS);
     console.log('🎰 BingoEngine running — auto-game loop active');
+    // Auto-seed 1000 Ethiopian players across all regions in background if needed
+    ensureDefaultSystemPlayersSeeded().catch((e) => {
+      console.error('[BingoEngine] Auto-seed background error:', e);
+    });
   }
 
   private async tick() {
@@ -250,8 +256,16 @@ class BingoEngine {
       const botPlayers = players.filter((p: any) => isSystemPlayer(p.telegram_id));
       const uniqueExistingBots = new Set(botPlayers.map((p: any) => p.telegram_id)).size;
 
-      const minBots = Math.max(1, Number(botCfg.min_players_per_game) || 50);
-      const maxBots = Math.max(minBots, Number(botCfg.max_players_per_game) || 100);
+      // Determine target bot count for this game based on its stake
+      const stakeKey = String(game.stake);
+      const stakeRanges = botCfg.stake_player_ranges || DEFAULT_STAKE_RANGES;
+      const targetRange = stakeRanges[stakeKey] || {
+        min: Number(botCfg.min_players_per_game) || 50,
+        max: Number(botCfg.max_players_per_game) || 100,
+      };
+
+      const minBots = Math.max(1, Number(targetRange.min) || 5);
+      const maxBots = Math.max(minBots, Number(targetRange.max) || 10);
 
       // If already populated to target, nothing to do
       if (uniqueExistingBots >= minBots) return;

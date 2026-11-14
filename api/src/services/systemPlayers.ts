@@ -10,79 +10,132 @@ export interface SystemPlayer {
   updated_at?: string;
 }
 
+export interface StakePlayerRange {
+  min: number;
+  max: number;
+}
+
 export interface SystemPlayersConfig {
   enabled: boolean;
   schedule_enabled: boolean;
-  time_start: string; // "03:00"
-  time_end: string;   // "05:00"
+  time_start: string; // e.g. "01:00"
+  time_end: string;   // e.g. "24:00"
   target_stakes: number[];
   min_players_per_game: number;
   max_players_per_game: number;
   min_cartelas_per_player: number;
   max_cartelas_per_player: number;
+  stake_player_ranges: Record<string, StakePlayerRange>;
 }
+
+export const DEFAULT_STAKE_RANGES: Record<string, StakePlayerRange> = {
+  "10":  { min: 50, max: 100 },
+  "20":  { min: 30, max: 60 },
+  "50":  { min: 15, max: 20 },
+  "100": { min: 5,  max: 10 },
+};
 
 export const DEFAULT_CONFIG: SystemPlayersConfig = {
   enabled: false,
   schedule_enabled: false,
-  time_start: '03:00',
-  time_end: '05:00',
+  time_start: '01:00',
+  time_end: '24:00',
   target_stakes: [10, 20, 50, 100],
   min_players_per_game: 50,
   max_players_per_game: 100,
   min_cartelas_per_player: 1,
   max_cartelas_per_player: 4,
+  stake_player_ranges: DEFAULT_STAKE_RANGES,
 };
 
-// ── Core Ethiopian Names Base ──────────────────────────────────────────────
-export const ETHIOPIAN_FIRST_NAMES = [
-  'Abebe', 'Almaz', 'Aster', 'Bekele', 'Birhanu', 'Chala', 'Dawit', 'Desta',
-  'Ebrahim', 'Elias', 'Ermias', 'Eshetu', 'Eyob', 'Fikadu', 'Girma', 'Habtamu',
-  'Haile', 'Hana', 'Helen', 'Henok', 'Hiwot', 'Kalkidan', 'Kassahun', 'Kebede',
-  'Kidist', 'Konjit', 'Lensa', 'Mahlet', 'Marta', 'Melaku', 'Meron', 'Mesfin',
-  'Michael', 'Mohammed', 'Mulugeta', 'Nahom', 'Natnael', 'Nebiyu', 'Rahel',
-  'Robel', 'Ruth', 'Saba', 'Samuel', 'Sara', 'Seid', 'Selam', 'Semir',
-  'Senait', 'Sisay', 'Solomon', 'Surafel', 'Tariku', 'Tewodros', 'Tigist',
-  'Tilahun', 'Tsige', 'Tsion', 'Wondwossen', 'Worku', 'Yared', 'Yohannes',
-  'Yonas', 'Yosef', 'Zelalem', 'Zerihun', 'Abinet', 'Addisu', 'Alazar',
-  'Alemayehu', 'Amanuel', 'Ashenafi', 'Ayantu', 'Betelhem', 'Biniyam',
-  'Biruk', 'Danawit', 'Derartu', 'Ephrem', 'Fasil', 'Fitsum', 'Gezahegn',
-  'Getachew', 'Halima', 'Hawi', 'Jemberu', 'Lemlem', 'Luwam', 'Mastewal',
-  'Melat', 'Meseret', 'Misgana', 'Mulu', 'Rebecca', 'Samrawit', 'Seble',
-  'Sifan', 'Sosina', 'Temesgen', 'Tesfaye', 'Weini', 'Winta', 'Woinshet',
-  'Yetnayet', 'Zebiba', 'Zinash', 'Abel', 'Afework', 'Aklilu', 'Amare',
-  'Anteneh', 'Baye', 'Belay', 'Berhane', 'Bogale', 'Chaltu', 'Dagnachew',
-  'Dejene', 'Endale', 'Fekadu', 'Fisseha', 'Getnet', 'Gashaw', 'Gossa',
-  'Gutu', 'Kibrom', 'Legesse', 'Mamo', 'Mehari', 'Mekonnen', 'Mintesinot',
-  'Negash', 'Nigus', 'Seyoum', 'Shibashi', 'Shimelis', 'Tamirat', 'Taye',
-  'Tekle', 'Tadesse', 'Tolesa', 'Yadeta', 'Yoseph', 'Zewdu'
-];
+// ── Ethiopian Regional Names Base (Amhara, Oromia, Tigray, Southern, Muslim/Harari/Somali/Afar) ──
+export const ETHIOPIAN_FIRST_NAMES_BY_REGION = {
+  amhara: [
+    'Abebe', 'Bekele', 'Tewodros', 'Fisseha', 'Melaku', 'Getnet', 'Birhanu', 'Kassa',
+    'Tamirat', 'Sisay', 'Assefa', 'Wondwossen', 'Endale', 'Worku', 'Desta', 'Girma',
+    'Kassahun', 'Fikadu', 'Negash', 'Solomon', 'Yilma', 'Zewdu', 'Tilahun', 'Seyoum',
+    'Bogale', 'Mamo', 'Taye', 'Tekle', 'Tadesse', 'Amare', 'Anteneh', 'Baye', 'Belay',
+    'Berhane', 'Dagnachew', 'Dejene', 'Getachew', 'Gashaw', 'Shibashi', 'Shimelis',
+    'Yetnayet', 'Zinash', 'Aster', 'Almaz', 'Hana', 'Hiwot', 'Konjit', 'Mahlet', 'Marta',
+    'Rahel', 'Ruth', 'Saba', 'Sara', 'Selam', 'Senait', 'Tigist', 'Tsige', 'Tsion'
+  ],
+  oromo: [
+    'Chala', 'Tolesa', 'Gutu', 'Bonsa', 'Bilisuma', 'Ayantu', 'Yadeta', 'Gemechu',
+    'Lencho', 'Sifan', 'Hawi', 'Tolera', 'Kumsa', 'Galata', 'Ifa', 'Urji', 'Gudeta',
+    'Dibaba', 'Feyisa', 'Tariku', 'Derartu', 'Chaltu', 'Lensa', 'Boontu', 'Obsa',
+    'Bikila', 'Kenenisa', 'Guta', 'Roba', 'Dinqa', 'Badasa', 'Olana', 'Hirpha',
+    'Soboka', 'Megersa', 'Jaleta', 'Nagasa', 'Hundessa', 'Gamachu', 'Kumera', 'Bultum',
+    'Gudina', 'Tullu', 'Motuma', 'Damise', 'Wayessa', 'Bekuma', 'Sena', 'Kenna'
+  ],
+  tigray: [
+    'Berhane', 'Gebre', 'Haleka', 'Kibrom', 'Luwam', 'Mehari', 'Natnael', 'Semhar',
+    'Tsigabu', 'Weini', 'Winta', 'Yohannes', 'Araya', 'Hagos', 'Teklay', 'Solomon',
+    'Mulugeta', 'Fessehaye', 'Berhe', 'Haile', 'Kahsay', 'Asmelash', 'Girmay', 'Abraha',
+    'Weldu', 'Alganesh', 'Letebirhan', 'Abrehet', 'Roman', 'Freweini', 'Danawit', 'Biruk',
+    'Alazar', 'Tesfamariam', 'Tesfaldet', 'Hailay', 'Kinfe', 'Mebrahtu', 'Teshome'
+  ],
+  southern: [
+    'Markos', 'Dagne', 'Temesgen', 'Zerihun', 'Mesele', 'Sintayehu', 'Tariku', 'Biniam',
+    'Daniel', 'Ewnetu', 'Alemayehu', 'Fikadu', 'Matewos', 'Yohana', 'Petros', 'Wondimu',
+    'Shiferaw', 'Zeleke', 'Tesfaye', 'Eyob', 'Habtamu', 'Samuel', 'Abel', 'Yosef',
+    'Misgana', 'Mastewal', 'Sosina', 'Lemlem', 'Taye', 'Asrat', 'Mekbib', 'Tadesse',
+    'Beshah', 'Girma', 'Melese', 'Teshale', 'Wondimu', 'Kassa', 'Wale', 'Bantie'
+  ],
+  muslim_harari_afar_somali: [
+    'Ebrahim', 'Mohammed', 'Semir', 'Ahmed', 'Mustafa', 'Bilal', 'Hamza', 'Khalid',
+    'Ali', 'Usman', 'Fuad', 'Ridwan', 'Halima', 'Zebiba', 'Fatima', 'Zahra', 'Amina',
+    'Aisha', 'Khadija', 'Farhan', 'Abdi', 'Hassan', 'Hussein', 'Nasir', 'Zakaria',
+    'Idris', 'Tariq', 'Jamal', 'Omar', 'Yasin', 'Nuredin', 'Muktar', 'Anwar', 'Jamil',
+    'Sufian', 'Mahad', 'Kamil', 'Sultan', 'Harun', 'Abubeker', 'Bashir', 'Munir'
+  ],
+};
+
+export const ETHIOPIAN_FIRST_NAMES = Array.from(new Set([
+  ...ETHIOPIAN_FIRST_NAMES_BY_REGION.amhara,
+  ...ETHIOPIAN_FIRST_NAMES_BY_REGION.oromo,
+  ...ETHIOPIAN_FIRST_NAMES_BY_REGION.tigray,
+  ...ETHIOPIAN_FIRST_NAMES_BY_REGION.southern,
+  ...ETHIOPIAN_FIRST_NAMES_BY_REGION.muslim_harari_afar_somali,
+]));
 
 export const ETHIOPIAN_FATHER_NAMES = [
   'Abebe', 'Bekele', 'Girma', 'Kebede', 'Tadesse', 'Tesfaye', 'Worku',
   'Desta', 'Haile', 'Mulugeta', 'Tekle', 'Lemma', 'Belay', 'Assefa',
   'Mengistu', 'Getachew', 'Hailu', 'Berhanu', 'Ayele', 'Kassahun',
   'Fikadu', 'Negash', 'Solomon', 'Yilma', 'Zewdu', 'Tamirat', 'Tilahun',
-  'Seyoum', 'Bogale', 'Mamo', 'Chala', 'Tolesa', 'Gutu', 'Dejene'
+  'Seyoum', 'Bogale', 'Mamo', 'Chala', 'Tolesa', 'Gutu', 'Dejene',
+  'Gemechu', 'Tariq', 'Ahmed', 'Ali', 'Kassa', 'Abdi', 'Weldu'
 ];
 
 /**
- * Generate an authentic list of up to 1000 Ethiopian names.
+ * Generate an authentic list of up to 1000 Ethiopian names representing all regions.
  */
 export function generate1000EthiopianNames(): string[] {
   const result: string[] = [];
   const seen = new Set<string>();
 
-  // 1. Single prominent first names
-  for (const fn of ETHIOPIAN_FIRST_NAMES) {
-    if (result.length >= 1000) break;
-    if (!seen.has(fn)) {
-      seen.add(fn);
-      result.push(fn);
+  const regions = [
+    ETHIOPIAN_FIRST_NAMES_BY_REGION.amhara,
+    ETHIOPIAN_FIRST_NAMES_BY_REGION.oromo,
+    ETHIOPIAN_FIRST_NAMES_BY_REGION.tigray,
+    ETHIOPIAN_FIRST_NAMES_BY_REGION.southern,
+    ETHIOPIAN_FIRST_NAMES_BY_REGION.muslim_harari_afar_somali,
+  ];
+
+  // 1. Single prominent first names from all regions round-robin
+  let maxLen = Math.max(...regions.map(r => r.length));
+  for (let i = 0; i < maxLen; i++) {
+    for (const reg of regions) {
+      if (result.length >= 1000) break;
+      const fn = reg[i];
+      if (fn && !seen.has(fn)) {
+        seen.add(fn);
+        result.push(fn);
+      }
     }
   }
 
-  // 2. First name + Father initial (e.g. "Abebe K.", "Almaz T.", "Dawit B.")
+  // 2. First name + Father initial (e.g. "Chala T.", "Abebe K.", "Luwam G.")
   const initials = ['A.', 'B.', 'C.', 'D.', 'E.', 'F.', 'G.', 'H.', 'K.', 'L.', 'M.', 'N.', 'R.', 'S.', 'T.', 'W.', 'Y.', 'Z.'];
   for (const init of initials) {
     for (const fn of ETHIOPIAN_FIRST_NAMES) {
@@ -95,7 +148,7 @@ export function generate1000EthiopianNames(): string[] {
     }
   }
 
-  // 3. First name + Full Father Name (e.g. "Chala Girma", "Meron Haile")
+  // 3. First name + Full Father Name (e.g. "Bonsa Tolesa", "Dawit Kebede")
   for (const ln of ETHIOPIAN_FATHER_NAMES) {
     for (const fn of ETHIOPIAN_FIRST_NAMES) {
       if (result.length >= 1000) break;
@@ -111,6 +164,7 @@ export function generate1000EthiopianNames(): string[] {
 
   return result.slice(0, 1000);
 }
+
 
 // ── Configuration Manager ──────────────────────────────────────────────────
 let _cfgCache: SystemPlayersConfig | null = null;
@@ -138,6 +192,7 @@ export async function getSystemPlayersConfig(): Promise<SystemPlayersConfig> {
         max_players_per_game: Number(data.max_players_per_game) || DEFAULT_CONFIG.max_players_per_game,
         min_cartelas_per_player: Number(data.min_cartelas_per_player) || DEFAULT_CONFIG.min_cartelas_per_player,
         max_cartelas_per_player: Number(data.max_cartelas_per_player) || DEFAULT_CONFIG.max_cartelas_per_player,
+        stake_player_ranges: data.stake_player_ranges || DEFAULT_STAKE_RANGES,
       };
       _cfgCacheAt = Date.now();
       return _cfgCache;
@@ -149,7 +204,11 @@ export async function getSystemPlayersConfig(): Promise<SystemPlayersConfig> {
     const { data: sData } = await supabase.from('settings').select('value').eq('key', 'system_players_config').maybeSingle();
     if (sData?.value) {
       const parsed = typeof sData.value === 'string' ? JSON.parse(sData.value) : sData.value;
-      _cfgCache = { ...DEFAULT_CONFIG, ...parsed };
+      _cfgCache = {
+        ...DEFAULT_CONFIG,
+        ...parsed,
+        stake_player_ranges: parsed.stake_player_ranges || DEFAULT_STAKE_RANGES,
+      };
       _cfgCacheAt = Date.now();
       return _cfgCache!;
     }
@@ -169,6 +228,7 @@ export async function saveSystemPlayersConfig(cfg: Partial<SystemPlayersConfig>)
     max_players_per_game: Math.max(1, Number(cfg.max_players_per_game ?? current.max_players_per_game)),
     min_cartelas_per_player: Math.max(1, Math.min(4, Number(cfg.min_cartelas_per_player ?? current.min_cartelas_per_player))),
     max_cartelas_per_player: Math.max(1, Math.min(4, Number(cfg.max_cartelas_per_player ?? current.max_cartelas_per_player))),
+    stake_player_ranges: cfg.stake_player_ranges ?? current.stake_player_ranges ?? DEFAULT_STAKE_RANGES,
   };
 
   _cfgCache = updated;
@@ -204,7 +264,7 @@ export async function saveSystemPlayersConfig(cfg: Partial<SystemPlayersConfig>)
 }
 
 /**
- * Check if the current time in East Africa Time (EAT = UTC+3) is within the scheduled window.
+ * Check if current time in East Africa Time (EAT = UTC+3) is within the scheduled 1-24 hour window.
  */
 export function isWithinSchedule(cfg: SystemPlayersConfig): boolean {
   if (!cfg.enabled) return false;
@@ -216,18 +276,48 @@ export function isWithinSchedule(cfg: SystemPlayersConfig): boolean {
   const eatMinutes = now.getUTCMinutes();
   const currentTotal = eatHours * 60 + eatMinutes;
 
-  const [sH, sM] = (cfg.time_start || '00:00').split(':').map(Number);
-  const [eH, eM] = (cfg.time_end || '23:59').split(':').map(Number);
-  const startTotal = (sH || 0) * 60 + (sM || 0);
-  const endTotal = (eH || 0) * 60 + (eM || 0);
+  const parseHourMinute = (val: string, fallback: number): number => {
+    if (!val) return fallback;
+    const parts = val.split(':').map(Number);
+    const h = parts[0] || 0;
+    const m = parts[1] || 0;
+    if (h >= 24) return 24 * 60; // 1440
+    return h * 60 + m;
+  };
+
+  const startTotal = parseHourMinute(cfg.time_start, 0);
+  const endTotal = parseHourMinute(cfg.time_end, 1440);
 
   if (startTotal <= endTotal) {
     return currentTotal >= startTotal && currentTotal <= endTotal;
   } else {
-    // Overnight schedule (e.g. 22:00 to 04:00)
+    // Overnight schedule (e.g. 22:00 to 05:00)
     return currentTotal >= startTotal || currentTotal <= endTotal;
   }
 }
+
+/**
+ * Automatically check and seed 1000 Ethiopian players across all regions in the background.
+ */
+let _autoSeedChecked = false;
+export async function ensureDefaultSystemPlayersSeeded(): Promise<void> {
+  if (_autoSeedChecked) return;
+  _autoSeedChecked = true;
+  try {
+    const { count, error } = await supabase
+      .from('system_players')
+      .select('*', { count: 'exact', head: true });
+
+    if (!error && (count === null || count < 100)) {
+      console.log(`🤖 [SystemPlayers] Background auto-seeding 1000 diverse Ethiopian regional names...`);
+      await seedSystemPlayers(1000);
+      console.log(`🤖 [SystemPlayers] Background auto-seeding completed!`);
+    }
+  } catch (err: any) {
+    console.error('[SystemPlayers] Background auto-seed error:', err?.message || err);
+  }
+}
+
 
 // ── Player Database Operations ─────────────────────────────────────────────
 
