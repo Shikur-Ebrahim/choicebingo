@@ -2,6 +2,13 @@ import { supabase } from './supabase';
 import { getSettings } from '../routes/adminSettings';
 import { randomUUID } from 'crypto';
 import { recordUserEvent } from './eventNotifications';
+import {
+  getSystemPlayersConfig,
+  isWithinSchedule,
+  getActiveSystemPlayersPool,
+  isSystemPlayer,
+  recordSystemPlayerWin,
+} from './systemPlayers';
 
 const TICK_MS = 500; // 500ms tick for exact call_interval_ms execution
 const STAKES  = [10, 20, 50, 100];
@@ -136,6 +143,10 @@ class BingoEngine {
 
   private async handleWaiting(game: any) {
     const cfg = await getSettings();
+
+    // ── Simulate System Players (if enabled and within schedule) ─────────────
+    await this.simulateSystemPlayers(game, cfg);
+
     const startTime = new Date(game.start_at).getTime();
     if (startTime > Date.now() + 86400000) return;
     if (Date.now() < startTime) return;
@@ -219,13 +230,133 @@ class BingoEngine {
     }
   }
 
+  /**
+   * Automatically populates a waiting game with System (virtual) players
+   * based on the admin's schedule, target stakes, player count range, and cartelas range.
+   */
+  private async simulateSystemPlayers(game: any, cfg: any) {
+    try {
+      const botCfg = await getSystemPlayersConfig();
+      if (!botCfg.enabled) return;
+      if (!isWithinSchedule(botCfg)) return;
+      if (!botCfg.target_stakes.includes(Number(game.stake))) return;
+
+      const { data: pRows } = await supabase
+        .from('bingo_players')
+        .select('id, telegram_id, cartela_number')
+        .eq('game_id', game.id);
+
+      const players = pRows || [];
+      const botPlayers = players.filter((p: any) => isSystemPlayer(p.telegram_id));
+      const uniqueExistingBots = new Set(botPlayers.map((p: any) => p.telegram_id)).size;
+
+      const minBots = Math.max(1, Number(botCfg.min_players_per_game) || 50);
+      const maxBots = Math.max(minBots, Number(botCfg.max_players_per_game) || 100);
+
+      // If already populated to target, nothing to do
+      if (uniqueExistingBots >= minBots) return;
+
+      // Cartela seats 1 to 100
+      const takenCartelas = new Set(players.map((p: any) => Number(p.cartela_number)));
+      const allCartelas = Array.from({ length: 100 }, (_, i) => i + 1);
+      const availableCartelas = allCartelas.filter(c => !takenCartelas.has(c));
+
+      // Reserve at least 15 cartelas for real human players
+      const maxCartelasToFill = Math.max(0, availableCartelas.length - 15);
+      if (maxCartelasToFill <= 0) return;
+
+      const targetBots = Math.min(
+        maxBots,
+        Math.floor(Math.random() * (maxBots - minBots + 1)) + minBots
+      );
+      const botsNeeded = targetBots - uniqueExistingBots;
+      if (botsNeeded <= 0) return;
+
+      const pool = await getActiveSystemPlayersPool(Math.max(100, maxBots * 2));
+      if (!pool || pool.length === 0) return;
+
+      const existingTids = new Set(players.map((p: any) => String(p.telegram_id)));
+      const candidateBots = pool.filter(b => !existingTids.has(String(b.telegram_id)));
+      if (candidateBots.length === 0) return;
+
+      const shuffledBots = candidateBots.sort(() => Math.random() - 0.5);
+      const shuffledCartelas = availableCartelas.sort(() => Math.random() - 0.5);
+      let cartelaIdx = 0;
+
+      const minC = Math.max(1, Math.min(4, Number(botCfg.min_cartelas_per_player) || 1));
+      const maxC = Math.max(minC, Math.min(4, Number(botCfg.max_cartelas_per_player) || 4));
+
+      const rowsToInsert: any[] = [];
+      const newlyAddedBots = new Set<string>();
+
+      for (const bot of shuffledBots) {
+        if (newlyAddedBots.size >= botsNeeded) break;
+        if (cartelaIdx >= maxCartelasToFill) break;
+
+        const cartelaCount = Math.floor(Math.random() * (maxC - minC + 1)) + minC;
+        const actualCount = Math.min(cartelaCount, maxCartelasToFill - cartelaIdx);
+        if (actualCount <= 0) break;
+
+        for (let i = 0; i < actualCount; i++) {
+          const cartelaNum = shuffledCartelas[cartelaIdx++];
+          rowsToInsert.push({
+            game_id: game.id,
+            telegram_id: bot.telegram_id,
+            first_name: bot.first_name,
+            cartela_number: cartelaNum,
+            card_matrix: generateBingoCard(),
+            bonus_used: 0,
+            main_used: Number(game.stake),
+          });
+        }
+        newlyAddedBots.add(bot.telegram_id);
+      }
+
+      if (rowsToInsert.length === 0) return;
+
+      const { error: insErr } = await supabase.from('bingo_players').insert(rowsToInsert);
+      if (insErr) {
+        console.error('[BingoEngine] Failed to insert system players:', insErr.message);
+        return;
+      }
+
+      // Recalculate derash prize pool
+      const totalCartelas = players.length + rowsToInsert.length;
+      const allUniquePlayers = new Set([...players.map((p: any) => p.telegram_id), ...newlyAddedBots]).size;
+      const rawPool = totalCartelas * Number(game.stake);
+      const prizePool = allUniquePlayers < 3
+        ? rawPool
+        : Math.floor(rawPool * (Number(cfg.prize_percent) || 80) / 100);
+
+      // Start waiting countdown if start_at was unset/far in future
+      let newStartAt = game.start_at;
+      const waitingSec = Math.max(15, Math.min(45, Number(cfg.waiting_period_s) || 30));
+      if (new Date(game.start_at).getTime() > Date.now() + 86400000) {
+        newStartAt = new Date(Date.now() + waitingSec * 1000).toISOString();
+      }
+
+      await supabase.from('bingo_games').update({
+        prize_pool: prizePool,
+        start_at: newStartAt,
+        updated_at: new Date().toISOString(),
+      }).eq('id', game.id);
+
+      console.log(`🤖 [SystemPlayers] Added ${newlyAddedBots.size} bots (${rowsToInsert.length} cartelas) to Game #${game.id.slice(0,8).toUpperCase()} (Stake: ${game.stake}, Derash: ${prizePool} ETB)`);
+    } catch (err: any) {
+      console.error('[BingoEngine] Error in simulateSystemPlayers:', err?.message || err);
+    }
+  }
+
   private async refundAndResetGame(game: any, players: any[]) {
     const stake = Number(game.stake);
     const botToken = process.env.BOT_TOKEN;
 
+    // Filter out system players: only refund real human players
+    const realPlayers = players.filter((p: any) => !isSystemPlayer(p.telegram_id));
+
     // Group players by telegram_id — summing bonus_used and main_used per user
     const userRefunds: Record<string, { bonusAmt: number; mainAmt: number; count: number }> = {};
-    for (const p of players) {
+    for (const p of realPlayers) {
       if (!userRefunds[p.telegram_id]) {
         userRefunds[p.telegram_id] = { bonusAmt: 0, mainAmt: 0, count: 0 };
       }
@@ -434,23 +565,29 @@ class BingoEngine {
       }).eq('id', gameId).eq('status', 'calling').select('id');
       if (claimErr || !claim || claim.length === 0) return;
 
-      const { data: u } = await supabase.from('users')
-        .select('main_balance, total_wins')
-        .eq('telegram_id', w.telegram_id)
-        .single();
-      if (u) {
-        await supabase.from('users').update({
-          main_balance: Number(u.main_balance) + finalPrize,
-          total_wins:   Number(u.total_wins) + 1,
-        }).eq('telegram_id', w.telegram_id);
-      }
+      const isBot = isSystemPlayer(w.telegram_id);
+      if (isBot) {
+        await recordSystemPlayerWin(w.telegram_id);
+        console.log(`🏆 Game #${gameLabel}: Single winner (System Player) ${w.first_name} — ${finalPrize} ETB`);
+      } else {
+        const { data: u } = await supabase.from('users')
+          .select('main_balance, total_wins')
+          .eq('telegram_id', w.telegram_id)
+          .single();
+        if (u) {
+          await supabase.from('users').update({
+            main_balance: Number(u.main_balance) + finalPrize,
+            total_wins:   Number(u.total_wins) + 1,
+          }).eq('telegram_id', w.telegram_id);
+        }
 
-      const msg = isEarlyCall 
-        ? `🚀 EARLY CALL BINGO (${called.length} calls)! You won ${finalPrize} ETB on Cartela #${w.cartela_number}!`
-        : `🎉 BINGO! You won ${finalPrize} ETB on Cartela #${w.cartela_number}!`;
-        
-      await notify(w.telegram_id, msg);
-      console.log(`🏆 Game #${gameLabel}: Single winner ${w.first_name} — ${finalPrize} ETB`);
+        const msg = isEarlyCall 
+          ? `🚀 EARLY CALL BINGO (${called.length} calls)! You won ${finalPrize} ETB on Cartela #${w.cartela_number}!`
+          : `🎉 BINGO! You won ${finalPrize} ETB on Cartela #${w.cartela_number}!`;
+          
+        await notify(w.telegram_id, msg);
+        console.log(`🏆 Game #${gameLabel}: Single winner ${w.first_name} — ${finalPrize} ETB`);
+      }
       return;
     }
 
@@ -472,20 +609,25 @@ class BingoEngine {
       if (claimErr || !claim || claim.length === 0) return;
 
       for (const w of winners) {
-        const { data: u } = await supabase.from('users')
-          .select('main_balance, total_wins')
-          .eq('telegram_id', w.telegram_id)
-          .single();
-        if (u) {
-          await supabase.from('users').update({
-            main_balance: Number(u.main_balance) + splitPrize,
-            total_wins:   Number(u.total_wins) + 1,
-          }).eq('telegram_id', w.telegram_id);
+        const isBot = isSystemPlayer(w.telegram_id);
+        if (isBot) {
+          await recordSystemPlayerWin(w.telegram_id);
+        } else {
+          const { data: u } = await supabase.from('users')
+            .select('main_balance, total_wins')
+            .eq('telegram_id', w.telegram_id)
+            .single();
+          if (u) {
+            await supabase.from('users').update({
+              main_balance: Number(u.main_balance) + splitPrize,
+              total_wins:   Number(u.total_wins) + 1,
+            }).eq('telegram_id', w.telegram_id);
+          }
+          await notify(
+            w.telegram_id,
+            `🎉 BINGO! You tied with another player! You each won ${splitPrize} ETB (prize split on Cartela #${w.cartela_number})!`
+          );
         }
-        await notify(
-          w.telegram_id,
-          `🎉 BINGO! You tied with another player! You each won ${splitPrize} ETB (prize split on Cartela #${w.cartela_number})!`
-        );
       }
       console.log(`🤝 Game #${gameLabel}: 2-way tie — ${w1.first_name} & ${w2.first_name} — ${splitPrize} ETB each`);
       return;
@@ -505,8 +647,9 @@ class BingoEngine {
       }).eq('id', gameId).eq('status', 'calling').select('id');
       if (claimErr || !claim || claim.length === 0) return;
 
-    // Refund ALL players their stake
+    // Refund ALL REAL human players their stake
     for (const p of players) {
+      if (isSystemPlayer(p.telegram_id)) continue;
       const { data: u } = await supabase.from('users')
         .select('main_balance, bonus_balance, total_games, total_stake')
         .eq('telegram_id', p.telegram_id)

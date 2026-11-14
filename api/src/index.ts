@@ -20,6 +20,7 @@ import { startBroadcastScheduler } from './routes/broadcast';
 import rewardsRouter from './routes/rewards';
 import supportVideosRouter from './routes/supportVideos';
 import notificationsRouter from './routes/notifications';
+import systemPlayersRouter from './routes/systemPlayers';
 
 const app = express();
 const PORT = process.env.PORT || 3002;
@@ -38,6 +39,7 @@ app.use('/api/bingo', bingoRouter);
 app.use('/api/leaderboard', leaderboardRouter);
 app.use('/api/games-report', gamesReportRouter);
 app.use('/api/admin/game-settings', adminSettingsRouter);
+app.use('/api/admin/system-players', systemPlayersRouter);
 app.use('/api/support', supportRouter);
 app.use('/api/broadcast', broadcastRouter);
 app.use('/api/rewards', rewardsRouter);
@@ -45,7 +47,7 @@ app.use('/api/support-videos', supportVideosRouter);
 app.use('/api/notifications', notificationsRouter);
 
 app.listen(PORT, () => {
-  console.log(`ðŸš€ API running on port ${PORT}`);
+  console.log(`🚀 API running on port ${PORT}`);
   bingoEngine.start();
   startBroadcastScheduler();
 });

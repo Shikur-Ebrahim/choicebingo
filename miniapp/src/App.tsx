@@ -14,6 +14,7 @@ import Worker from './pages/Worker';
 import BingoGame from './pages/BingoGame';
 import AdminBingoGames from './pages/AdminBingoGames';
 import AdminUserAudit from './pages/AdminUserAudit';
+import AdminSystemPlayers from './pages/AdminSystemPlayers';
 import Leaderboard from './pages/Leaderboard';
 import Rewards from './pages/Rewards';
 import GamesReport from './pages/GamesReport';
@@ -212,6 +213,7 @@ function App() {
           <Route path="/admin/workers" element={<AdminWorkers />} />
           <Route path="/admin/broadcast" element={<AdminBroadcast />} />
           <Route path="/admin/qr-code" element={<AdminQrCode />} />
+          <Route path="/admin/system-players" element={<AdminSystemPlayers />} />
           <Route path="/worker" element={<Worker />} />
         </Routes></ErrorBoundary>
         <Profile />
