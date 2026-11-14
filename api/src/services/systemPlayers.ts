@@ -225,7 +225,7 @@ export async function saveSystemPlayersConfig(cfg: Partial<SystemPlayersConfig>)
       key: 'system_players_config',
       value: JSON.stringify(updated),
       updated_at: new Date().toISOString(),
-    });
+    }, { onConflict: 'key' });
   } catch (e) {
     console.error('[systemPlayers] Failed to save in settings table:', e);
   }
@@ -247,10 +247,10 @@ export async function saveSystemPlayersConfig(cfg: Partial<SystemPlayersConfig>)
       updated_at: new Date().toISOString(),
     };
 
-    const { error: err1 } = await supabase.from('system_players_config').upsert(tablePayload);
+    const { error: err1 } = await supabase.from('system_players_config').upsert(tablePayload, { onConflict: 'id' });
     if (err1) {
       delete tablePayload.stake_player_ranges;
-      await supabase.from('system_players_config').upsert(tablePayload);
+      await supabase.from('system_players_config').upsert(tablePayload, { onConflict: 'id' });
     }
   } catch (e) {
     console.error('[systemPlayers] Failed to save in system_players_config table:', e);
@@ -304,6 +304,17 @@ export function getScheduleStatus(cfg: SystemPlayersConfig): ScheduleStatus {
 
   const startTotal = parseHourMinute(cfg.time_start, 0);
   const endTotal = parseHourMinute(cfg.time_end, 1440);
+
+  // If the schedule covers the full 24 hours (e.g. 01:00 to 24:00, or 00:00 to 24:00), it runs 24/7 with zero gap!
+  const isAllDaySpan = (startTotal <= 60 && endTotal >= 1440) || (startTotal === 0 && endTotal >= 1440);
+  if (isAllDaySpan) {
+    return {
+      isActive: true,
+      multiplier: 1.0,
+      phase: 'peak',
+      description: 'Active 24/7 (1-24h schedule fully active with zero gaps)',
+    };
+  }
 
   let isInside = false;
   let minutesSinceStart = 0;

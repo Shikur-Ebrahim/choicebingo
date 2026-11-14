@@ -38,7 +38,7 @@ router.use(requireAdmin);
 router.get('/config', async (_req, res) => {
   try {
     const config = await getSystemPlayersConfig();
-    res.json(config);
+    res.json({ success: true, config, ...config });
   } catch (err: any) {
     res.status(500).json({ error: err.message || 'Failed to fetch config' });
   }
@@ -48,7 +48,7 @@ router.get('/config', async (_req, res) => {
 router.put('/config', async (req, res) => {
   try {
     const updated = await saveSystemPlayersConfig(req.body);
-    res.json({ success: true, config: updated });
+    res.json({ success: true, config: updated, ...updated });
   } catch (err: any) {
     res.status(500).json({ error: err.message || 'Failed to save config' });
   }

@@ -114,11 +114,13 @@ export default function AdminSystemPlayers() {
       });
       if (res.ok) {
         const data = await res.json();
-        if (data.config) {
-          setConfig({
-            ...data.config,
-            stake_player_ranges: data.config.stake_player_ranges || DEFAULT_STAKE_RANGES,
-          });
+        const loaded = data.config || (data && typeof data.enabled === 'boolean' ? data : null);
+        if (loaded) {
+          setConfig((prev) => ({
+            ...prev,
+            ...loaded,
+            stake_player_ranges: loaded.stake_player_ranges || prev.stake_player_ranges || DEFAULT_STAKE_RANGES,
+          }));
         }
       }
     } catch (e) {
@@ -136,7 +138,13 @@ export default function AdminSystemPlayers() {
         body: JSON.stringify(config),
       });
       const data = await res.json();
-      if (res.ok && data.success) {
+      if (res.ok && (data.success || data.config || typeof data.enabled === 'boolean')) {
+        const saved = data.config || (typeof data.enabled === 'boolean' ? data : config);
+        setConfig((prev) => ({
+          ...prev,
+          ...saved,
+          stake_player_ranges: saved.stake_player_ranges || prev.stake_player_ranges || DEFAULT_STAKE_RANGES,
+        }));
         showToast('Settings saved successfully!');
       } else {
         showToast(data.error || 'Failed to save settings', 'error');
@@ -379,9 +387,12 @@ export default function AdminSystemPlayers() {
   const startMin = parseHM(config.time_start, 60);
   const endMin = parseHM(config.time_end, 1440);
 
+  // If 1:00 (or 0:00) to 24:00 is set, it spans the entire 24h with zero gap
+  const isAllDaySpan = (startMin <= 60 && endMin >= 1440) || (startMin === 0 && endMin >= 1440);
+
   const isScheduleActiveNow = (() => {
     if (!config.enabled) return false;
-    if (!config.schedule_enabled) return true;
+    if (!config.schedule_enabled || isAllDaySpan) return true;
     if (startMin <= endMin) {
       return currentMinuteOfDay >= startMin && currentMinuteOfDay <= endMin;
     }
@@ -392,7 +403,7 @@ export default function AdminSystemPlayers() {
     if (!config.enabled) {
       return { text: 'Engine switch is OFF', badge: 'bg-slate-100 text-slate-600 border-slate-200', active: false };
     }
-    if (!config.schedule_enabled) {
+    if (!config.schedule_enabled || isAllDaySpan) {
       return { text: '24/7 Full-Day Active (Always Running)', badge: 'bg-emerald-50 text-emerald-700 border-emerald-300', active: true };
     }
 
@@ -449,7 +460,7 @@ export default function AdminSystemPlayers() {
   })();
 
   const isHourInActiveSchedule = (hourNum: number): boolean => {
-    if (!config.schedule_enabled) return true;
+    if (!config.schedule_enabled || isAllDaySpan) return true;
     const sH = Number(config.time_start.split(':')[0]) || 1;
     const eH = Number(config.time_end.split(':')[0]) || 24;
     if (sH <= eH) {
