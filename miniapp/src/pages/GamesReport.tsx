@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { ArrowLeft, Trophy, Target, TrendingUp, Coins, Gamepad2, Crown, XCircle, Clock, RefreshCw, ChevronDown, Hash } from 'lucide-react';
+import { ArrowLeft, Trophy, Target, Gamepad2, Crown, XCircle, Clock, RefreshCw, ChevronDown, Hash } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import WebApp from '@twa-dev/sdk';
 import { useGameStore } from '../store/gameStore';
@@ -175,44 +175,26 @@ export default function GamesReport() {
                 </div>
               </div>
 
-              {/* Row 2: Total Stake & Total Won */}
-              <div className="grid grid-cols-2 gap-2.5">
-                {/* 3. Total Stake (Wagered) Card */}
-                <div className="bg-white dark:bg-slate-900/90 rounded-2xl p-3.5 border border-slate-200/90 dark:border-slate-800 shadow-[0_4px_16px_rgba(0,0,0,0.04)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.3)] backdrop-blur-sm flex flex-col justify-between">
-                  <div className="flex items-center gap-1.5 mb-1.5">
-                    <Coins size={13} className="text-indigo-500 dark:text-indigo-400 shrink-0" />
-                    <span className="text-slate-500 dark:text-slate-400 text-[10px] font-black uppercase tracking-wider truncate">
-                      {t[language].gamesReport.totalStake || t[language].gamesReport.played}
-                    </span>
+              {/* Row 2: Total Won Card (Full Width Mobile-First) */}
+              <div className="bg-white dark:bg-slate-900/90 rounded-2xl p-3.5 border border-slate-200/90 dark:border-slate-800 shadow-[0_4px_16px_rgba(0,0,0,0.04)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.3)] backdrop-blur-sm flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-500/20">
+                    <Target size={20} className="drop-shadow-sm" />
                   </div>
                   <div>
-                    <p className="text-2xl font-black text-slate-800 dark:text-white leading-tight tracking-tight truncate">
-                      {stats.total_wagered.toLocaleString()}
-                      <span className="text-xs font-bold text-slate-400 dark:text-slate-500 ml-1">ETB</span>
-                    </p>
-                    <p className="text-slate-400 dark:text-slate-400 text-[10px] font-medium mt-0.5 truncate">
-                      {t[language].gamesReport.wagered}
-                    </p>
-                  </div>
-                </div>
-
-                {/* 4. Total Won Card */}
-                <div className="bg-white dark:bg-slate-900/90 rounded-2xl p-3.5 border border-slate-200/90 dark:border-slate-800 shadow-[0_4px_16px_rgba(0,0,0,0.04)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.3)] backdrop-blur-sm flex flex-col justify-between">
-                  <div className="flex items-center gap-1.5 mb-1.5">
-                    <Target size={13} className="text-emerald-500 shrink-0" />
-                    <span className="text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-wider truncate">
+                    <span className="text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-wider block">
                       {t[language].gamesReport.won}
                     </span>
-                  </div>
-                  <div>
-                    <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 leading-tight tracking-tight truncate">
-                      {stats.total_won.toLocaleString()}
-                      <span className="text-xs font-bold text-emerald-500/80 ml-1">ETB</span>
-                    </p>
-                    <p className="text-slate-400 dark:text-slate-400 text-[10px] font-medium mt-0.5 truncate">
+                    <p className="text-slate-400 dark:text-slate-400 text-[10px] font-medium">
                       {t[language].gamesReport.prizeTotal}
                     </p>
                   </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 leading-tight tracking-tight">
+                    {stats.total_won.toLocaleString()}
+                    <span className="text-xs font-bold text-emerald-500/80 ml-1">ETB</span>
+                  </p>
                 </div>
               </div>
             </div>
