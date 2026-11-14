@@ -12,6 +12,13 @@ export default function AdminQrCode() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   // Customization options
+  const [qrMode, setQrMode] = useState<'pwa' | 'telegram'>('pwa');
+  const [pwaInstallUrl, setPwaInstallUrl] = useState<string>(() => {
+    if (typeof window !== 'undefined' && window.location.origin) {
+      return `${window.location.origin}/install`;
+    }
+    return 'https://choicebingo.com/install';
+  });
   const [botUsername, setBotUsername] = useState('choicebingo_bot');
   const [roomTitle, setRoomTitle] = useState('OFFICIAL CHOICE BINGO');
   const [startParam, setStartParam] = useState('qr');
@@ -44,6 +51,18 @@ export default function AdminQrCode() {
     }
     return `https://t.me/${cleanBot}`;
   }, [botUsername, startParam]);
+
+  const getTargetQrUrl = useCallback(() => {
+    if (qrMode === 'pwa') {
+      const cleanUrl = pwaInstallUrl.trim();
+      if (cleanUrl) return cleanUrl;
+      if (typeof window !== 'undefined' && window.location.origin) {
+        return `${window.location.origin}/install`;
+      }
+      return 'https://choicebingo.com/install';
+    }
+    return getFullTelegramUrl();
+  }, [qrMode, pwaInstallUrl, getFullTelegramUrl]);
 
   // Helper function to draw rounded rectangles on canvas
   const drawRoundRect = (
@@ -180,7 +199,7 @@ export default function AdminQrCode() {
     ctx.fillStyle = '#8C6D3B';
     ctx.font = '700 17px sans-serif';
     ctx.letterSpacing = '2px';
-    const subText = (roomTitle || 'OFFICIAL CHOICE BINGO').toUpperCase();
+    const subText = (roomTitle || (qrMode === 'pwa' ? 'OFFICIAL CHOICE BINGO • PWA APP' : 'OFFICIAL CHOICE BINGO')).toUpperCase();
     const subWidth = ctx.measureText(subText).width;
 
     ctx.fillText(subText, W / 2, 285);
@@ -200,11 +219,12 @@ export default function AdminQrCode() {
     ctx.lineTo(W / 2 + subWidth / 2 + lineMargin + lineLen, 280);
     ctx.stroke();
 
-    // 6. "SCAN TO PLAY" Banner
+    // 6. "SCAN TO INSTALL APP" / "SCAN TO PLAY" Banner
     const s2pY = 345;
+    const bannerText = qrMode === 'pwa' ? 'SCAN TO INSTALL APP' : 'SCAN TO PLAY';
     ctx.fillStyle = '#C5A059';
     ctx.font = '900 40px "Times New Roman", Georgia, serif';
-    ctx.fillText('SCAN TO PLAY', W / 2, s2pY);
+    ctx.fillText(bannerText, W / 2, s2pY);
 
     // Decorative Arrows on left and right
     const drawArrowWing = (cx: number, cy: number, flip: boolean) => {
@@ -225,10 +245,11 @@ export default function AdminQrCode() {
       ctx.restore();
     };
 
-    drawArrowWing(W / 2 - 200, s2pY - 12, false);
-    drawArrowWing(W / 2 + 200, s2pY - 12, true);
+    const arrowOffset = qrMode === 'pwa' ? 260 : 200;
+    drawArrowWing(W / 2 - arrowOffset, s2pY - 12, false);
+    drawArrowWing(W / 2 + arrowOffset, s2pY - 12, true);
 
-    // 7. Gold Pill: "SCAN THE QR CODE TO Play & Win Cash!" (PERFECT NON-OVERLAPPING ALIGNMENT)
+    // 7. Gold Pill: "SCAN THE QR CODE TO Install App & Play!" (PERFECT NON-OVERLAPPING ALIGNMENT)
     const pillW = 680;
     const pillH = 58;
     const pillX = (W - pillW) / 2;
@@ -248,7 +269,7 @@ export default function AdminQrCode() {
 
     // Calculate exact width of each part so they NEVER overlap
     const part1 = 'SCAN THE QR CODE TO ';
-    const part2 = 'Play & Win Cash!';
+    const part2 = qrMode === 'pwa' ? 'Install App & Play!' : 'Play & Win Cash!';
 
     ctx.font = '800 17px sans-serif';
     const w1 = ctx.measureText(part1).width;
@@ -297,7 +318,7 @@ export default function AdminQrCode() {
     ctx.stroke();
 
     // 9. Generate & Draw QR Code
-    const targetUrl = getFullTelegramUrl();
+    const targetUrl = getTargetQrUrl();
     const qrCanvas = document.createElement('canvas');
     await QRCode.toCanvas(qrCanvas, targetUrl, {
       width: 660,
@@ -445,8 +466,8 @@ export default function AdminQrCode() {
     ctx.textBaseline = 'middle';
     ctx.fillText('Real Players   •   Good Luck   •   Big Wins', W / 2, mottoY);
 
-    // 13. Bot Handle Pill
-    const botPillW = 420;
+    // 13. Bot Handle / PWA Install Pill
+    const botPillW = qrMode === 'pwa' ? 560 : 420;
     const botPillH = 64;
     const botPillX = (W - botPillW) / 2;
     const botPillY = 1495;
@@ -459,16 +480,33 @@ export default function AdminQrCode() {
     ctx.stroke();
 
     ctx.fillStyle = '#111827';
-    ctx.font = '800 28px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(`@${botUsername.replace(/^@/, '')}`, W / 2, botPillY + botPillH / 2);
+
+    if (qrMode === 'pwa') {
+      let displayDomain = 'choicebingo.com/install';
+      try {
+        const u = new URL(targetUrl);
+        displayDomain = `${u.host}/install`;
+      } catch (_) {}
+      ctx.font = '800 24px sans-serif';
+      ctx.fillText(`📱 ${displayDomain}`, W / 2, botPillY + botPillH / 2);
+    } else {
+      ctx.font = '800 28px sans-serif';
+      ctx.fillText(`@${botUsername.replace(/^@/, '')}`, W / 2, botPillY + botPillH / 2);
+    }
 
     // 14. Footer Credits
     const footerY = 1595;
     ctx.fillStyle = '#8C7853';
     ctx.font = '600 16px sans-serif';
-    ctx.fillText('Official Partner Network  •  Powered by CHOICE BINGO', W / 2, footerY);
+    ctx.fillText(
+      qrMode === 'pwa'
+        ? 'Fast 1-Tap Mobile Install  •  No App Store Needed  •  CHOICE BINGO'
+        : 'Official Partner Network  •  Powered by CHOICE BINGO',
+      W / 2,
+      footerY
+    );
 
     // 15. English Developer Work Attribution
     const devAttributionY = 1648;
@@ -503,7 +541,7 @@ export default function AdminQrCode() {
     } catch (e) {
       console.error('DataURL error:', e);
     }
-  }, [botUsername, roomTitle, startParam, devPhone, devTitle, devCallToAction, developerName, showDevContact, getFullTelegramUrl]);
+  }, [qrMode, pwaInstallUrl, botUsername, roomTitle, startParam, devPhone, devTitle, devCallToAction, developerName, showDevContact, getTargetQrUrl]);
 
   useEffect(() => {
     renderPoster();
@@ -579,22 +617,26 @@ export default function AdminQrCode() {
 
   // Handle Copy Link
   const handleCopyLink = () => {
-    const url = getFullTelegramUrl();
+    const url = getTargetQrUrl();
     navigator.clipboard.writeText(url).then(() => {
-      showNotification('Telegram link copied!');
+      showNotification(qrMode === 'pwa' ? 'PWA Install link copied!' : 'Telegram link copied!');
       if (typeof WebApp !== 'undefined') {
         WebApp.HapticFeedback.notificationOccurred('success');
       }
     });
   };
 
-  // Handle Open in Telegram
+  // Handle Open Link
   const handleOpenLink = () => {
-    const url = getFullTelegramUrl();
-    if (typeof WebApp !== 'undefined') {
-      WebApp.openTelegramLink(url);
-    } else {
+    const url = getTargetQrUrl();
+    if (qrMode === 'pwa') {
       window.open(url, '_blank');
+    } else {
+      if (typeof WebApp !== 'undefined') {
+        WebApp.openTelegramLink(url);
+      } else {
+        window.open(url, '_blank');
+      }
     }
   };
 
@@ -663,6 +705,12 @@ export default function AdminQrCode() {
               </span>
               <button
                 onClick={() => {
+                  setQrMode('pwa');
+                  if (typeof window !== 'undefined' && window.location.origin) {
+                    setPwaInstallUrl(`${window.location.origin}/install`);
+                  } else {
+                    setPwaInstallUrl('https://choicebingo.com/install');
+                  }
                   setBotUsername('choicebingo_bot');
                   setRoomTitle('OFFICIAL CHOICE BINGO');
                   setStartParam('qr');
@@ -679,19 +727,91 @@ export default function AdminQrCode() {
             </div>
 
             <div className="space-y-3">
+              {/* Destination Selector: PWA App vs Telegram Bot */}
               <div>
-                <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Bot Username</label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">@</span>
-                  <input
-                    type="text"
-                    value={botUsername.replace(/^@/, '')}
-                    onChange={(e) => setBotUsername(e.target.value)}
-                    className="w-full bg-slate-50 border-2 border-slate-200 focus:border-amber-500 focus:bg-white rounded-xl pl-7 pr-3 py-2 text-xs font-bold text-slate-900 outline-none shadow-inner transition-all"
-                    placeholder="choicebingo_bot"
-                  />
+                <label className="block text-[10px] font-black text-slate-700 uppercase mb-1.5 flex items-center justify-between">
+                  <span>🎯 QR Code Destination</span>
+                  <span className={`text-[9.5px] font-bold px-2 py-0.5 rounded-full border ${
+                    qrMode === 'pwa'
+                      ? 'bg-amber-100 text-amber-900 border-amber-300'
+                      : 'bg-blue-100 text-blue-900 border-blue-300'
+                  }`}>
+                    {qrMode === 'pwa' ? '⚡ PWA Instant Install' : '✈️ Telegram Bot'}
+                  </span>
+                </label>
+                <div className="grid grid-cols-2 gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => setQrMode('pwa')}
+                    className={`py-2 px-2.5 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1 ${
+                      qrMode === 'pwa'
+                        ? 'bg-amber-500 text-slate-950 shadow-sm border border-amber-400 font-black'
+                        : 'text-slate-600 hover:text-slate-900 font-bold'
+                    }`}
+                  >
+                    <span>📱 PWA App (Install)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQrMode('telegram')}
+                    className={`py-2 px-2.5 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1 ${
+                      qrMode === 'telegram'
+                        ? 'bg-blue-600 text-white shadow-sm border border-blue-500 font-black'
+                        : 'text-slate-600 hover:text-slate-900 font-bold'
+                    }`}
+                  >
+                    <span>✈️ Telegram Bot</span>
+                  </button>
                 </div>
               </div>
+
+              {qrMode === 'pwa' ? (
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">
+                    PWA App Install URL
+                  </label>
+                  <input
+                    type="text"
+                    value={pwaInstallUrl}
+                    onChange={(e) => setPwaInstallUrl(e.target.value)}
+                    className="w-full bg-slate-50 border-2 border-slate-200 focus:border-amber-500 focus:bg-white rounded-xl px-3 py-2 text-xs font-bold text-slate-900 outline-none shadow-inner transition-all"
+                    placeholder="https://choicebingo.com/install"
+                  />
+                  <p className="text-[10px] text-emerald-600 font-semibold mt-1">
+                    ✓ Scanning will open Choice Bingo with the 1-click Install App popup!
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Bot Username</label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">@</span>
+                      <input
+                        type="text"
+                        value={botUsername.replace(/^@/, '')}
+                        onChange={(e) => setBotUsername(e.target.value)}
+                        className="w-full bg-slate-50 border-2 border-slate-200 focus:border-amber-500 focus:bg-white rounded-xl pl-7 pr-3 py-2 text-xs font-bold text-slate-900 outline-none shadow-inner transition-all"
+                        placeholder="choicebingo_bot"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">
+                      Start Parameter (Optional Tracking/Agent Tag)
+                    </label>
+                    <input
+                      type="text"
+                      value={startParam}
+                      onChange={(e) => setStartParam(e.target.value)}
+                      className="w-full bg-slate-50 border-2 border-slate-200 focus:border-amber-500 focus:bg-white rounded-xl px-3 py-2 text-xs font-bold text-slate-900 outline-none shadow-inner transition-all"
+                      placeholder="qr"
+                    />
+                    <p className="text-[10px] text-slate-400 mt-1 font-medium">Scans will start: {getFullTelegramUrl()}</p>
+                  </div>
+                </>
+              )}
 
               <div>
                 <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Header Subtitle</label>
@@ -700,22 +820,8 @@ export default function AdminQrCode() {
                   value={roomTitle}
                   onChange={(e) => setRoomTitle(e.target.value)}
                   className="w-full bg-slate-50 border-2 border-slate-200 focus:border-amber-500 focus:bg-white rounded-xl px-3 py-2 text-xs font-bold text-slate-900 outline-none shadow-inner transition-all"
-                  placeholder="OFFICIAL CHOICE BINGO"
+                  placeholder={qrMode === 'pwa' ? 'OFFICIAL CHOICE BINGO • PWA APP' : 'OFFICIAL CHOICE BINGO'}
                 />
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">
-                  Start Parameter (Optional Tracking/Agent Tag)
-                </label>
-                <input
-                  type="text"
-                  value={startParam}
-                  onChange={(e) => setStartParam(e.target.value)}
-                  className="w-full bg-slate-50 border-2 border-slate-200 focus:border-amber-500 focus:bg-white rounded-xl px-3 py-2 text-xs font-bold text-slate-900 outline-none shadow-inner transition-all"
-                  placeholder="qr"
-                />
-                <p className="text-[10px] text-slate-400 mt-1 font-medium">Scans will start: {getFullTelegramUrl()}</p>
               </div>
 
               {/* Developer Contact Section Settings */}
@@ -837,13 +943,24 @@ export default function AdminQrCode() {
             <span>{downloading ? 'Preparing PNG...' : '📥 Download Poster (PNG)'}</span>
           </button>
 
+          {/* Active Target Capsule */}
+          <div className="flex items-center justify-between px-3 py-2 bg-slate-100 rounded-xl border border-slate-200 text-xs">
+            <span className="text-slate-500 font-bold flex items-center gap-1.5 text-[11px]">
+              <QrCode size={13} className="text-amber-600" />
+              <span>Target:</span>
+            </span>
+            <span className="font-mono text-[11px] font-bold text-slate-800 truncate max-w-[220px]">
+              {getTargetQrUrl()}
+            </span>
+          </div>
+
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={handleCopyLink}
               className="py-2.5 px-3 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-xl border border-slate-200 shadow-[0_2px_0_0_#cbd5e1] active:translate-y-0.5 active:shadow-none flex items-center justify-center space-x-1.5 transition-all"
             >
               <Copy size={14} />
-              <span>Copy Bot Link</span>
+              <span>{qrMode === 'pwa' ? 'Copy Install Link' : 'Copy Bot Link'}</span>
             </button>
 
             <button
@@ -851,7 +968,7 @@ export default function AdminQrCode() {
               className="py-2.5 px-3 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-xl border border-slate-200 shadow-[0_2px_0_0_#cbd5e1] active:translate-y-0.5 active:shadow-none flex items-center justify-center space-x-1.5 transition-all"
             >
               <ExternalLink size={14} />
-              <span>Test Bot Link</span>
+              <span>{qrMode === 'pwa' ? 'Test Install Page' : 'Test Bot Link'}</span>
             </button>
           </div>
         </div>

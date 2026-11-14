@@ -58,8 +58,8 @@ function Navigation() {
   const location = useLocation();
   const { user, isProfileOpen, setProfileOpen, language } = useGameStore();
 
-  // Hide the player bottom navigation if the user is an Admin or Worker
-  if (user?.role === 'admin' || user?.role === 'worker') {
+  // Hide the player bottom navigation if the user is an Admin, Worker, or on Install page
+  if (user?.role === 'admin' || user?.role === 'worker' || location.pathname === '/install') {
     return null;
   }
 
@@ -144,6 +144,7 @@ import AdminBroadcast from './pages/AdminBroadcast';
 import AdminRewards from './pages/AdminRewards';
 import AdminSupportVideos from './pages/AdminSupportVideos';
 import AdminQrCode from './pages/AdminQrCode';
+import InstallApp from './pages/InstallApp';
 
 import DepositHistory from './pages/DepositHistory';
 import WithdrawHistory from './pages/WithdrawHistory';
@@ -152,6 +153,20 @@ import Invite from './pages/Invite';
 import InvitedPeople from './pages/InvitedPeople';
 import BlockedScreen from './components/BlockedScreen';
 import PwaPhoneModal from './components/PwaPhoneModal';
+
+function getInitialEntries(): string[] {
+  if (typeof window !== 'undefined') {
+    const path = window.location.pathname || '';
+    const search = window.location.search || '';
+    if (path === '/install' || search.includes('install') || search.includes('pwa=1') || search.includes('qr=')) {
+      return ['/install'];
+    }
+    if (path.startsWith('/admin')) {
+      return [path];
+    }
+  }
+  return ['/'];
+}
 
 function App() {
   const { fetchUser, subscribeToBalance, isDarkMode, isBlocked, setProfileOpen, isPhoneModalOpen, setIsPhoneModalOpen } = useGameStore();
@@ -180,11 +195,12 @@ function App() {
   }
 
   return (
-    <MemoryRouter initialEntries={['/']} initialIndex={0}>
+    <MemoryRouter initialEntries={getInitialEntries()} initialIndex={0}>
       <TelegramBackButton />
       <div className="min-h-screen bg-slate-50 pb-20 font-sans text-slate-800">
         <ErrorBoundary><Routes>
           <Route path="/" element={<RoleRouter />} />
+          <Route path="/install" element={<InstallApp />} />
           <Route path="/deposit" element={<Deposit />} />
           <Route path="/deposit-history" element={<DepositHistory />} />
           <Route path="/withdraw-history" element={<WithdrawHistory />} />
