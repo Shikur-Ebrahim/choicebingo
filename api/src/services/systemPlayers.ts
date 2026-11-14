@@ -29,10 +29,10 @@ export interface SystemPlayersConfig {
 }
 
 export const DEFAULT_STAKE_RANGES: Record<string, StakePlayerRange> = {
-  "10":  { min: 50, max: 100 },
-  "20":  { min: 30, max: 60 },
-  "50":  { min: 15, max: 20 },
-  "100": { min: 5,  max: 10 },
+  "10":  { min: 10, max: 31 },
+  "20":  { min: 9,  max: 15 },
+  "50":  { min: 5,  max: 11 },
+  "100": { min: 3,  max: 6  },
 };
 
 export const DEFAULT_CONFIG: SystemPlayersConfig = {
@@ -41,12 +41,13 @@ export const DEFAULT_CONFIG: SystemPlayersConfig = {
   time_start: '01:00',
   time_end: '24:00',
   target_stakes: [10, 20, 50, 100],
-  min_players_per_game: 50,
-  max_players_per_game: 100,
+  min_players_per_game: 10,
+  max_players_per_game: 31,
   min_cartelas_per_player: 1,
   max_cartelas_per_player: 4,
   stake_player_ranges: DEFAULT_STAKE_RANGES,
 };
+
 
 // ── Ethiopian Regional Names Base (Amhara, Oromia, Tigray, Southern, Muslim/Harari/Somali/Afar) ──
 export const ETHIOPIAN_FIRST_NAMES_BY_REGION = {
@@ -171,52 +172,39 @@ let _cfgCache: SystemPlayersConfig | null = null;
 let _cfgCacheAt = 0;
 
 export async function getSystemPlayersConfig(): Promise<SystemPlayersConfig> {
-  if (_cfgCache && Date.now() - _cfgCacheAt < 10000) return _cfgCache;
-
-  try {
-    // Try dedicated table
-    const { data, error } = await supabase
-      .from('system_players_config')
-      .select('*')
-      .eq('id', 1)
-      .maybeSingle();
-
-    if (!error && data) {
-      _cfgCache = {
-        enabled: Boolean(data.enabled),
-        schedule_enabled: Boolean(data.schedule_enabled),
-        time_start: data.time_start || DEFAULT_CONFIG.time_start,
-        time_end: data.time_end || DEFAULT_CONFIG.time_end,
-        target_stakes: Array.isArray(data.target_stakes) && data.target_stakes.length > 0 ? data.target_stakes : DEFAULT_CONFIG.target_stakes,
-        min_players_per_game: Number(data.min_players_per_game) || DEFAULT_CONFIG.min_players_per_game,
-        max_players_per_game: Number(data.max_players_per_game) || DEFAULT_CONFIG.max_players_per_game,
-        min_cartelas_per_player: Number(data.min_cartelas_per_player) || DEFAULT_CONFIG.min_cartelas_per_player,
-        max_cartelas_per_player: Number(data.max_cartelas_per_player) || DEFAULT_CONFIG.max_cartelas_per_player,
-        stake_player_ranges: data.stake_player_ranges || DEFAULT_STAKE_RANGES,
-      };
-      _cfgCacheAt = Date.now();
-      return _cfgCache;
-    }
-  } catch {}
-
-  // Fallback to settings table
+  // Query settings table (always supports full JSON)
+  let sObj: any = null;
   try {
     const { data: sData } = await supabase.from('settings').select('value').eq('key', 'system_players_config').maybeSingle();
     if (sData?.value) {
-      const parsed = typeof sData.value === 'string' ? JSON.parse(sData.value) : sData.value;
-      _cfgCache = {
-        ...DEFAULT_CONFIG,
-        ...parsed,
-        stake_player_ranges: parsed.stake_player_ranges || DEFAULT_STAKE_RANGES,
-      };
-      _cfgCacheAt = Date.now();
-      return _cfgCache!;
+      sObj = typeof sData.value === 'string' ? JSON.parse(sData.value) : sData.value;
     }
   } catch {}
 
-  _cfgCache = { ...DEFAULT_CONFIG };
+  // Query system_players_config table
+  let tObj: any = null;
+  try {
+    const { data: tData } = await supabase.from('system_players_config').select('*').eq('id', 1).maybeSingle();
+    if (tData) tObj = tData;
+  } catch {}
+
+  // Merge: settings table handles JSON fields reliably, table handles row fields
+  const merged: SystemPlayersConfig = {
+    enabled: sObj?.enabled !== undefined ? Boolean(sObj.enabled) : (tObj?.enabled !== undefined ? Boolean(tObj.enabled) : DEFAULT_CONFIG.enabled),
+    schedule_enabled: sObj?.schedule_enabled !== undefined ? Boolean(sObj.schedule_enabled) : (tObj?.schedule_enabled !== undefined ? Boolean(tObj.schedule_enabled) : DEFAULT_CONFIG.schedule_enabled),
+    time_start: sObj?.time_start || tObj?.time_start || DEFAULT_CONFIG.time_start,
+    time_end: sObj?.time_end || tObj?.time_end || DEFAULT_CONFIG.time_end,
+    target_stakes: Array.isArray(sObj?.target_stakes) ? sObj.target_stakes : (Array.isArray(tObj?.target_stakes) ? tObj.target_stakes : DEFAULT_CONFIG.target_stakes),
+    min_players_per_game: Number(sObj?.min_players_per_game ?? tObj?.min_players_per_game ?? DEFAULT_CONFIG.min_players_per_game),
+    max_players_per_game: Number(sObj?.max_players_per_game ?? tObj?.max_players_per_game ?? DEFAULT_CONFIG.max_players_per_game),
+    min_cartelas_per_player: Number(sObj?.min_cartelas_per_player ?? tObj?.min_cartelas_per_player ?? DEFAULT_CONFIG.min_cartelas_per_player),
+    max_cartelas_per_player: Number(sObj?.max_cartelas_per_player ?? tObj?.max_cartelas_per_player ?? DEFAULT_CONFIG.max_cartelas_per_player),
+    stake_player_ranges: sObj?.stake_player_ranges || tObj?.stake_player_ranges || DEFAULT_STAKE_RANGES,
+  };
+
+  _cfgCache = merged;
   _cfgCacheAt = Date.now();
-  return _cfgCache;
+  return merged;
 }
 
 export async function saveSystemPlayersConfig(cfg: Partial<SystemPlayersConfig>): Promise<SystemPlayersConfig> {
@@ -231,15 +219,23 @@ export async function saveSystemPlayersConfig(cfg: Partial<SystemPlayersConfig>)
     stake_player_ranges: cfg.stake_player_ranges ?? current.stake_player_ranges ?? DEFAULT_STAKE_RANGES,
   };
 
-  _cfgCache = updated;
-  _cfgCacheAt = Date.now();
-
-  // Try saving to system_players_config table
+  // 1. Dual-write to settings table first (guaranteed persistence)
   try {
-    await supabase.from('system_players_config').upsert({
+    await supabase.from('settings').upsert({
+      key: 'system_players_config',
+      value: JSON.stringify(updated),
+      updated_at: new Date().toISOString(),
+    });
+  } catch (e) {
+    console.error('[systemPlayers] Failed to save in settings table:', e);
+  }
+
+  // 2. Dual-write to system_players_config table
+  try {
+    const tablePayload: any = {
       id: 1,
-      enabled: updated.enabled,
-      schedule_enabled: updated.schedule_enabled,
+      enabled: Boolean(updated.enabled),
+      schedule_enabled: Boolean(updated.schedule_enabled),
       time_start: updated.time_start,
       time_end: updated.time_end,
       target_stakes: updated.target_stakes,
@@ -247,21 +243,24 @@ export async function saveSystemPlayersConfig(cfg: Partial<SystemPlayersConfig>)
       max_players_per_game: updated.max_players_per_game,
       min_cartelas_per_player: updated.min_cartelas_per_player,
       max_cartelas_per_player: updated.max_cartelas_per_player,
+      stake_player_ranges: updated.stake_player_ranges,
       updated_at: new Date().toISOString(),
-    });
-  } catch {}
+    };
 
-  // Always mirror in settings table for guaranteed persistence
-  try {
-    await supabase.from('settings').upsert({
-      key: 'system_players_config',
-      value: JSON.stringify(updated),
-      updated_at: new Date().toISOString(),
-    });
-  } catch {}
+    const { error: err1 } = await supabase.from('system_players_config').upsert(tablePayload);
+    if (err1) {
+      delete tablePayload.stake_player_ranges;
+      await supabase.from('system_players_config').upsert(tablePayload);
+    }
+  } catch (e) {
+    console.error('[systemPlayers] Failed to save in system_players_config table:', e);
+  }
 
+  _cfgCache = updated;
+  _cfgCacheAt = Date.now();
   return updated;
 }
+
 
 /**
  * Check if current time in East Africa Time (EAT = UTC+3) is within the scheduled 1-24 hour window.

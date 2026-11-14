@@ -36,10 +36,10 @@ interface SystemPlayersConfig {
 }
 
 const DEFAULT_STAKE_RANGES: Record<string, StakePlayerRange> = {
-  "10":  { min: 50, max: 100 },
-  "20":  { min: 30, max: 60 },
-  "50":  { min: 15, max: 20 },
-  "100": { min: 5,  max: 10 },
+  "10":  { min: 10, max: 31 },
+  "20":  { min: 9,  max: 15 },
+  "50":  { min: 5,  max: 11 },
+  "100": { min: 3,  max: 6  },
 };
 
 export default function AdminSystemPlayers() {
@@ -53,12 +53,13 @@ export default function AdminSystemPlayers() {
     time_start: '01:00',
     time_end: '24:00',
     target_stakes: [10, 20, 50, 100],
-    min_players_per_game: 50,
-    max_players_per_game: 100,
+    min_players_per_game: 10,
+    max_players_per_game: 31,
     min_cartelas_per_player: 1,
     max_cartelas_per_player: 4,
     stake_player_ranges: DEFAULT_STAKE_RANGES,
   });
+
   const [savingConfig, setSavingConfig] = useState(false);
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
@@ -289,10 +290,48 @@ export default function AdminSystemPlayers() {
     setConfig({ ...config, stake_player_ranges: updated });
   };
 
+  // Toggle Master Engine Switch (instantly saves to server so it never reverts on back)
+  const handleToggleEnabled = async () => {
+    const nextState = !config.enabled;
+    setConfig(prev => ({ ...prev, enabled: nextState }));
+    try {
+      const res = await fetch(`${API_URL}/admin/system-players/config`, {
+        method: 'PUT',
+        headers: getHeaders(),
+        body: JSON.stringify({ ...config, enabled: nextState }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        showToast(nextState ? 'System players engine turned ON!' : 'System players engine turned OFF!');
+      } else {
+        setConfig(prev => ({ ...prev, enabled: !nextState }));
+        showToast('Failed to toggle engine state', 'error');
+      }
+    } catch {
+      setConfig(prev => ({ ...prev, enabled: !nextState }));
+      showToast('Error toggling engine state', 'error');
+    }
+  };
+
+  // Toggle Schedule Switch (instantly saves)
+  const handleToggleSchedule = async () => {
+    const nextState = !config.schedule_enabled;
+    setConfig(prev => ({ ...prev, schedule_enabled: nextState }));
+    try {
+      await fetch(`${API_URL}/admin/system-players/config`, {
+        method: 'PUT',
+        headers: getHeaders(),
+        body: JSON.stringify({ ...config, schedule_enabled: nextState }),
+      });
+      showToast(nextState ? 'Schedule mode enabled (custom hours)' : 'Schedule mode disabled (24/7 all day)');
+    } catch {}
+  };
+
   const resetStakeRangesToDefault = () => {
     setConfig({ ...config, stake_player_ranges: { ...DEFAULT_STAKE_RANGES } });
-    showToast('Reset stake ranges to default: 10 ETB (50-100), 20 ETB (30-60), 50 ETB (15-20), 100 ETB (5-10)');
+    showToast('Reset stake ranges to default: 10 ETB (10-31), 20 ETB (9-15), 50 ETB (5-11), 100 ETB (3-6)');
   };
+
 
   // Hours for 1-24 Hour Selectors
   const hours24 = Array.from({ length: 24 }, (_, i) => {
@@ -405,7 +444,7 @@ export default function AdminSystemPlayers() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => setConfig({ ...config, enabled: !config.enabled })}
+                  onClick={handleToggleEnabled}
                   className={`relative inline-flex h-7 w-13 items-center rounded-full transition-colors focus:outline-none ${
                     config.enabled ? 'bg-emerald-500' : 'bg-slate-300'
                   }`}
@@ -433,7 +472,7 @@ export default function AdminSystemPlayers() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => setConfig({ ...config, schedule_enabled: !config.schedule_enabled })}
+                  onClick={handleToggleSchedule}
                   className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
                     config.schedule_enabled ? 'bg-amber-500' : 'bg-slate-300'
                   }`}
@@ -554,14 +593,14 @@ export default function AdminSystemPlayers() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
-                {/* 10 ETB: 50-100 players */}
+                {/* 10 ETB: 10-31 players */}
                 <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2">
                   <div className="flex justify-between items-center">
                     <span className="font-black text-xs text-violet-700 bg-violet-100 px-2 py-0.5 rounded-md">
                       10 ETB Stake
                     </span>
                     <span className="text-[11px] font-bold text-slate-500">
-                      Default: 50–100
+                      Default: 10–31
                     </span>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
@@ -571,7 +610,7 @@ export default function AdminSystemPlayers() {
                         type="number"
                         min={1}
                         max={100}
-                        value={config.stake_player_ranges?.['10']?.min ?? 50}
+                        value={config.stake_player_ranges?.['10']?.min ?? 10}
                         onChange={(e) => updateStakeRange('10', 'min', Number(e.target.value))}
                         className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-black text-slate-800 text-center focus:outline-none focus:border-violet-500"
                       />
@@ -580,9 +619,9 @@ export default function AdminSystemPlayers() {
                       <label className="text-[10px] text-slate-500 font-bold block mb-0.5">Max Bots</label>
                       <input
                         type="number"
-                        min={config.stake_player_ranges?.['10']?.min ?? 50}
+                        min={config.stake_player_ranges?.['10']?.min ?? 10}
                         max={100}
-                        value={config.stake_player_ranges?.['10']?.max ?? 100}
+                        value={config.stake_player_ranges?.['10']?.max ?? 31}
                         onChange={(e) => updateStakeRange('10', 'max', Number(e.target.value))}
                         className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-black text-slate-800 text-center focus:outline-none focus:border-violet-500"
                       />
@@ -590,14 +629,14 @@ export default function AdminSystemPlayers() {
                   </div>
                 </div>
 
-                {/* 20 ETB: 30-60 players */}
+                {/* 20 ETB: 9-15 players */}
                 <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2">
                   <div className="flex justify-between items-center">
                     <span className="font-black text-xs text-blue-700 bg-blue-100 px-2 py-0.5 rounded-md">
                       20 ETB Stake
                     </span>
                     <span className="text-[11px] font-bold text-slate-500">
-                      Default: 30–60
+                      Default: 9–15
                     </span>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
@@ -607,7 +646,7 @@ export default function AdminSystemPlayers() {
                         type="number"
                         min={1}
                         max={100}
-                        value={config.stake_player_ranges?.['20']?.min ?? 30}
+                        value={config.stake_player_ranges?.['20']?.min ?? 9}
                         onChange={(e) => updateStakeRange('20', 'min', Number(e.target.value))}
                         className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-black text-slate-800 text-center focus:outline-none focus:border-blue-500"
                       />
@@ -616,9 +655,9 @@ export default function AdminSystemPlayers() {
                       <label className="text-[10px] text-slate-500 font-bold block mb-0.5">Max Bots</label>
                       <input
                         type="number"
-                        min={config.stake_player_ranges?.['20']?.min ?? 30}
+                        min={config.stake_player_ranges?.['20']?.min ?? 9}
                         max={100}
-                        value={config.stake_player_ranges?.['20']?.max ?? 60}
+                        value={config.stake_player_ranges?.['20']?.max ?? 15}
                         onChange={(e) => updateStakeRange('20', 'max', Number(e.target.value))}
                         className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-black text-slate-800 text-center focus:outline-none focus:border-blue-500"
                       />
@@ -626,14 +665,14 @@ export default function AdminSystemPlayers() {
                   </div>
                 </div>
 
-                {/* 50 ETB: 15-20 players */}
+                {/* 50 ETB: 5-11 players */}
                 <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2">
                   <div className="flex justify-between items-center">
                     <span className="font-black text-xs text-amber-700 bg-amber-100 px-2 py-0.5 rounded-md">
                       50 ETB Stake
                     </span>
                     <span className="text-[11px] font-bold text-slate-500">
-                      Default: 15–20
+                      Default: 5–11
                     </span>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
@@ -643,7 +682,7 @@ export default function AdminSystemPlayers() {
                         type="number"
                         min={1}
                         max={100}
-                        value={config.stake_player_ranges?.['50']?.min ?? 15}
+                        value={config.stake_player_ranges?.['50']?.min ?? 5}
                         onChange={(e) => updateStakeRange('50', 'min', Number(e.target.value))}
                         className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-black text-slate-800 text-center focus:outline-none focus:border-amber-500"
                       />
@@ -652,9 +691,9 @@ export default function AdminSystemPlayers() {
                       <label className="text-[10px] text-slate-500 font-bold block mb-0.5">Max Bots</label>
                       <input
                         type="number"
-                        min={config.stake_player_ranges?.['50']?.min ?? 15}
+                        min={config.stake_player_ranges?.['50']?.min ?? 5}
                         max={100}
-                        value={config.stake_player_ranges?.['50']?.max ?? 20}
+                        value={config.stake_player_ranges?.['50']?.max ?? 11}
                         onChange={(e) => updateStakeRange('50', 'max', Number(e.target.value))}
                         className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-black text-slate-800 text-center focus:outline-none focus:border-amber-500"
                       />
@@ -662,14 +701,14 @@ export default function AdminSystemPlayers() {
                   </div>
                 </div>
 
-                {/* 100 ETB: 5-10 players */}
+                {/* 100 ETB: 3-6 players */}
                 <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2">
                   <div className="flex justify-between items-center">
                     <span className="font-black text-xs text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md">
                       100 ETB Stake
                     </span>
                     <span className="text-[11px] font-bold text-slate-500">
-                      Default: 5–10
+                      Default: 3–6
                     </span>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
@@ -679,7 +718,7 @@ export default function AdminSystemPlayers() {
                         type="number"
                         min={1}
                         max={100}
-                        value={config.stake_player_ranges?.['100']?.min ?? 5}
+                        value={config.stake_player_ranges?.['100']?.min ?? 3}
                         onChange={(e) => updateStakeRange('100', 'min', Number(e.target.value))}
                         className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-black text-slate-800 text-center focus:outline-none focus:border-emerald-500"
                       />
@@ -688,9 +727,9 @@ export default function AdminSystemPlayers() {
                       <label className="text-[10px] text-slate-500 font-bold block mb-0.5">Max Bots</label>
                       <input
                         type="number"
-                        min={config.stake_player_ranges?.['100']?.min ?? 5}
+                        min={config.stake_player_ranges?.['100']?.min ?? 3}
                         max={100}
-                        value={config.stake_player_ranges?.['100']?.max ?? 10}
+                        value={config.stake_player_ranges?.['100']?.max ?? 6}
                         onChange={(e) => updateStakeRange('100', 'max', Number(e.target.value))}
                         className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-black text-slate-800 text-center focus:outline-none focus:border-emerald-500"
                       />
