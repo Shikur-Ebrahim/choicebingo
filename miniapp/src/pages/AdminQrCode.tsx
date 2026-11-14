@@ -466,8 +466,8 @@ export default function AdminQrCode() {
     ctx.textBaseline = 'middle';
     ctx.fillText('Real Players   •   Good Luck   •   Big Wins', W / 2, mottoY);
 
-    // 13. Bot Handle / PWA Install Pill
-    const botPillW = qrMode === 'pwa' ? 560 : 420;
+    // 13. Bot Handle Pill (Displays @choicebingo_bot)
+    const botPillW = 420;
     const botPillH = 64;
     const botPillX = (W - botPillW) / 2;
     const botPillY = 1495;
@@ -482,19 +482,8 @@ export default function AdminQrCode() {
     ctx.fillStyle = '#111827';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-
-    if (qrMode === 'pwa') {
-      let displayDomain = 'choicebingo.com/install';
-      try {
-        const u = new URL(targetUrl);
-        displayDomain = `${u.host}/install`;
-      } catch (_) {}
-      ctx.font = '800 24px sans-serif';
-      ctx.fillText(`📱 ${displayDomain}`, W / 2, botPillY + botPillH / 2);
-    } else {
-      ctx.font = '800 28px sans-serif';
-      ctx.fillText(`@${botUsername.replace(/^@/, '')}`, W / 2, botPillY + botPillH / 2);
-    }
+    ctx.font = '800 28px sans-serif';
+    ctx.fillText(`@${botUsername.replace(/^@/, '').trim() || 'choicebingo_bot'}`, W / 2, botPillY + botPillH / 2);
 
     // 14. Footer Credits
     const footerY = 1595;
@@ -768,7 +757,7 @@ export default function AdminQrCode() {
               {qrMode === 'pwa' ? (
                 <div>
                   <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">
-                    PWA App Install URL
+                    PWA App Install URL (Scanned by Camera)
                   </label>
                   <input
                     type="text"
@@ -778,40 +767,41 @@ export default function AdminQrCode() {
                     placeholder="https://choicebingo.com/install"
                   />
                   <p className="text-[10px] text-emerald-600 font-semibold mt-1">
-                    ✓ Scanning will open Choice Bingo with the 1-click Install App popup!
+                    ✓ Scanning the QR code will instantly open Choice Bingo with the 1-click Install App popup!
                   </p>
                 </div>
               ) : (
-                <>
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Bot Username</label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">@</span>
-                      <input
-                        type="text"
-                        value={botUsername.replace(/^@/, '')}
-                        onChange={(e) => setBotUsername(e.target.value)}
-                        className="w-full bg-slate-50 border-2 border-slate-200 focus:border-amber-500 focus:bg-white rounded-xl pl-7 pr-3 py-2 text-xs font-bold text-slate-900 outline-none shadow-inner transition-all"
-                        placeholder="choicebingo_bot"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">
-                      Start Parameter (Optional Tracking/Agent Tag)
-                    </label>
-                    <input
-                      type="text"
-                      value={startParam}
-                      onChange={(e) => setStartParam(e.target.value)}
-                      className="w-full bg-slate-50 border-2 border-slate-200 focus:border-amber-500 focus:bg-white rounded-xl px-3 py-2 text-xs font-bold text-slate-900 outline-none shadow-inner transition-all"
-                      placeholder="qr"
-                    />
-                    <p className="text-[10px] text-slate-400 mt-1 font-medium">Scans will start: {getFullTelegramUrl()}</p>
-                  </div>
-                </>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">
+                    Start Parameter (Optional Tracking/Agent Tag)
+                  </label>
+                  <input
+                    type="text"
+                    value={startParam}
+                    onChange={(e) => setStartParam(e.target.value)}
+                    className="w-full bg-slate-50 border-2 border-slate-200 focus:border-amber-500 focus:bg-white rounded-xl px-3 py-2 text-xs font-bold text-slate-900 outline-none shadow-inner transition-all"
+                    placeholder="qr"
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1 font-medium">Scans will start: {getFullTelegramUrl()}</p>
+                </div>
               )}
+
+              {/* Bot Username Pill Text */}
+              <div>
+                <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">
+                  Telegram Bot Handle (Displayed in Bottom Pill)
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">@</span>
+                  <input
+                    type="text"
+                    value={botUsername.replace(/^@/, '')}
+                    onChange={(e) => setBotUsername(e.target.value)}
+                    className="w-full bg-slate-50 border-2 border-slate-200 focus:border-amber-500 focus:bg-white rounded-xl pl-7 pr-3 py-2 text-xs font-bold text-slate-900 outline-none shadow-inner transition-all"
+                    placeholder="choicebingo_bot"
+                  />
+                </div>
+              </div>
 
               <div>
                 <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Header Subtitle</label>
