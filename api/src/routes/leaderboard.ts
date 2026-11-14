@@ -118,7 +118,7 @@ router.get('/players', optionalTelegramAuth, async (req: AuthRequest, res) => {
     }
   }
 
-  // Fetch accurate first_names from users table
+  // Fetch accurate first_names from users and system_players
   const allIds = Object.keys(map);
   const nameMap: Record<string, string> = {};
   if (allIds.length > 0) {
@@ -127,7 +127,56 @@ router.get('/players', optionalTelegramAuth, async (req: AuthRequest, res) => {
       .select('telegram_id, first_name')
       .in('telegram_id', allIds);
     for (const u of usersData || []) {
-      nameMap[u.telegram_id] = u.first_name || 'User';
+      if (u.first_name) nameMap[u.telegram_id] = u.first_name;
+    }
+
+    const { data: spData } = await supabase
+      .from('system_players')
+      .select('telegram_id, first_name')
+      .in('telegram_id', allIds);
+    for (const sp of spData || []) {
+      if (sp.first_name && !nameMap[sp.telegram_id]) {
+        nameMap[sp.telegram_id] = sp.first_name;
+      }
+    }
+  }
+
+  // For 'all' period, also include players with accumulated total_wins from system_players & users
+  if (period === 'all') {
+    const { data: topSp } = await supabase
+      .from('system_players')
+      .select('telegram_id, first_name, total_wins')
+      .gt('total_wins', 0)
+      .order('total_wins', { ascending: false })
+      .limit(50);
+
+    for (const sp of topSp || []) {
+      const tid = sp.telegram_id;
+      const wins = Number(sp.total_wins || 0);
+      if (!map[tid]) {
+        map[tid] = { wins, total_prize: wins * 80 };
+      } else {
+        map[tid].wins = Math.max(map[tid].wins, wins);
+      }
+      nameMap[tid] = sp.first_name;
+    }
+
+    const { data: topUsers } = await supabase
+      .from('users')
+      .select('telegram_id, first_name, total_wins')
+      .gt('total_wins', 0)
+      .order('total_wins', { ascending: false })
+      .limit(50);
+
+    for (const u of topUsers || []) {
+      const tid = u.telegram_id;
+      const wins = Number(u.total_wins || 0);
+      if (!map[tid]) {
+        map[tid] = { wins, total_prize: wins * 80 };
+      } else {
+        map[tid].wins = Math.max(map[tid].wins, wins);
+      }
+      if (u.first_name) nameMap[tid] = u.first_name;
     }
   }
 
@@ -137,11 +186,12 @@ router.get('/players', optionalTelegramAuth, async (req: AuthRequest, res) => {
     .map(([tid, v], i) => ({
       rank: i + 1,
       telegram_id: tid,
-      first_name: nameMap[tid] || 'User',
+      first_name: nameMap[tid] || 'Player',
       username: '',
       wins: v.wins,
       total_prize: v.total_prize,
     }));
+
 
   // Find current user's rank
   const myRank = telegramId ? (topPlayers.findIndex(p => p.telegram_id === telegramId) + 1 || null) : null;

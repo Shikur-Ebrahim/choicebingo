@@ -59,10 +59,17 @@ export function setPlayerMode(gameId: string, telegramId: string, isAuto: boolea
   }
 }
 
+interface GameBotSession {
+  targetBots: number;
+  lastJoinAt: number;
+  cadenceMs: number;
+}
+
 class BingoEngine {
   private timer: ReturnType<typeof setInterval> | null = null;
   private busy = false;
   private busySince = 0;
+  private botSessions = new Map<string, GameBotSession>();
 
   start() {
     if (this.timer) return;
@@ -199,6 +206,7 @@ class BingoEngine {
     }
 
     // 2+ unique players: START GAME!
+    this.botSessions.delete(game.id);
     await supabase.from('bingo_games').update({
       status: 'calling',
       called_numbers: [],
@@ -237,24 +245,20 @@ class BingoEngine {
   }
 
   /**
-   * Automatically populates a waiting game with System (virtual) players
-   * based on the admin's schedule, target stakes, player count range, and cartelas range.
+   * Paced, organic simulation of System (virtual) players across the 30-second waiting interval.
+   * Bots select cartelas gradually and randomly across the entire 1-100 board (not all at once).
    */
   private async simulateSystemPlayers(game: any, cfg: any) {
     try {
       const botCfg = await getSystemPlayersConfig();
-      if (!botCfg.enabled) return;
-      if (!isWithinSchedule(botCfg)) return;
-      if (!botCfg.target_stakes.includes(Number(game.stake))) return;
+      if (!botCfg.enabled || !isWithinSchedule(botCfg) || !botCfg.target_stakes.includes(Number(game.stake))) {
+        this.botSessions.delete(game.id);
+        return;
+      }
 
-      const { data: pRows } = await supabase
-        .from('bingo_players')
-        .select('id, telegram_id, cartela_number')
-        .eq('game_id', game.id);
-
-      const players = pRows || [];
-      const botPlayers = players.filter((p: any) => isSystemPlayer(p.telegram_id));
-      const uniqueExistingBots = new Set(botPlayers.map((p: any) => p.telegram_id)).size;
+      const now = Date.now();
+      const startTime = new Date(game.start_at).getTime();
+      const isFarFuture = startTime > now + 86400000;
 
       // Determine target bot count for this game based on its stake
       const stakeKey = String(game.stake);
@@ -267,25 +271,79 @@ class BingoEngine {
       const minBots = Math.max(1, Number(targetRange.min) || 5);
       const maxBots = Math.max(minBots, Number(targetRange.max) || 10);
 
-      // If already populated to target, nothing to do
-      if (uniqueExistingBots >= minBots) return;
+      // Manage or create bot session for this game
+      let session = this.botSessions.get(game.id);
+      if (!session) {
+        const targetBots = Math.floor(Math.random() * (maxBots - minBots + 1)) + minBots;
+        session = {
+          targetBots,
+          lastJoinAt: now,
+          cadenceMs: 800 + Math.random() * 800, // first join between 0.8s and 1.6s
+        };
+        this.botSessions.set(game.id, session);
+      }
 
-      // Cartela seats 1 to 100
+      // If waiting countdown hasn't started yet, initiate 30-second waiting interval now!
+      if (isFarFuture) {
+        const waitingSec = 30; // 30-second interval
+        const newStartAt = new Date(now + waitingSec * 1000).toISOString();
+        await supabase.from('bingo_games').update({
+          start_at: newStartAt,
+          updated_at: new Date().toISOString(),
+        }).eq('id', game.id);
+        game.start_at = newStartAt;
+        console.log(`⏳ Game #${game.id.slice(0,8).toUpperCase()} (Stake: ${game.stake}): 30s waiting interval initiated! Target: ${session.targetBots} bots`);
+        return;
+      }
+
+      // Check remaining seconds in the 30s countdown
+      const remainingSec = Math.max(0, (new Date(game.start_at).getTime() - now) / 1000);
+      if (remainingSec <= 0) {
+        // Countdown reached 0, clean up session
+        this.botSessions.delete(game.id);
+        return;
+      }
+
+      // Cadence check: pace joins so cartelas are taken gradually throughout the 30s
+      if (now - session.lastJoinAt < session.cadenceMs) {
+        return;
+      }
+
+      // Query current players
+      const { data: pRows } = await supabase
+        .from('bingo_players')
+        .select('id, telegram_id, cartela_number')
+        .eq('game_id', game.id);
+
+      const players = pRows || [];
+      const botPlayers = players.filter((p: any) => isSystemPlayer(p.telegram_id));
+      const uniqueExistingBots = new Set(botPlayers.map((p: any) => p.telegram_id)).size;
+
+      const botsNeeded = session.targetBots - uniqueExistingBots;
+      if (botsNeeded <= 0) {
+        return; // Target already reached for this game
+      }
+
+      // Available cartelas on the 1-100 board
       const takenCartelas = new Set(players.map((p: any) => Number(p.cartela_number)));
       const allCartelas = Array.from({ length: 100 }, (_, i) => i + 1);
       const availableCartelas = allCartelas.filter(c => !takenCartelas.has(c));
 
-      // Reserve at least 15 cartelas for real human players
+      // Always reserve at least 15 cartelas for real human players!
       const maxCartelasToFill = Math.max(0, availableCartelas.length - 15);
       if (maxCartelasToFill <= 0) return;
 
-      const targetBots = Math.min(
-        maxBots,
-        Math.floor(Math.random() * (maxBots - minBots + 1)) + minBots
-      );
-      const botsNeeded = targetBots - uniqueExistingBots;
-      if (botsNeeded <= 0) return;
+      // How many bots join in THIS specific step?
+      // During the 30s interval: 1 or 2 bots per step ("not one time mark bro")
+      // In the final 5s, slightly accelerate (up to 3-4 bots) if still behind target
+      const botsThisStep = remainingSec <= 5
+        ? Math.min(4, Math.max(1, botsNeeded))
+        : (Math.random() < 0.65 ? 1 : 2);
 
+      const botsToJoinCount = Math.min(botsNeeded, botsThisStep);
+      if (botsToJoinCount <= 0) return;
+
+      // Fetch active bot candidates from 1000 pool
       const pool = await getActiveSystemPlayersPool(Math.max(100, maxBots * 2));
       if (!pool || pool.length === 0) return;
 
@@ -293,7 +351,10 @@ class BingoEngine {
       const candidateBots = pool.filter(b => !existingTids.has(String(b.telegram_id)));
       if (candidateBots.length === 0) return;
 
+      // Shuffle candidates
       const shuffledBots = candidateBots.sort(() => Math.random() - 0.5);
+
+      // Shuffle available cartelas thoroughly across the ENTIRE 1-100 board (top, middle, bottom)
       const shuffledCartelas = availableCartelas.sort(() => Math.random() - 0.5);
       let cartelaIdx = 0;
 
@@ -304,9 +365,10 @@ class BingoEngine {
       const newlyAddedBots = new Set<string>();
 
       for (const bot of shuffledBots) {
-        if (newlyAddedBots.size >= botsNeeded) break;
+        if (newlyAddedBots.size >= botsToJoinCount) break;
         if (cartelaIdx >= maxCartelasToFill) break;
 
+        // Each bot buys random 1 to 4 cartelas
         const cartelaCount = Math.floor(Math.random() * (maxC - minC + 1)) + minC;
         const actualCount = Math.min(cartelaCount, maxCartelasToFill - cartelaIdx);
         if (actualCount <= 0) break;
@@ -328,6 +390,10 @@ class BingoEngine {
 
       if (rowsToInsert.length === 0) return;
 
+      // Reset last join time & set next cadence (0.8s to 1.8s)
+      session.lastJoinAt = now;
+      session.cadenceMs = 800 + Math.random() * 1000;
+
       const { error: insErr } = await supabase.from('bingo_players').insert(rowsToInsert);
       if (insErr) {
         console.error('[BingoEngine] Failed to insert system players:', insErr.message);
@@ -342,26 +408,21 @@ class BingoEngine {
         ? rawPool
         : Math.floor(rawPool * (Number(cfg.prize_percent) || 80) / 100);
 
-      // Start waiting countdown if start_at was unset/far in future
-      let newStartAt = game.start_at;
-      const waitingSec = Math.max(15, Math.min(45, Number(cfg.waiting_period_s) || 30));
-      if (new Date(game.start_at).getTime() > Date.now() + 86400000) {
-        newStartAt = new Date(Date.now() + waitingSec * 1000).toISOString();
-      }
-
       await supabase.from('bingo_games').update({
         prize_pool: prizePool,
-        start_at: newStartAt,
         updated_at: new Date().toISOString(),
       }).eq('id', game.id);
 
-      console.log(`🤖 [SystemPlayers] Added ${newlyAddedBots.size} bots (${rowsToInsert.length} cartelas) to Game #${game.id.slice(0,8).toUpperCase()} (Stake: ${game.stake}, Derash: ${prizePool} ETB)`);
+      const cartelaNums = rowsToInsert.map(r => `#${r.cartela_number}`).join(', ');
+      console.log(`🤖 [SystemPlayers] Game #${game.id.slice(0,8).toUpperCase()} (Stake: ${game.stake}): ${newlyAddedBots.size} bot(s) took [${cartelaNums}] (${allUniquePlayers} players total, Derash: ${prizePool} ETB, ${remainingSec.toFixed(1)}s left)`);
     } catch (err: any) {
       console.error('[BingoEngine] Error in simulateSystemPlayers:', err?.message || err);
     }
   }
 
+
   private async refundAndResetGame(game: any, players: any[]) {
+    this.botSessions.delete(game.id);
     const stake = Number(game.stake);
     const botToken = process.env.BOT_TOKEN;
 
