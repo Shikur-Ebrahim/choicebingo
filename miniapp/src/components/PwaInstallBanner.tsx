@@ -13,20 +13,25 @@ if (typeof window !== 'undefined') {
   });
 }
 
-export function isRunningInPwa(): boolean {
+export function isRealStandalone(): boolean {
   if (typeof window === 'undefined') return false;
   try {
-    const isStandaloneMode =
+    return Boolean(
       window.matchMedia?.('(display-mode: standalone)')?.matches ||
       window.matchMedia?.('(display-mode: fullscreen)')?.matches ||
       window.matchMedia?.('(display-mode: minimal-ui)')?.matches ||
       (window.navigator as any)?.standalone === true ||
-      document.referrer?.includes('android-app://') ||
-      window.location?.search?.includes('pwa=1') ||
-      window.location?.search?.includes('mode=pwa') ||
-      window.location?.search?.includes('source=pwa') ||
-      localStorage.getItem('cb_is_installed_pwa') === 'true' ||
-      sessionStorage.getItem('cb_is_pwa') === 'true';
+      document.referrer?.includes('android-app://')
+    );
+  } catch {
+    return false;
+  }
+}
+
+export function isRunningInPwa(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    const isStandaloneMode = isRealStandalone();
 
     if (isStandaloneMode) {
       try {
@@ -34,6 +39,11 @@ export function isRunningInPwa(): boolean {
         sessionStorage.setItem('cb_is_pwa', 'true');
       } catch {}
       return true;
+    } else {
+      try {
+        localStorage.removeItem('cb_is_installed_pwa');
+        sessionStorage.removeItem('cb_is_pwa');
+      } catch {}
     }
   } catch {}
   return false;

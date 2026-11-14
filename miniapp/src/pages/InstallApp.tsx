@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { 
   Download, 
   Smartphone, 
@@ -7,42 +7,62 @@ import {
   CheckCircle2, 
   Share2, 
   PlusSquare, 
-  ShieldCheck, 
   ArrowRight, 
   Zap, 
   Trophy, 
   Gamepad2, 
   ExternalLink,
   ChevronRight,
-  Globe
+  Globe,
+  X,
+  MoreVertical
 } from 'lucide-react';
-import { usePwaPrompt, isRunningInPwa, isRunningInTelegram } from '../components/PwaInstallBanner';
+import { usePwaPrompt, isRealStandalone } from '../components/PwaInstallBanner';
 import { useGameStore } from '../store/gameStore';
 
 export default function InstallApp() {
   const navigate = useNavigate();
   const { language, setLanguage } = useGameStore();
-  const { canInstall, isStandalone, triggerInstall } = usePwaPrompt();
+  const { canInstall, triggerInstall } = usePwaPrompt();
 
   const [installing, setInstalling] = useState(false);
   const [installedSuccess, setInstalledSuccess] = useState(false);
-  const [installError, setInstallError] = useState<string | null>(null);
+  const [showHelpModal, setShowHelpModal] = useState(false);
 
   // Detect iOS Safari
   const isIos = typeof navigator !== 'undefined' &&
     /iPad|iPhone|iPod/.test(navigator.userAgent) &&
     !(window as any).MSStream;
 
-  // Auto-attempt install prompt once if supported and user came directly from QR
+  // 1. AUTO-OPEN APP IF ALREADY RUNNING IN INSTALLED STANDALONE PWA
   useEffect(() => {
-    // If running in standalone mode already
-    if (isStandalone || isRunningInPwa()) {
-      setInstalledSuccess(true);
+    if (isRealStandalone()) {
+      navigate('/', { replace: true });
     }
-  }, [isStandalone]);
+  }, [navigate]);
 
+  // 2. LISTEN FOR NATIVE "appinstalled" EVENT AND AUTO-OPEN
+  useEffect(() => {
+    const handleAppInstalled = () => {
+      setInstalledSuccess(true);
+      setInstalling(false);
+      try {
+        localStorage.setItem('cb_is_installed_pwa', 'true');
+      } catch {}
+      // Automatically navigate into the game after 1.5 seconds!
+      setTimeout(() => {
+        navigate('/', { replace: true });
+      }, 1500);
+    };
+
+    window.addEventListener('appinstalled', handleAppInstalled);
+    return () => {
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
+  }, [navigate]);
+
+  // 3. HANDLE INSTALL BUTTON CLICK
   const handleInstallClick = async () => {
-    setInstallError(null);
     setInstalling(true);
 
     try {
@@ -50,30 +70,29 @@ export default function InstallApp() {
         const ok = await triggerInstall();
         if (ok) {
           setInstalledSuccess(true);
-        } else {
-          // User cancelled prompt
-          setInstalling(false);
+          setTimeout(() => {
+            navigate('/', { replace: true });
+          }, 1500);
+          return;
         }
-      } else if (isIos) {
-        // iOS requires manual Add to Home Screen
+      }
+
+      if (isIos) {
         setInstalling(false);
         const guideEl = document.getElementById('ios-guide-section');
         if (guideEl) {
           guideEl.scrollIntoView({ behavior: 'smooth' });
         }
-      } else {
-        // Fallback instructions for Android / other browsers
-        setInstalling(false);
-        setInstallError(
-          language === 'am'
-            ? 'አፑን ለመጫን በላይኛው ቀኝ ጥግ ያለውን የ Chrome ሶስት ነጥብ (⋮) ተጭነው "Install app" ወይም "Add to Home screen" ይምረጡ::'
-            : 'To install the app, tap the three dots (⋮) in your browser menu and choose "Install app" or "Add to Home screen".'
-        );
+        return;
       }
-    } catch (err: any) {
-      console.error('Install error:', err);
-      setInstallError(err?.message || 'Installation prompt error');
+
+      // If canInstall is not ready or manual install needed on Android Chrome
       setInstalling(false);
+      setShowHelpModal(true);
+    } catch (err: any) {
+      console.warn('Install error:', err);
+      setInstalling(false);
+      setShowHelpModal(true);
     }
   };
 
@@ -148,42 +167,28 @@ export default function InstallApp() {
 
           {/* ── MAIN ACTION BUTTONS ── */}
           <div className="mt-5 space-y-2.5">
-            {installedSuccess ? (
-              <div className="space-y-2">
-                <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700 rounded-2xl p-3 flex items-center justify-center gap-2 text-emerald-800 dark:text-emerald-300 font-black text-xs">
-                  <CheckCircle2 size={18} className="text-emerald-500" />
-                  <span>{language === 'am' ? 'Choice Bingo በተሳካ ሁኔታ ተጭኗል!' : 'Choice Bingo is Installed!'}</span>
-                </div>
-                <button
-                  onClick={() => navigate('/')}
-                  className="w-full py-4 px-5 bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 hover:from-emerald-400 hover:to-teal-400 text-white font-black text-base rounded-2xl shadow-[0_6px_0_0_#065f46] active:translate-y-1 active:shadow-none transition-all flex items-center justify-center gap-2"
-                >
-                  <Gamepad2 size={20} />
-                  <span>{language === 'am' ? 'ጨዋታውን ክፈት (Launch Game)' : 'Launch Game Now'}</span>
-                  <ArrowRight size={18} />
-                </button>
+            {/* Success Banner when installed */}
+            {installedSuccess && (
+              <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700 rounded-2xl p-3 flex items-center justify-center gap-2 text-emerald-800 dark:text-emerald-300 font-black text-xs animate-fade-in">
+                <CheckCircle2 size={18} className="text-emerald-500" />
+                <span>{language === 'am' ? 'Choice Bingo ተጭኗል! ጨዋታው እየተከፈተ ነው...' : 'Choice Bingo Installed! Opening game...'}</span>
               </div>
-            ) : (
-              <button
-                onClick={handleInstallClick}
-                disabled={installing}
-                className="w-full py-4 px-5 bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-black text-base rounded-2xl shadow-[0_6px_0_0_#b45309] active:translate-y-1 active:shadow-none transition-all flex items-center justify-center gap-2 group relative overflow-hidden disabled:opacity-50"
-              >
-                <div className="absolute inset-0 bg-white/20 transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
-                <Download size={22} className="text-slate-950 animate-bounce" />
-                <span className="tracking-wide">
-                  {installing 
-                    ? (language === 'am' ? 'እየተጫነ ነው...' : 'Installing...')
-                    : (language === 'am' ? '📲 አፑን ጫን (Install App)' : '📲 Install Choice Bingo App')}
-                </span>
-              </button>
             )}
 
-            {installError && (
-              <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-xs font-semibold p-3 rounded-xl text-left">
-                {installError}
-              </div>
-            )}
+            {/* ALWAYS DISPLAYED: 1-Click Install Application Button */}
+            <button
+              onClick={handleInstallClick}
+              disabled={installing}
+              className="w-full py-4 px-5 bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-black text-base rounded-2xl shadow-[0_6px_0_0_#b45309] active:translate-y-1 active:shadow-none transition-all flex items-center justify-center gap-2.5 group relative overflow-hidden disabled:opacity-60"
+            >
+              <div className="absolute inset-0 bg-white/20 transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+              <Download size={22} className="text-slate-950 shrink-0 animate-bounce" />
+              <span className="tracking-wide">
+                {installing 
+                  ? (language === 'am' ? 'እየተጫነ ነው...' : 'Installing...')
+                  : (language === 'am' ? '📲 አፑን ጫን (Install App)' : '📲 Install Choice Bingo App')}
+              </span>
+            </button>
 
             {/* Direct Play without installation button */}
             <button
@@ -227,7 +232,7 @@ export default function InstallApp() {
                     {language === 'am' ? 'የ Safari ማጋሪያ ቁልፍን ይጫኑ' : 'Tap the Safari Share Button'}
                   </p>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1">
-                    <span>{language === 'am' ? 'በስክሪኑ ታችኛው ክፍል ያለውን' : 'At the bottom of your screen:'}</span>
+                    <span>{language === 'am' ? 'በስክሪኑ ታችኛው ክፍል ያለውን' : 'At the bottom of Safari:'}</span>
                     <Share2 size={13} className="text-blue-500 inline" />
                   </p>
                 </div>
@@ -323,6 +328,80 @@ export default function InstallApp() {
         </div>
 
       </div>
+
+      {/* ── CHROME / BROWSER MANUAL INSTALL MODAL POPUP ── */}
+      {showHelpModal && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 w-full max-w-sm space-y-4 shadow-2xl relative text-center">
+            <button
+              onClick={() => setShowHelpModal(false)}
+              className="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-white flex items-center justify-center transition-colors"
+            >
+              <X size={16} />
+            </button>
+
+            <div className="w-14 h-14 mx-auto rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center shadow-inner">
+              <Download size={28} />
+            </div>
+
+            <div>
+              <h3 className="font-black text-base text-slate-900 dark:text-white">
+                {language === 'am' ? 'አፑን በስልክዎ ለመጫን' : 'How to Install Choice Bingo'}
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                {language === 'am' 
+                  ? 'ከታች ያሉትን 2 ቀላል ቅደም ተከተሎች ይከተሉ:' 
+                  : 'Follow these 2 simple steps in your browser:'}
+              </p>
+            </div>
+
+            <div className="text-left space-y-2.5 text-xs text-slate-700 dark:text-slate-200">
+              <div className="flex items-start gap-2.5 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-100 dark:border-slate-800">
+                <span className="w-6 h-6 rounded-full bg-amber-500 text-slate-950 font-black text-xs flex items-center justify-center shrink-0">1</span>
+                <div>
+                  <p className="font-bold">
+                    {language === 'am' ? 'የ Chrome ሶስት ነጥብ (⋮) ይጫኑ' : 'Tap the Browser Menu (⋮)'}
+                  </p>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                    {language === 'am' ? 'በስክሪኑ የላይኛው ቀኝ ጥግ ላይ ያለውን ⋮ ምልክት ይጫኑ' : 'Located at the top-right corner of your browser'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-2.5 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-100 dark:border-slate-800">
+                <span className="w-6 h-6 rounded-full bg-amber-500 text-slate-950 font-black text-xs flex items-center justify-center shrink-0">2</span>
+                <div>
+                  <p className="font-bold">
+                    {language === 'am' ? '"Install app" ወይም "Add to Home screen" ይምረጡ' : 'Select "Install app" or "Add to Home screen"'}
+                  </p>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                    {language === 'am' ? 'Choice Bingo ወዲያውኑ በስልክዎ መነሻ ገጽ ላይ ይጫናል!' : 'Choice Bingo will be added directly to your phone screen!'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2 pt-1">
+              <button
+                onClick={() => setShowHelpModal(false)}
+                className="w-full py-3.5 bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 font-black rounded-xl text-xs active:scale-95 transition-all shadow-md"
+              >
+                {language === 'am' ? 'ተረድቻለሁ (Got it)' : 'Got it!'}
+              </button>
+
+              <button
+                onClick={() => {
+                  setShowHelpModal(false);
+                  navigate('/');
+                }}
+                className="w-full py-2.5 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-bold transition-colors"
+              >
+                {language === 'am' ? 'ወደ ጨዋታው ቀጥታ ሂድ' : 'Continue to Game Directly'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
