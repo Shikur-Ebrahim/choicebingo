@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Bot, Clock, Save, Sparkles, Plus,
   Search, Edit2, CheckCircle2, AlertCircle, RefreshCw, Trophy,
-  Users, Sliders, Check, Layers, RotateCcw
+  Users, Sliders, Check, Layers, RotateCcw, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import WebApp from '@twa-dev/sdk';
 
@@ -148,13 +148,13 @@ export default function AdminSystemPlayers() {
     }
   };
 
-  // Fetch Players Roster
+  // Fetch Players Roster (50 players per page like Leaderboard)
   const fetchPlayers = async (pageNum = page, query = searchQuery) => {
     setLoadingPlayers(true);
     try {
       const q = encodeURIComponent(query);
       const res = await fetch(
-        `${API_URL}/admin/system-players/players?page=${pageNum}&limit=25&q=${q}`,
+        `${API_URL}/admin/system-players/players?page=${pageNum}&limit=50&q=${q}&search=${q}`,
         { headers: getHeaders() }
       );
       if (res.ok) {
@@ -163,13 +163,24 @@ export default function AdminSystemPlayers() {
         setTotalCount(data.total || 0);
         setActiveCount(data.activeCount || 0);
         setTotalWins(data.totalWins || 0);
-        setTotalPages(data.totalPages || 1);
-        setPage(data.page || 1);
+        const pages = data.totalPages || Math.ceil((data.total || 0) / 50) || 1;
+        setTotalPages(pages);
+        setPage(data.page || pageNum);
       }
     } catch (e) {
       console.error('Failed to load players:', e);
     } finally {
       setLoadingPlayers(false);
+    }
+  };
+
+  const goToPage = (newPage: number) => {
+    if (newPage < 1 || newPage > totalPages) return;
+    setPage(newPage);
+    fetchPlayers(newPage, searchQuery);
+    const tableEl = document.getElementById('roster-table-top');
+    if (tableEl) {
+      tableEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   };
 
@@ -1109,7 +1120,7 @@ export default function AdminSystemPlayers() {
             </div>
 
             {/* Players List Table */}
-            <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+            <div id="roster-table-top" className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
               <div className="px-3.5 py-2.5 bg-slate-50 border-b border-slate-200 flex justify-between items-center text-[11px] font-bold text-slate-600 uppercase tracking-wider">
                 <span>Player & Telegram ID</span>
                 <span>Wins / Status</span>
@@ -1186,28 +1197,57 @@ export default function AdminSystemPlayers() {
                 </div>
               )}
 
-              {/* Pagination */}
+              {/* ── 3D LUXURY PAGINATION SECTION (MATCHING LEADERBOARD) ── */}
               {totalPages > 1 && (
-                <div className="p-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs text-slate-600">
-                  <span>
-                    Page <b>{page}</b> of <b>{totalPages}</b>
-                  </span>
-                  <div className="flex space-x-1.5">
+                <div className="p-3 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-2.5">
+                  <div className="text-xs font-bold text-slate-600">
+                    Players <span className="text-violet-600 font-black">#{((page - 1) * 50) + 1}</span> to <span className="text-violet-600 font-black">#{Math.min(page * 50, totalCount || players.length)}</span> of <span className="font-black text-slate-900">{totalCount || players.length}</span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
                     <button
                       type="button"
                       disabled={page <= 1}
-                      onClick={() => fetchPlayers(page - 1, searchQuery)}
-                      className="px-2.5 py-1 rounded bg-white border border-slate-300 hover:bg-slate-100 disabled:opacity-40 font-bold"
+                      onClick={() => goToPage(page - 1)}
+                      className="px-3 py-1.5 rounded-xl text-xs font-black bg-white hover:bg-slate-100 border border-slate-200 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 transition-all active:scale-95 text-slate-700 shadow-xs"
                     >
-                      Prev
+                      <ChevronLeft size={14} />
+                      <span>Prev</span>
                     </button>
+
+                    {/* Page Number Buttons */}
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: totalPages }, (_, i) => i + 1)
+                        .filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
+                        .map((p, idx, arr) => {
+                          const prevP = arr[idx - 1];
+                          return (
+                            <span key={p} className="flex items-center gap-1">
+                              {prevP && p - prevP > 1 && <span className="text-slate-400 text-xs px-0.5">...</span>}
+                              <button
+                                type="button"
+                                onClick={() => goToPage(p)}
+                                className={`w-7 h-7 rounded-lg text-xs font-black transition-all ${
+                                  p === page
+                                    ? 'bg-gradient-to-b from-amber-400 to-amber-500 text-white shadow-md shadow-amber-500/25'
+                                    : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
+                                }`}
+                              >
+                                {p}
+                              </button>
+                            </span>
+                          );
+                        })}
+                    </div>
+
                     <button
                       type="button"
                       disabled={page >= totalPages}
-                      onClick={() => fetchPlayers(page + 1, searchQuery)}
-                      className="px-2.5 py-1 rounded bg-white border border-slate-300 hover:bg-slate-100 disabled:opacity-40 font-bold"
+                      onClick={() => goToPage(page + 1)}
+                      className="px-3 py-1.5 rounded-xl text-xs font-black bg-white hover:bg-slate-100 border border-slate-200 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 transition-all active:scale-95 text-slate-700 shadow-xs"
                     >
-                      Next
+                      <span>Next</span>
+                      <ChevronRight size={14} />
                     </button>
                   </div>
                 </div>

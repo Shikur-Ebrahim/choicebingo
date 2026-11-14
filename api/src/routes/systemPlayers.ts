@@ -59,10 +59,11 @@ router.get('/players', async (req, res) => {
   try {
     const page = Math.max(1, Number(req.query.page) || 1);
     const limit = Math.max(10, Math.min(100, Number(req.query.limit) || 50));
-    const search = String(req.query.search || '');
+    const search = String(req.query.search || req.query.q || '');
 
     const { players, total } = await getSystemPlayers(page, limit, search);
-    res.json({ players, total, page, limit });
+    const totalPages = Math.ceil(total / limit) || 1;
+    res.json({ players, total, page, limit, totalPages });
   } catch (err: any) {
     res.status(500).json({ error: err.message || 'Failed to fetch system players' });
   }
