@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS system_players_config (
 
 -- Default row for config
 INSERT INTO system_players_config (id, enabled, schedule_enabled, time_start, time_end, target_stakes, min_players_per_game, max_players_per_game, min_cartelas_per_player, max_cartelas_per_player, stake_player_ranges)
-VALUES (1, false, false, '01:00', '24:00', '{10,20,50,100}', 10, 31, 1, 4, '{"10":{"min":10,"max":31},"20":{"min":9,"max":15},"50":{"min":5,"max":11},"100":{"min":3,"max":6}}'::jsonb)
+VALUES (1, false, false, '01:00', '24:00', '{10,20}', 10, 31, 1, 3, '{"10":{"min":10,"max":31},"20":{"min":9,"max":15},"50":{"min":0,"max":0},"100":{"min":0,"max":0}}'::jsonb)
 ON CONFLICT (id) DO NOTHING;
 
 -- RLS

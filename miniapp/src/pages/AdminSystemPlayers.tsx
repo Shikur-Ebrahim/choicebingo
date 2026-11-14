@@ -38,13 +38,20 @@ interface SystemPlayersConfig {
 const DEFAULT_STAKE_RANGES: Record<string, StakePlayerRange> = {
   "10":  { min: 10, max: 31 },
   "20":  { min: 9,  max: 15 },
-  "50":  { min: 5,  max: 11 },
-  "100": { min: 3,  max: 6  },
+  "50":  { min: 0,  max: 0  },
+  "100": { min: 0,  max: 0  },
 };
 
 export default function AdminSystemPlayers() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'settings' | 'roster'>('settings');
+
+  // Live Ethiopian Time (EAT = UTC+3) Clock
+  const [nowEat, setNowEat] = useState(new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setNowEat(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Config State
   const [config, setConfig] = useState<SystemPlayersConfig>({
@@ -52,11 +59,11 @@ export default function AdminSystemPlayers() {
     schedule_enabled: false,
     time_start: '01:00',
     time_end: '24:00',
-    target_stakes: [10, 20, 50, 100],
+    target_stakes: [10, 20], // Stakes 50 and 100 default to off/0 players
     min_players_per_game: 10,
     max_players_per_game: 31,
     min_cartelas_per_player: 1,
-    max_cartelas_per_player: 4,
+    max_cartelas_per_player: 3, // Default 1-3
     stake_player_ranges: DEFAULT_STAKE_RANGES,
   });
 
@@ -276,15 +283,15 @@ export default function AdminSystemPlayers() {
     }
   };
 
-  // Update Stake-Specific Player Range
+  // Update Stake-Specific Player Range (allows 0 to turn off bots for a stake)
   const updateStakeRange = (stake: string, field: 'min' | 'max', value: number) => {
     const currentRanges = config.stake_player_ranges || DEFAULT_STAKE_RANGES;
-    const currentStake = currentRanges[stake] || { min: 10, max: 50 };
+    const currentStake = currentRanges[stake] || { min: 0, max: 0 };
     const updated = {
       ...currentRanges,
       [stake]: {
         ...currentStake,
-        [field]: Math.max(1, value),
+        [field]: Math.max(0, value),
       },
     };
     setConfig({ ...config, stake_player_ranges: updated });
@@ -329,7 +336,7 @@ export default function AdminSystemPlayers() {
 
   const resetStakeRangesToDefault = () => {
     setConfig({ ...config, stake_player_ranges: { ...DEFAULT_STAKE_RANGES } });
-    showToast('Reset stake ranges to default: 10 ETB (10-31), 20 ETB (9-15), 50 ETB (5-11), 100 ETB (3-6)');
+    showToast('Reset to defaults: 10 ETB (10-31), 20 ETB (9-15), 50 ETB (0 OFF), 100 ETB (0 OFF)');
   };
 
 
@@ -339,6 +346,108 @@ export default function AdminSystemPlayers() {
     const pad = hour < 10 ? `0${hour}` : `${hour}`;
     return `${pad}:00`;
   });
+
+  // EAT = UTC + 3
+  const eatHours = (nowEat.getUTCHours() + 3) % 24;
+  const eatMinutes = nowEat.getUTCMinutes();
+  const eatSeconds = nowEat.getUTCSeconds();
+  const currentMinuteOfDay = eatHours * 60 + eatMinutes;
+
+  const padZero = (n: number) => (n < 10 ? `0${n}` : `${n}`);
+  const liveEatTimeStr = `${padZero(eatHours)}:${padZero(eatMinutes)}:${padZero(eatSeconds)}`;
+
+  const parseHM = (val: string, fallback: number): number => {
+    if (!val) return fallback;
+    const parts = val.split(':').map(Number);
+    const h = parts[0] || 0;
+    const m = parts[1] || 0;
+    if (h >= 24) return 1440;
+    return h * 60 + m;
+  };
+
+  const startMin = parseHM(config.time_start, 60);
+  const endMin = parseHM(config.time_end, 1440);
+
+  const isScheduleActiveNow = (() => {
+    if (!config.enabled) return false;
+    if (!config.schedule_enabled) return true;
+    if (startMin <= endMin) {
+      return currentMinuteOfDay >= startMin && currentMinuteOfDay <= endMin;
+    }
+    return currentMinuteOfDay >= startMin || currentMinuteOfDay <= endMin;
+  })();
+
+  const scheduleCountdownInfo = (() => {
+    if (!config.enabled) {
+      return { text: 'Engine switch is OFF', badge: 'bg-slate-100 text-slate-600 border-slate-200', active: false };
+    }
+    if (!config.schedule_enabled) {
+      return { text: '24/7 Full-Day Active (Always Running)', badge: 'bg-emerald-50 text-emerald-700 border-emerald-300', active: true };
+    }
+
+    if (startMin <= endMin) {
+      if (currentMinuteOfDay >= startMin && currentMinuteOfDay <= endMin) {
+        const leftMin = endMin - currentMinuteOfDay;
+        const hLeft = Math.floor(leftMin / 60);
+        const mLeft = leftMin % 60;
+        return {
+          text: `Active Now • Ends in ${hLeft > 0 ? `${hLeft}h ` : ''}${mLeft}m (at ${config.time_end})`,
+          badge: 'bg-emerald-50 text-emerald-700 border-emerald-300',
+          active: true,
+        };
+      } else if (currentMinuteOfDay < startMin) {
+        const untilMin = startMin - currentMinuteOfDay;
+        const hUntil = Math.floor(untilMin / 60);
+        const mUntil = untilMin % 60;
+        return {
+          text: `Off Hours • Starts in ${hUntil > 0 ? `${hUntil}h ` : ''}${mUntil}m (at ${config.time_start})`,
+          badge: 'bg-amber-50 text-amber-700 border-amber-300',
+          active: false,
+        };
+      } else {
+        const untilMin = (1440 - currentMinuteOfDay) + startMin;
+        const hUntil = Math.floor(untilMin / 60);
+        const mUntil = untilMin % 60;
+        return {
+          text: `Off Hours • Starts in ${hUntil > 0 ? `${hUntil}h ` : ''}${mUntil}m (at ${config.time_start})`,
+          badge: 'bg-amber-50 text-amber-700 border-amber-300',
+          active: false,
+        };
+      }
+    } else {
+      if (currentMinuteOfDay >= startMin || currentMinuteOfDay <= endMin) {
+        const leftMin = currentMinuteOfDay <= endMin ? endMin - currentMinuteOfDay : (1440 - currentMinuteOfDay) + endMin;
+        const hLeft = Math.floor(leftMin / 60);
+        const mLeft = leftMin % 60;
+        return {
+          text: `Active Now • Ends in ${hLeft > 0 ? `${hLeft}h ` : ''}${mLeft}m (at ${config.time_end})`,
+          badge: 'bg-emerald-50 text-emerald-700 border-emerald-300',
+          active: true,
+        };
+      } else {
+        const untilMin = startMin - currentMinuteOfDay;
+        const hUntil = Math.floor(untilMin / 60);
+        const mUntil = untilMin % 60;
+        return {
+          text: `Off Hours • Starts in ${hUntil > 0 ? `${hUntil}h ` : ''}${mUntil}m (at ${config.time_start})`,
+          badge: 'bg-amber-50 text-amber-700 border-amber-300',
+          active: false,
+        };
+      }
+    }
+  })();
+
+  const isHourInActiveSchedule = (hourNum: number): boolean => {
+    if (!config.schedule_enabled) return true;
+    const sH = Number(config.time_start.split(':')[0]) || 1;
+    const eH = Number(config.time_end.split(':')[0]) || 24;
+    if (sH <= eH) {
+      return hourNum >= sH && hourNum <= eH;
+    }
+    return hourNum >= sH || hourNum <= eH;
+  };
+
+  const currentHourNum = eatHours === 0 ? 24 : eatHours;
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 pb-20 font-sans">
@@ -372,10 +481,28 @@ export default function AdminSystemPlayers() {
 
         {/* Global Active Badge */}
         <div className={`px-3 py-1 rounded-full text-[11px] font-bold flex items-center space-x-1.5 shadow-sm ${
-          config.enabled ? 'bg-emerald-50 text-emerald-700 border border-emerald-300' : 'bg-slate-100 text-slate-600 border border-slate-200'
+          config.enabled
+            ? isScheduleActiveNow
+              ? 'bg-emerald-50 text-emerald-700 border border-emerald-300'
+              : 'bg-amber-50 text-amber-700 border border-amber-300'
+            : 'bg-slate-100 text-slate-600 border border-slate-200'
         }`}>
-          <span className={`w-2 h-2 rounded-full ${config.enabled ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
-          <span>{config.enabled ? 'ACTIVE' : 'OFF'}</span>
+          <span className={`w-2 h-2 rounded-full ${
+            config.enabled
+              ? isScheduleActiveNow
+                ? 'bg-emerald-500 animate-pulse'
+                : 'bg-amber-500'
+              : 'bg-slate-400'
+          }`} />
+          <span>
+            {config.enabled
+              ? config.schedule_enabled
+                ? isScheduleActiveNow
+                  ? 'ACTIVE'
+                  : 'OFF-HOURS'
+                : 'ACTIVE 24/7'
+              : 'OFF'}
+          </span>
         </div>
       </div>
 
@@ -442,24 +569,31 @@ export default function AdminSystemPlayers() {
                     Auto-populate waiting bingo games with authentic virtual Ethiopian players
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleToggleEnabled}
-                  className={`relative inline-flex h-7 w-13 items-center rounded-full transition-colors focus:outline-none ${
-                    config.enabled ? 'bg-emerald-500' : 'bg-slate-300'
-                  }`}
-                >
-                  <span
-                    className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-md transition-transform ${
-                      config.enabled ? 'translate-x-7' : 'translate-x-1'
+                <div className="flex items-center gap-2.5">
+                  <span className={`text-[11px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md ${
+                    config.enabled ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'
+                  }`}>
+                    {config.enabled ? 'ON' : 'OFF'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleToggleEnabled}
+                    className={`relative inline-flex h-7 w-14 items-center rounded-full transition-colors focus:outline-none ${
+                      config.enabled ? 'bg-emerald-500' : 'bg-slate-300'
                     }`}
-                  />
-                </button>
+                  >
+                    <span
+                      className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-md transition-transform ${
+                        config.enabled ? 'translate-x-8' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
               </div>
             </div>
 
             {/* 1 - 24 Hour Schedule Setup */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-4 space-y-3 shadow-sm">
+            <div className="bg-white border border-slate-200 rounded-2xl p-4 space-y-3.5 shadow-sm">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                   <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
@@ -470,19 +604,102 @@ export default function AdminSystemPlayers() {
                     Set active hours from 1:00 up to 24:00 (Ethiopian EAT / UTC+3)
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleToggleSchedule}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
-                    config.schedule_enabled ? 'bg-amber-500' : 'bg-slate-300'
-                  }`}
-                >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-md transition-transform ${
-                      config.schedule_enabled ? 'translate-x-6' : 'translate-x-1'
+                <div className="flex items-center gap-2.5">
+                  <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md ${
+                    config.schedule_enabled ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500'
+                  }`}>
+                    {config.schedule_enabled ? 'CUSTOM' : '24/7 ALL-DAY'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleToggleSchedule}
+                    className={`relative inline-flex h-7 w-14 items-center rounded-full transition-colors focus:outline-none ${
+                      config.schedule_enabled ? 'bg-amber-500' : 'bg-slate-300'
                     }`}
-                  />
-                </button>
+                  >
+                    <span
+                      className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-md transition-transform ${
+                        config.schedule_enabled ? 'translate-x-8' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
+
+              {/* ── LIVE SCHEDULING TIMER & REAL-TIME STATUS CAPSULE ── */}
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2.5">
+                <div className="flex items-center justify-between text-xs flex-wrap gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                    <span className="text-[11px] font-black text-slate-600 uppercase tracking-wider">EAT Clock:</span>
+                    <span className="font-mono font-bold text-xs text-slate-900 bg-white border border-slate-200 px-2 py-0.5 rounded-md shadow-xs">
+                      {liveEatTimeStr}
+                    </span>
+                  </div>
+                  <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border shadow-xs ${scheduleCountdownInfo.badge}`}>
+                    {scheduleCountdownInfo.text}
+                  </span>
+                </div>
+
+                {/* ── 24-HOUR VISUAL INTERVAL GRAPH (TIMELINE BAR) ── */}
+                <div className="space-y-1.5 pt-1">
+                  <div className="flex items-center justify-between text-[10px] font-bold text-slate-500">
+                    <span className="text-violet-700 bg-violet-50 border border-violet-200 px-1.5 py-0.5 rounded">
+                      START: {config.time_start}
+                    </span>
+                    <span className="text-slate-500 font-bold uppercase tracking-wider text-[9px]">
+                      24h Timeline Graph (01:00 → 24:00)
+                    </span>
+                    <span className="text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
+                      END: {config.time_end}
+                    </span>
+                  </div>
+
+                  {/* 24 Segments Bar */}
+                  <div className="grid grid-cols-12 sm:grid-cols-24 gap-0.5 bg-slate-200/90 p-1 rounded-lg border border-slate-300/80">
+                    {Array.from({ length: 24 }, (_, i) => {
+                      const hourNum = i + 1;
+                      const isActiveHour = isHourInActiveSchedule(hourNum);
+                      const isNow = hourNum === currentHourNum;
+
+                      return (
+                        <div
+                          key={hourNum}
+                          title={`Hour ${hourNum}:00 — ${isActiveHour ? 'ACTIVE' : 'OFF'}${isNow ? ' (CURRENT TIME)' : ''}`}
+                          className={`h-6 rounded-xs flex items-center justify-center relative transition-all ${
+                            isNow
+                              ? 'ring-2 ring-violet-600 z-10 scale-105 shadow-sm font-black ' + (isActiveHour ? 'bg-emerald-500 text-white' : 'bg-slate-500 text-white')
+                              : isActiveHour
+                                ? 'bg-emerald-500 text-white hover:brightness-105'
+                                : 'bg-slate-300 text-slate-500 hover:bg-slate-400'
+                          }`}
+                        >
+                          <span className="text-[7.5px] font-black leading-none">
+                            {hourNum}
+                          </span>
+                          {isNow && (
+                            <span className="absolute -top-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-violet-600 rounded-full" />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Graph Legend */}
+                  <div className="flex items-center justify-between text-[9px] font-bold text-slate-500 pt-0.5">
+                    <div className="flex items-center gap-2.5">
+                      <span className="flex items-center gap-1">
+                        <span className="w-2.5 h-2.5 rounded bg-emerald-500 inline-block" /> Active Hours
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <span className="w-2.5 h-2.5 rounded bg-slate-300 inline-block" /> Off Hours
+                      </span>
+                    </div>
+                    <span className="flex items-center gap-1 text-violet-700">
+                      <span className="w-2.5 h-2.5 rounded ring-2 ring-violet-600 bg-emerald-500 inline-block" /> Current (Hour {currentHourNum})
+                    </span>
+                  </div>
+                </div>
               </div>
 
               {config.schedule_enabled ? (
@@ -608,7 +825,7 @@ export default function AdminSystemPlayers() {
                       <label className="text-[10px] text-slate-500 font-bold block mb-0.5">Min Bots</label>
                       <input
                         type="number"
-                        min={1}
+                        min={0}
                         max={100}
                         value={config.stake_player_ranges?.['10']?.min ?? 10}
                         onChange={(e) => updateStakeRange('10', 'min', Number(e.target.value))}
@@ -619,7 +836,7 @@ export default function AdminSystemPlayers() {
                       <label className="text-[10px] text-slate-500 font-bold block mb-0.5">Max Bots</label>
                       <input
                         type="number"
-                        min={config.stake_player_ranges?.['10']?.min ?? 10}
+                        min={config.stake_player_ranges?.['10']?.min ?? 0}
                         max={100}
                         value={config.stake_player_ranges?.['10']?.max ?? 31}
                         onChange={(e) => updateStakeRange('10', 'max', Number(e.target.value))}
@@ -644,7 +861,7 @@ export default function AdminSystemPlayers() {
                       <label className="text-[10px] text-slate-500 font-bold block mb-0.5">Min Bots</label>
                       <input
                         type="number"
-                        min={1}
+                        min={0}
                         max={100}
                         value={config.stake_player_ranges?.['20']?.min ?? 9}
                         onChange={(e) => updateStakeRange('20', 'min', Number(e.target.value))}
@@ -655,7 +872,7 @@ export default function AdminSystemPlayers() {
                       <label className="text-[10px] text-slate-500 font-bold block mb-0.5">Max Bots</label>
                       <input
                         type="number"
-                        min={config.stake_player_ranges?.['20']?.min ?? 9}
+                        min={config.stake_player_ranges?.['20']?.min ?? 0}
                         max={100}
                         value={config.stake_player_ranges?.['20']?.max ?? 15}
                         onChange={(e) => updateStakeRange('20', 'max', Number(e.target.value))}
@@ -665,14 +882,18 @@ export default function AdminSystemPlayers() {
                   </div>
                 </div>
 
-                {/* 50 ETB: 5-11 players */}
+                {/* 50 ETB: 0 players (OFF by default) */}
                 <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2">
                   <div className="flex justify-between items-center">
                     <span className="font-black text-xs text-amber-700 bg-amber-100 px-2 py-0.5 rounded-md">
                       50 ETB Stake
                     </span>
-                    <span className="text-[11px] font-bold text-slate-500">
-                      Default: 5–11
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                      (config.stake_player_ranges?.['50']?.max ?? 0) === 0
+                        ? 'bg-rose-50 text-rose-600 border border-rose-200'
+                        : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                    }`}>
+                      {(config.stake_player_ranges?.['50']?.max ?? 0) === 0 ? 'OFF (0 Bots)' : 'Default: 0 (OFF)'}
                     </span>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
@@ -680,9 +901,9 @@ export default function AdminSystemPlayers() {
                       <label className="text-[10px] text-slate-500 font-bold block mb-0.5">Min Bots</label>
                       <input
                         type="number"
-                        min={1}
+                        min={0}
                         max={100}
-                        value={config.stake_player_ranges?.['50']?.min ?? 5}
+                        value={config.stake_player_ranges?.['50']?.min ?? 0}
                         onChange={(e) => updateStakeRange('50', 'min', Number(e.target.value))}
                         className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-black text-slate-800 text-center focus:outline-none focus:border-amber-500"
                       />
@@ -691,9 +912,9 @@ export default function AdminSystemPlayers() {
                       <label className="text-[10px] text-slate-500 font-bold block mb-0.5">Max Bots</label>
                       <input
                         type="number"
-                        min={config.stake_player_ranges?.['50']?.min ?? 5}
+                        min={config.stake_player_ranges?.['50']?.min ?? 0}
                         max={100}
-                        value={config.stake_player_ranges?.['50']?.max ?? 11}
+                        value={config.stake_player_ranges?.['50']?.max ?? 0}
                         onChange={(e) => updateStakeRange('50', 'max', Number(e.target.value))}
                         className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-black text-slate-800 text-center focus:outline-none focus:border-amber-500"
                       />
@@ -701,14 +922,18 @@ export default function AdminSystemPlayers() {
                   </div>
                 </div>
 
-                {/* 100 ETB: 3-6 players */}
+                {/* 100 ETB: 0 players (OFF by default) */}
                 <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2">
                   <div className="flex justify-between items-center">
                     <span className="font-black text-xs text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md">
                       100 ETB Stake
                     </span>
-                    <span className="text-[11px] font-bold text-slate-500">
-                      Default: 3–6
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                      (config.stake_player_ranges?.['100']?.max ?? 0) === 0
+                        ? 'bg-rose-50 text-rose-600 border border-rose-200'
+                        : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                    }`}>
+                      {(config.stake_player_ranges?.['100']?.max ?? 0) === 0 ? 'OFF (0 Bots)' : 'Default: 0 (OFF)'}
                     </span>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
@@ -716,9 +941,9 @@ export default function AdminSystemPlayers() {
                       <label className="text-[10px] text-slate-500 font-bold block mb-0.5">Min Bots</label>
                       <input
                         type="number"
-                        min={1}
+                        min={0}
                         max={100}
-                        value={config.stake_player_ranges?.['100']?.min ?? 3}
+                        value={config.stake_player_ranges?.['100']?.min ?? 0}
                         onChange={(e) => updateStakeRange('100', 'min', Number(e.target.value))}
                         className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-black text-slate-800 text-center focus:outline-none focus:border-emerald-500"
                       />
@@ -727,9 +952,9 @@ export default function AdminSystemPlayers() {
                       <label className="text-[10px] text-slate-500 font-bold block mb-0.5">Max Bots</label>
                       <input
                         type="number"
-                        min={config.stake_player_ranges?.['100']?.min ?? 3}
+                        min={config.stake_player_ranges?.['100']?.min ?? 0}
                         max={100}
-                        value={config.stake_player_ranges?.['100']?.max ?? 6}
+                        value={config.stake_player_ranges?.['100']?.max ?? 0}
                         onChange={(e) => updateStakeRange('100', 'max', Number(e.target.value))}
                         className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-black text-slate-800 text-center focus:outline-none focus:border-emerald-500"
                       />
@@ -772,7 +997,7 @@ export default function AdminSystemPlayers() {
 
             {/* Cartelas Range Per Bot */}
             <div className="bg-white border border-slate-200 rounded-2xl p-4 space-y-3 shadow-sm">
-              <div className="flex justify-between text-xs">
+              <div className="flex justify-between text-xs items-center">
                 <span className="text-slate-700 font-bold">Cartelas per player (range):</span>
                 <span className="font-bold text-violet-700 bg-violet-50 px-2 py-0.5 rounded-md">
                   {config.min_cartelas_per_player} – {config.max_cartelas_per_player} cartelas
@@ -784,9 +1009,9 @@ export default function AdminSystemPlayers() {
                   <input
                     type="number"
                     min={1}
-                    max={4}
+                    max={3}
                     value={config.min_cartelas_per_player}
-                    onChange={(e) => setConfig({ ...config, min_cartelas_per_player: Math.max(1, Math.min(4, Number(e.target.value))) })}
+                    onChange={(e) => setConfig({ ...config, min_cartelas_per_player: Math.max(1, Math.min(3, Number(e.target.value))) })}
                     className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-violet-500 font-bold"
                   />
                 </div>
@@ -801,6 +1026,9 @@ export default function AdminSystemPlayers() {
                     className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-violet-500 font-bold"
                   />
                 </div>
+              </div>
+              <div className="text-[11px] text-violet-800 bg-violet-50/80 border border-violet-100 rounded-xl p-2.5">
+                🎯 Authentic Selection: <b>70%</b> buy 1 cartela • <b>20%</b> buy 2 cartelas • <b>10%</b> buy 3 cartelas (from full 200 board)
               </div>
             </div>
 

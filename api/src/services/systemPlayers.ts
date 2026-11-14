@@ -31,8 +31,8 @@ export interface SystemPlayersConfig {
 export const DEFAULT_STAKE_RANGES: Record<string, StakePlayerRange> = {
   "10":  { min: 10, max: 31 },
   "20":  { min: 9,  max: 15 },
-  "50":  { min: 5,  max: 11 },
-  "100": { min: 3,  max: 6  },
+  "50":  { min: 0,  max: 0  },
+  "100": { min: 0,  max: 0  },
 };
 
 export const DEFAULT_CONFIG: SystemPlayersConfig = {
@@ -40,11 +40,11 @@ export const DEFAULT_CONFIG: SystemPlayersConfig = {
   schedule_enabled: false,
   time_start: '01:00',
   time_end: '24:00',
-  target_stakes: [10, 20, 50, 100],
+  target_stakes: [10, 20], // Stake 50 and 100 default to off/0 players
   min_players_per_game: 10,
   max_players_per_game: 31,
   min_cartelas_per_player: 1,
-  max_cartelas_per_player: 4,
+  max_cartelas_per_player: 3, // Default 1-3 (70% 1, 20% 2, 10% 3)
   stake_player_ranges: DEFAULT_STAKE_RANGES,
 };
 
@@ -262,12 +262,30 @@ export async function saveSystemPlayersConfig(cfg: Partial<SystemPlayersConfig>)
 }
 
 
+export interface ScheduleStatus {
+  isActive: boolean;
+  multiplier: number; // 0.20 to 1.0 (smooth ramp-up / ramp-down)
+  phase: 'peak' | 'ramp_up' | 'ramp_down' | 'trickle' | 'off';
+  description: string;
+}
+
 /**
- * Check if current time in East Africa Time (EAT = UTC+3) is within the scheduled 1-24 hour window.
+ * Check schedule activity in East Africa Time (EAT = UTC+3).
+ * Provides organic smooth traffic:
+ * - Starts small (ramp up over first 20 mins)
+ * - Full peak during core scheduled hours
+ * - Graceful downgrade towards end time (does NOT abruptly cliff to 0)
+ * - Tapers down into a subtle organic trickle after end time
  */
-export function isWithinSchedule(cfg: SystemPlayersConfig): boolean {
-  if (!cfg.enabled) return false;
-  if (!cfg.schedule_enabled) return true; // 24/7 active if schedule is disabled
+export function getScheduleStatus(cfg: SystemPlayersConfig): ScheduleStatus {
+  if (!cfg.enabled) {
+    return { isActive: false, multiplier: 0, phase: 'off', description: 'System players engine is disabled' };
+  }
+
+  // If schedule is disabled, 24/7 active at full strength
+  if (!cfg.schedule_enabled) {
+    return { isActive: true, multiplier: 1.0, phase: 'peak', description: '24/7 Full-day active (no schedule limits)' };
+  }
 
   // Calculate current time in UTC+3 (Ethiopian standard time)
   const now = new Date();
@@ -287,12 +305,117 @@ export function isWithinSchedule(cfg: SystemPlayersConfig): boolean {
   const startTotal = parseHourMinute(cfg.time_start, 0);
   const endTotal = parseHourMinute(cfg.time_end, 1440);
 
+  let isInside = false;
+  let minutesSinceStart = 0;
+  let minutesUntilEnd = 0;
+  let minutesAfterEnd = 0;
+
   if (startTotal <= endTotal) {
-    return currentTotal >= startTotal && currentTotal <= endTotal;
+    // Normal schedule (e.g. 06:00 to 22:00)
+    isInside = currentTotal >= startTotal && currentTotal <= endTotal;
+    if (isInside) {
+      minutesSinceStart = currentTotal - startTotal;
+      minutesUntilEnd = endTotal - currentTotal;
+    } else if (currentTotal > endTotal) {
+      minutesAfterEnd = currentTotal - endTotal;
+    } else {
+      minutesAfterEnd = (1440 - endTotal) + currentTotal;
+    }
   } else {
     // Overnight schedule (e.g. 22:00 to 05:00)
-    return currentTotal >= startTotal || currentTotal <= endTotal;
+    isInside = currentTotal >= startTotal || currentTotal <= endTotal;
+    if (isInside) {
+      minutesSinceStart = currentTotal >= startTotal ? currentTotal - startTotal : (1440 - startTotal) + currentTotal;
+      minutesUntilEnd = currentTotal <= endTotal ? endTotal - currentTotal : (1440 - currentTotal) + endTotal;
+    } else {
+      minutesAfterEnd = currentTotal - endTotal;
+    }
   }
+
+  // 1. Inside schedule:
+  if (isInside) {
+    // Ramp-up phase: first 20 minutes after start time starts small and builds up organically
+    const rampUpMinutes = 20;
+    if (minutesSinceStart < rampUpMinutes) {
+      const progress = minutesSinceStart / rampUpMinutes;
+      const multiplier = Math.max(0.35, Math.min(1.0, 0.35 + 0.65 * progress));
+      return {
+        isActive: true,
+        multiplier,
+        phase: 'ramp_up',
+        description: `Ramping up traffic (${Math.round(multiplier * 100)}% traffic, +${minutesSinceStart}m after start)`,
+      };
+    }
+
+    // Ramp-down phase: last 20 minutes before end time gradually downgrades
+    const rampDownMinutes = 20;
+    if (minutesUntilEnd < rampDownMinutes) {
+      const progress = minutesUntilEnd / rampDownMinutes;
+      const multiplier = Math.max(0.40, Math.min(1.0, 0.40 + 0.60 * progress));
+      return {
+        isActive: true,
+        multiplier,
+        phase: 'ramp_down',
+        description: `Winding down traffic (${Math.round(multiplier * 100)}% traffic, -${minutesUntilEnd}m to end)`,
+      };
+    }
+
+    // Peak active phase: 100% full capacity
+    return {
+      isActive: true,
+      multiplier: 1.0,
+      phase: 'peak',
+      description: 'Peak schedule active (100% traffic)',
+    };
+  }
+
+  // 2. Outside schedule (after reaching end time):
+  // User: "if ths ystem player is reach end time bro just not totaly stop please just make reduced the user dungraned and just tile that patter bro not stop automatically bro to make just as the real player bro"
+  // For the first 35 minutes past end time, gracefully taper off (downgrade):
+  if (minutesAfterEnd <= 35) {
+    const progress = minutesAfterEnd / 35;
+    const multiplier = Math.max(0.20, 0.40 - 0.20 * progress);
+    return {
+      isActive: true,
+      multiplier,
+      phase: 'trickle',
+      description: `Post-schedule gentle taper (${Math.round(multiplier * 100)}% traffic, +${minutesAfterEnd}m past end)`,
+    };
+  }
+
+  // Subtle natural baseline (trickle) so real human games never freeze or abruptly look dead
+  return {
+    isActive: true,
+    multiplier: 0.15,
+    phase: 'trickle',
+    description: 'Off-hours baseline trickle (~15% traffic)',
+  };
+}
+
+/**
+ * Check if current time in East Africa Time (EAT = UTC+3) is active.
+ */
+export function isWithinSchedule(cfg: SystemPlayersConfig): boolean {
+  return getScheduleStatus(cfg).isActive;
+}
+
+/**
+ * Cartela selection distribution per system player:
+ * - 70% chance -> 1 cartela
+ * - 20% chance -> 2 cartelas
+ * - 10% chance -> 3 cartelas
+ */
+export function getWeightedBotCartelaCount(minC = 1, maxC = 3): number {
+  const roll = Math.random();
+  let count: number;
+  if (roll < 0.70) {
+    count = 1; // 70% buy 1 cartela
+  } else if (roll < 0.90) {
+    count = 2; // 20% buy 2 cartelas
+  } else {
+    count = 3; // 10% buy 3 cartelas
+  }
+  return Math.max(minC, Math.min(maxC, count));
 }
 
 /**

@@ -4,12 +4,14 @@ import { randomUUID } from 'crypto';
 import { recordUserEvent } from './eventNotifications';
 import {
   getSystemPlayersConfig,
+  getScheduleStatus,
   isWithinSchedule,
   getActiveSystemPlayersPool,
   isSystemPlayer,
   recordSystemPlayerWin,
   ensureDefaultSystemPlayersSeeded,
   DEFAULT_STAKE_RANGES,
+  getWeightedBotCartelaCount,
 } from './systemPlayers';
 
 const TICK_MS = 500; // 500ms tick for exact call_interval_ms execution
@@ -251,30 +253,50 @@ class BingoEngine {
   private async simulateSystemPlayers(game: any, cfg: any) {
     try {
       const botCfg = await getSystemPlayersConfig();
-      if (!botCfg.enabled || !isWithinSchedule(botCfg) || !botCfg.target_stakes.includes(Number(game.stake))) {
+      const stakeNum = Number(game.stake);
+
+      // Check if engine is enabled and stake is in target stakes
+      if (!botCfg.enabled || !botCfg.target_stakes.includes(stakeNum)) {
         this.botSessions.delete(game.id);
         return;
       }
+
+      // Check schedule status (organic ramp up, peak, ramp down, trickle)
+      const scheduleStatus = getScheduleStatus(botCfg);
+      if (!scheduleStatus.isActive) {
+        this.botSessions.delete(game.id);
+        return;
+      }
+
+      // Determine target bot count for this game based on its stake
+      const stakeKey = String(stakeNum);
+      const stakeRanges = botCfg.stake_player_ranges || DEFAULT_STAKE_RANGES;
+      const targetRange = stakeRanges[stakeKey] || {
+        min: Number(botCfg.min_players_per_game) || 0,
+        max: Number(botCfg.max_players_per_game) || 0,
+      };
+
+      // If configured as 0 bots (e.g. Stake 50 & 100 default), exit immediately
+      if (Number(targetRange.max) <= 0) {
+        this.botSessions.delete(game.id);
+        return;
+      }
+
+      const baseMin = Math.max(1, Number(targetRange.min) || 1);
+      const baseMax = Math.max(baseMin, Number(targetRange.max) || 1);
+
+      // Apply schedule status multiplier: starts small at start time, smooth taper at end time
+      const effectiveMin = Math.max(1, Math.round(baseMin * scheduleStatus.multiplier));
+      const effectiveMax = Math.max(effectiveMin, Math.round(baseMax * scheduleStatus.multiplier));
 
       const now = Date.now();
       const startTime = new Date(game.start_at).getTime();
       const isFarFuture = startTime > now + 86400000;
 
-      // Determine target bot count for this game based on its stake
-      const stakeKey = String(game.stake);
-      const stakeRanges = botCfg.stake_player_ranges || DEFAULT_STAKE_RANGES;
-      const targetRange = stakeRanges[stakeKey] || {
-        min: Number(botCfg.min_players_per_game) || 50,
-        max: Number(botCfg.max_players_per_game) || 100,
-      };
-
-      const minBots = Math.max(1, Number(targetRange.min) || 5);
-      const maxBots = Math.max(minBots, Number(targetRange.max) || 10);
-
       // Manage or create bot session for this game
       let session = this.botSessions.get(game.id);
       if (!session) {
-        const targetBots = Math.floor(Math.random() * (maxBots - minBots + 1)) + minBots;
+        const targetBots = Math.floor(Math.random() * (effectiveMax - effectiveMin + 1)) + effectiveMin;
         session = {
           targetBots,
           lastJoinAt: now,
@@ -292,7 +314,7 @@ class BingoEngine {
           updated_at: new Date().toISOString(),
         }).eq('id', game.id);
         game.start_at = newStartAt;
-        console.log(`⏳ Game #${game.id.slice(0,8).toUpperCase()} (Stake: ${game.stake}): 30s waiting interval initiated! Target: ${session.targetBots} bots`);
+        console.log(`⏳ Game #${game.id.slice(0,8).toUpperCase()} (Stake: ${game.stake}): 30s waiting interval initiated! Target: ${session.targetBots} bots (${scheduleStatus.phase})`);
         return;
       }
 
@@ -324,17 +346,18 @@ class BingoEngine {
         return; // Target already reached for this game
       }
 
-      // Available cartelas on the 1-100 board
+      // Available cartelas on the full 200 board (or configured max_players)
+      const maxGameCartelas = Number(cfg.max_players) || 200;
       const takenCartelas = new Set(players.map((p: any) => Number(p.cartela_number)));
-      const allCartelas = Array.from({ length: 100 }, (_, i) => i + 1);
+      const allCartelas = Array.from({ length: maxGameCartelas }, (_, i) => i + 1);
       const availableCartelas = allCartelas.filter(c => !takenCartelas.has(c));
 
-      // Always reserve at least 15 cartelas for real human players!
-      const maxCartelasToFill = Math.max(0, availableCartelas.length - 15);
+      // Always reserve at least 20 cartelas for real human players!
+      const maxCartelasToFill = Math.max(0, availableCartelas.length - 20);
       if (maxCartelasToFill <= 0) return;
 
       // How many bots join in THIS specific step?
-      // During the 30s interval: 1 or 2 bots per step ("not one time mark bro")
+      // During the 30s interval: 1 or 2 bots per step
       // In the final 5s, slightly accelerate (up to 3-4 bots) if still behind target
       const botsThisStep = remainingSec <= 5
         ? Math.min(4, Math.max(1, botsNeeded))
@@ -344,7 +367,7 @@ class BingoEngine {
       if (botsToJoinCount <= 0) return;
 
       // Fetch active bot candidates from 1000 pool
-      const pool = await getActiveSystemPlayersPool(Math.max(100, maxBots * 2));
+      const pool = await getActiveSystemPlayersPool(Math.max(100, effectiveMax * 2));
       if (!pool || pool.length === 0) return;
 
       const existingTids = new Set(players.map((p: any) => String(p.telegram_id)));
@@ -354,12 +377,16 @@ class BingoEngine {
       // Shuffle candidates
       const shuffledBots = candidateBots.sort(() => Math.random() - 0.5);
 
-      // Shuffle available cartelas thoroughly across the ENTIRE 1-100 board (top, middle, bottom)
-      const shuffledCartelas = availableCartelas.sort(() => Math.random() - 0.5);
+      // Fisher-Yates shuffle across the ENTIRE 200 board
+      const shuffledCartelas = [...availableCartelas];
+      for (let i = shuffledCartelas.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffledCartelas[i], shuffledCartelas[j]] = [shuffledCartelas[j], shuffledCartelas[i]];
+      }
       let cartelaIdx = 0;
 
-      const minC = Math.max(1, Math.min(4, Number(botCfg.min_cartelas_per_player) || 1));
-      const maxC = Math.max(minC, Math.min(4, Number(botCfg.max_cartelas_per_player) || 4));
+      const minC = Math.max(1, Math.min(3, Number(botCfg.min_cartelas_per_player) || 1));
+      const maxC = Math.max(minC, Math.min(3, Number(botCfg.max_cartelas_per_player) || 3));
 
       const rowsToInsert: any[] = [];
       const newlyAddedBots = new Set<string>();
@@ -368,8 +395,8 @@ class BingoEngine {
         if (newlyAddedBots.size >= botsToJoinCount) break;
         if (cartelaIdx >= maxCartelasToFill) break;
 
-        // Each bot buys random 1 to 4 cartelas
-        const cartelaCount = Math.floor(Math.random() * (maxC - minC + 1)) + minC;
+        // Weighted cartela purchase: 70% buy 1, 20% buy 2, 10% buy 3
+        const cartelaCount = getWeightedBotCartelaCount(minC, maxC);
         const actualCount = Math.min(cartelaCount, maxCartelasToFill - cartelaIdx);
         if (actualCount <= 0) break;
 
