@@ -149,7 +149,7 @@ router.get('/players', optionalTelegramAuth, async (req: AuthRequest, res) => {
       .gt('total_wins', 0)
       .eq('is_active', true)
       .order('total_wins', { ascending: false })
-      .limit(60);
+      .limit(1000);
 
     for (const sp of topSp || []) {
       const tid = sp.telegram_id;
@@ -189,7 +189,7 @@ router.get('/players', optionalTelegramAuth, async (req: AuthRequest, res) => {
       .select('telegram_id, first_name, total_wins')
       .gt('total_wins', 0)
       .order('total_wins', { ascending: false })
-      .limit(50);
+      .limit(500);
 
     for (const u of topUsers || []) {
       const tid = u.telegram_id;
@@ -217,9 +217,8 @@ router.get('/players', optionalTelegramAuth, async (req: AuthRequest, res) => {
     console.error('[Leaderboard] Error fetching top users:', err?.message || err);
   }
 
-  const topPlayers = Object.entries(map)
+  const allPlayers = Object.entries(map)
     .sort((a, b) => b[1].wins - a[1].wins)
-    .slice(0, 50)
     .map(([tid, v], i) => ({
       rank: i + 1,
       telegram_id: tid,
@@ -229,11 +228,25 @@ router.get('/players', optionalTelegramAuth, async (req: AuthRequest, res) => {
       total_prize: v.total_prize,
     }));
 
+  // Pagination (defaults to 50 players per page)
+  const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
+  const limit = Math.max(10, Math.min(100, parseInt(req.query.limit as string, 10) || 50));
+  const total = allPlayers.length;
+  const totalPages = Math.ceil(total / limit) || 1;
+  const offset = (page - 1) * limit;
+  const pagedPlayers = allPlayers.slice(offset, offset + limit);
 
-  // Find current user's rank
-  const myRank = telegramId ? (topPlayers.findIndex(p => p.telegram_id === telegramId) + 1 || null) : null;
+  // Find current user's rank across entire leaderboard
+  const myRank = telegramId ? (allPlayers.findIndex(p => p.telegram_id === telegramId) + 1 || null) : null;
 
-  res.json({ players: topPlayers, my_rank: myRank });
+  res.json({
+    players: pagedPlayers,
+    total,
+    page,
+    totalPages,
+    limit,
+    my_rank: myRank,
+  });
 });
 
 // GET /api/leaderboard/inviters — top users by number of invited users who deposited
@@ -254,37 +267,49 @@ router.get('/inviters', optionalTelegramAuth, async (req: AuthRequest, res) => {
   }
 
   if (Object.keys(countMap).length === 0) {
-    res.json({ inviters: [], my_rank: null });
+    res.json({ inviters: [], total: 0, page: 1, totalPages: 1, limit: 50, my_rank: null });
     return;
   }
 
   // Fetch names for top inviters
-  const topIds = Object.entries(countMap)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 50)
-    .map(([id]) => id);
+  const allInviterEntries = Object.entries(countMap).sort((a, b) => b[1] - a[1]);
+  const allIds = allInviterEntries.map(([id]) => id);
 
   const { data: users } = await supabase
     .from('users')
     .select('telegram_id, first_name, username')
-    .in('telegram_id', topIds);
+    .in('telegram_id', allIds.slice(0, 500));
 
   const nameMap: Record<string, { first_name: string; username: string }> = {};
   for (const u of users || []) {
     nameMap[u.telegram_id] = { first_name: u.first_name || 'User', username: u.username || '' };
   }
 
-  const inviters = topIds.map((id, i) => ({
+  const allInviters = allInviterEntries.map(([id, count], i) => ({
     rank: i + 1,
     telegram_id: id,
     first_name: nameMap[id]?.first_name || 'User',
     username: nameMap[id]?.username || '',
-    invites: countMap[id] || 0,
+    invites: count,
   }));
 
-  const myRank = telegramId ? (inviters.findIndex(p => p.telegram_id === telegramId) + 1 || null) : null;
+  const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
+  const limit = Math.max(10, Math.min(100, parseInt(req.query.limit as string, 10) || 50));
+  const total = allInviters.length;
+  const totalPages = Math.ceil(total / limit) || 1;
+  const offset = (page - 1) * limit;
+  const pagedInviters = allInviters.slice(offset, offset + limit);
 
-  res.json({ inviters, my_rank: myRank });
+  const myRank = telegramId ? (allInviters.findIndex(p => p.telegram_id === telegramId) + 1 || null) : null;
+
+  res.json({
+    inviters: pagedInviters,
+    total,
+    page,
+    totalPages,
+    limit,
+    my_rank: myRank,
+  });
 });
 
 export default router;

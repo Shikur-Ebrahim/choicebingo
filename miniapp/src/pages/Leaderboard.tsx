@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Trophy, Users, Medal, RefreshCw, Crown, UserPlus } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Trophy, Users, Medal, RefreshCw, Crown, UserPlus, ChevronLeft, ChevronRight } from 'lucide-react';
 import WebApp from '@twa-dev/sdk';
 import { useGameStore } from '../store/gameStore';
 import { t } from '../lib/translations';
@@ -72,6 +72,12 @@ export default function Leaderboard() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
+  // Pagination state (default: up to 50 ranks per page)
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const tableRef = useRef<HTMLDivElement>(null);
+
   const headers = useCallback(() => {
     const savedPwaPhone = typeof window !== 'undefined' ? localStorage.getItem('cb_pwa_phone') || '' : '';
     return {
@@ -81,45 +87,71 @@ export default function Leaderboard() {
     };
   }, []);
 
-  const fetchPlayers = useCallback(async (p: Period) => {
-    const res = await fetch(`${API_URL}/leaderboard/players?period=${p}`, { headers: headers() });
+  const fetchPlayers = useCallback(async (p: Period, pageNum = 1) => {
+    const res = await fetch(`${API_URL}/leaderboard/players?period=${p}&page=${pageNum}&limit=50`, { headers: headers() });
     if (res.ok) {
       const data = await res.json();
       setPlayers(data.players || []);
+      setPage(data.page || pageNum);
+      setTotalPages(data.totalPages || 1);
+      setTotalCount(data.total || (data.players?.length || 0));
       setMyRank(data.my_rank);
     }
   }, [headers]);
 
-  const fetchInviters = useCallback(async () => {
-    const res = await fetch(`${API_URL}/leaderboard/inviters`, { headers: headers() });
+  const fetchInviters = useCallback(async (pageNum = 1) => {
+    const res = await fetch(`${API_URL}/leaderboard/inviters?page=${pageNum}&limit=50`, { headers: headers() });
     if (res.ok) {
       const data = await res.json();
       setInviters(data.inviters || []);
+      setPage(data.page || pageNum);
+      setTotalPages(data.totalPages || 1);
+      setTotalCount(data.total || (data.inviters?.length || 0));
       setMyRank(data.my_rank);
     }
   }, [headers]);
 
-  const load = useCallback(async (t: Tab, p: Period, showRefresh = false) => {
+  const load = useCallback(async (t: Tab, p: Period, pageNum = 1, showRefresh = false) => {
     if (showRefresh) setRefreshing(true);
     else setLoading(true);
     try {
-      if (t === 'players') await fetchPlayers(p);
-      else await fetchInviters();
+      if (t === 'players') await fetchPlayers(p, pageNum);
+      else await fetchInviters(pageNum);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   }, [fetchPlayers, fetchInviters]);
 
-  useEffect(() => { load(tab, period); }, [tab, period]);
+  useEffect(() => { load(tab, period, 1); }, [tab, period]);
 
-  const handleTab = (t: Tab) => { setTab(t); setMyRank(null); };
-  const handlePeriod = (p: Period) => { setPeriod(p); };
-  const handleRefresh = () => load(tab, period, true);
+  const handleTab = (t: Tab) => {
+    setTab(t);
+    setMyRank(null);
+    setPage(1);
+    load(t, period, 1);
+  };
+
+  const handlePeriod = (p: Period) => {
+    setPeriod(p);
+    setPage(1);
+    load(tab, p, 1);
+  };
+
+  const handleRefresh = () => load(tab, period, page, true);
+
+  const goToPage = (newPage: number) => {
+    if (newPage < 1 || newPage > totalPages || newPage === page) return;
+    setPage(newPage);
+    load(tab, period, newPage);
+    if (tableRef.current) {
+      tableRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
 
   const list = tab === 'players' ? players : inviters;
   const top3 = list.slice(0, 3);
-  const rest = list.slice(3);
+  const rest = page === 1 ? list.slice(3) : list;
   const myTelegramId = user?.telegram_id;
 
   return (
@@ -211,8 +243,8 @@ export default function Leaderboard() {
         </div>
       ) : (
         <>
-          {/* ── 3D PODIUM TOP 3 ── */}
-          {top3.length >= 2 && (
+          {/* ── 3D PODIUM TOP 3 (Page 1 only) ── */}
+          {page === 1 && top3.length >= 2 && (
             <div className="px-4 pt-6 pb-2">
               <div className="flex items-end justify-center gap-3">
                 {RANK_PODIUM_ORDER.map(ri => {
@@ -279,7 +311,7 @@ export default function Leaderboard() {
           )}
 
           {/* ── 3D FULL LIST TABLE ── */}
-          <div className="mx-4 bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-[0_6px_20px_rgba(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.4)] overflow-hidden backdrop-blur-sm transition-colors">
+          <div ref={tableRef} className="mx-4 bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-[0_6px_20px_rgba(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.4)] overflow-hidden backdrop-blur-sm transition-colors">
             {/* Header */}
             <div className="flex items-center px-4 py-2.5 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200/70 dark:border-slate-800 text-[10px] font-black text-slate-400 dark:text-slate-400 uppercase tracking-wider">
               <span className="w-9">{t[language].leaderboard.rank}</span>
@@ -289,8 +321,8 @@ export default function Leaderboard() {
               </span>
             </div>
 
-            {/* Top 3 rows */}
-            {top3.map((p, i) => {
+            {/* Top 3 rows (Page 1 only) */}
+            {page === 1 && top3.map((p, i) => {
               const isMine = p.telegram_id === myTelegramId;
               return (
                 <div key={p.telegram_id}
@@ -324,7 +356,7 @@ export default function Leaderboard() {
               );
             })}
 
-            {/* Rest of the list */}
+            {/* Rest of the list (or all list items for Page > 1) */}
             {rest.map((p) => {
               const isMine = p.telegram_id === myTelegramId;
               return (
@@ -356,6 +388,62 @@ export default function Leaderboard() {
               );
             })}
           </div>
+
+          {/* ── 3D LUXURY PAGINATION SECTION BELOW 50 RANKS ── */}
+          {totalPages > 1 && (
+            <div className="mx-4 mt-3 bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-3 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-2.5">
+              <div className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                Ranks <span className="text-amber-600 dark:text-amber-400 font-black">#{((page - 1) * 50) + 1}</span> to <span className="text-amber-600 dark:text-amber-400 font-black">#{Math.min(page * 50, totalCount || list.length)}</span> of <span className="font-black text-slate-800 dark:text-slate-100">{totalCount || list.length}</span>
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  disabled={page <= 1}
+                  onClick={() => goToPage(page - 1)}
+                  className="px-3 py-1.5 rounded-xl text-xs font-black bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 transition-all active:scale-95 text-slate-700 dark:text-slate-200"
+                >
+                  <ChevronLeft size={14} />
+                  <span>Prev</span>
+                </button>
+
+                {/* Page Number Buttons */}
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
+                    .map((p, idx, arr) => {
+                      const prevP = arr[idx - 1];
+                      return (
+                        <span key={p} className="flex items-center gap-1">
+                          {prevP && p - prevP > 1 && <span className="text-slate-400 text-xs px-0.5">...</span>}
+                          <button
+                            type="button"
+                            onClick={() => goToPage(p)}
+                            className={`w-7 h-7 rounded-lg text-xs font-black transition-all ${
+                              p === page
+                                ? 'bg-gradient-to-b from-amber-400 to-amber-500 text-white shadow-md shadow-amber-500/25'
+                                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+                            }`}
+                          >
+                            {p}
+                          </button>
+                        </span>
+                      );
+                    })}
+                </div>
+
+                <button
+                  type="button"
+                  disabled={page >= totalPages}
+                  onClick={() => goToPage(page + 1)}
+                  className="px-3 py-1.5 rounded-xl text-xs font-black bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 transition-all active:scale-95 text-slate-700 dark:text-slate-200"
+                >
+                  <span>Next</span>
+                  <ChevronRight size={14} />
+                </button>
+              </div>
+            </div>
+          )}
           <div className="h-4" />
         </>
       )}
