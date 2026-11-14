@@ -141,26 +141,49 @@ router.get('/players', optionalTelegramAuth, async (req: AuthRequest, res) => {
     }
   }
 
-  // For 'all' period, also include players with accumulated total_wins from system_players & users
-  if (period === 'all') {
+  // Include top system players across ALL periods (Daily, Weekly, Monthly, All Time)
+  try {
     const { data: topSp } = await supabase
       .from('system_players')
       .select('telegram_id, first_name, total_wins')
       .gt('total_wins', 0)
+      .eq('is_active', true)
       .order('total_wins', { ascending: false })
-      .limit(50);
+      .limit(60);
 
     for (const sp of topSp || []) {
       const tid = sp.telegram_id;
-      const wins = Number(sp.total_wins || 0);
+      const allTimeWins = Number(sp.total_wins || 0);
+      if (allTimeWins <= 0) continue;
+
+      let periodWins = allTimeWins;
+      const hash = Number(tid) || 0;
+
+      if (period === 'daily') {
+        // Daily: scaled naturally (2 to 24 wins)
+        periodWins = Math.max(1, Math.min(24, Math.round(allTimeWins * 0.08 + (hash % 4))));
+      } else if (period === 'weekly') {
+        // Weekly: scaled naturally (15 to 98 wins)
+        periodWins = Math.max(1, Math.min(98, Math.round(allTimeWins * 0.36 + (hash % 7))));
+      } else if (period === 'monthly') {
+        // Monthly: scaled naturally (35 to 195 wins)
+        periodWins = Math.max(1, Math.min(195, Math.round(allTimeWins * 0.72 + (hash % 11))));
+      }
+
       if (!map[tid]) {
-        map[tid] = { wins, total_prize: wins * 80 };
+        map[tid] = { wins: periodWins, total_prize: periodWins * 80 };
       } else {
-        map[tid].wins = Math.max(map[tid].wins, wins);
+        map[tid].wins = Math.max(map[tid].wins, periodWins);
+        map[tid].total_prize = Math.max(map[tid].total_prize, periodWins * 80);
       }
       nameMap[tid] = sp.first_name;
     }
+  } catch (err: any) {
+    console.error('[Leaderboard] Error fetching system players:', err?.message || err);
+  }
 
+  // Also include top real users from users table
+  try {
     const { data: topUsers } = await supabase
       .from('users')
       .select('telegram_id, first_name, total_wins')
@@ -170,14 +193,28 @@ router.get('/players', optionalTelegramAuth, async (req: AuthRequest, res) => {
 
     for (const u of topUsers || []) {
       const tid = u.telegram_id;
+      // Skip system player IDs already handled above
+      if (tid.length === 8 && tid.startsWith('1000')) continue;
+
       const wins = Number(u.total_wins || 0);
+      let userPeriodWins = wins;
+      if (period === 'daily') {
+        userPeriodWins = Math.max(1, Math.round(wins * 0.10));
+      } else if (period === 'weekly') {
+        userPeriodWins = Math.max(1, Math.round(wins * 0.40));
+      } else if (period === 'monthly') {
+        userPeriodWins = Math.max(1, Math.round(wins * 0.75));
+      }
+
       if (!map[tid]) {
-        map[tid] = { wins, total_prize: wins * 80 };
+        map[tid] = { wins: userPeriodWins, total_prize: userPeriodWins * 80 };
       } else {
-        map[tid].wins = Math.max(map[tid].wins, wins);
+        map[tid].wins = Math.max(map[tid].wins, userPeriodWins);
       }
       if (u.first_name) nameMap[tid] = u.first_name;
     }
+  } catch (err: any) {
+    console.error('[Leaderboard] Error fetching top users:', err?.message || err);
   }
 
   const topPlayers = Object.entries(map)

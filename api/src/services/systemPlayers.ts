@@ -419,7 +419,28 @@ export function getWeightedBotCartelaCount(minC = 1, maxC = 3): number {
 }
 
 /**
+ * Generate a realistic Pareto win distribution for the 1,000 Ethiopian system players:
+ * - Top 3: 205 to 255 wins (competing directly for top 1-3 on Leaderboard!)
+ * - Top 4-10: 125 to 195 wins
+ * - Top 11-25: 55 to 120 wins
+ * - Top 26-60: 20 to 55 wins
+ * - Top 61-150: 5 to 20 wins
+ * - Top 151-400: 1 to 5 wins
+ * - Rest: 0 to 1 wins
+ */
+export function generateRealisticWinCount(index: number): number {
+  if (index < 3) return 255 - index * 20 + Math.floor(Math.random() * 8);
+  if (index < 10) return 195 - (index - 3) * 10 + Math.floor(Math.random() * 6);
+  if (index < 25) return 120 - (index - 10) * 4 + Math.floor(Math.random() * 5);
+  if (index < 60) return 55 - (index - 25) * 1 + Math.floor(Math.random() * 4);
+  if (index < 150) return Math.max(4, 20 - Math.floor((index - 60) * 0.15) + Math.floor(Math.random() * 3));
+  if (index < 400) return Math.floor(Math.random() * 4) + 1;
+  return Math.random() < 0.15 ? 1 : 0;
+}
+
+/**
  * Automatically check and seed 1000 Ethiopian players across all regions in the background.
+ * Also ensures top system players have competitive total_wins to populate the Leaderboard.
  */
 let _autoSeedChecked = false;
 export async function ensureDefaultSystemPlayersSeeded(): Promise<void> {
@@ -434,6 +455,37 @@ export async function ensureDefaultSystemPlayersSeeded(): Promise<void> {
       console.log(`🤖 [SystemPlayers] Background auto-seeding 1000 diverse Ethiopian regional names...`);
       await seedSystemPlayers(1000);
       console.log(`🤖 [SystemPlayers] Background auto-seeding completed!`);
+      return;
+    }
+
+    // Check if system players exist but top total_wins is very low (e.g. <= 5)
+    const { data: topWinData } = await supabase
+      .from('system_players')
+      .select('total_wins')
+      .order('total_wins', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!topWinData || Number(topWinData.total_wins) <= 5) {
+      console.log(`🤖 [SystemPlayers] Assigning realistic competitive Leaderboard wins to top Ethiopian system players...`);
+      const { data: allBots } = await supabase
+        .from('system_players')
+        .select('id, telegram_id, first_name')
+        .order('id', { ascending: true })
+        .limit(300);
+
+      if (allBots && allBots.length > 0) {
+        for (let i = 0; i < allBots.length; i++) {
+          const wins = generateRealisticWinCount(i);
+          if (wins > 0) {
+            await supabase.from('system_players').update({ total_wins: wins }).eq('telegram_id', allBots[i].telegram_id);
+            await supabase.from('users').update({ total_wins: wins }).eq('telegram_id', allBots[i].telegram_id);
+          }
+        }
+      }
+      // Invalidate memory cache so new wins are immediately seen
+      _allSystemPlayersCacheAt = 0;
+      console.log(`🤖 [SystemPlayers] Leaderboard wins successfully assigned!`);
     }
   } catch (err: any) {
     console.error('[SystemPlayers] Background auto-seed error:', err?.message || err);
@@ -508,10 +560,11 @@ export async function seedSystemPlayers(count = 1000): Promise<{ count: number; 
   const names = generate1000EthiopianNames().slice(0, count);
   const rows: SystemPlayer[] = names.map((name, i) => {
     const tid = String(10000000 + i);
+    const wins = generateRealisticWinCount(i);
     return {
       telegram_id: tid,
       first_name: name,
-      total_wins: 0,
+      total_wins: wins,
       is_active: true,
     };
   });
@@ -532,9 +585,9 @@ export async function seedSystemPlayers(count = 1000): Promise<{ count: number; 
       status: 'active',
       main_balance: 0,
       bonus_balance: 0,
-      total_wins: 0,
-      total_games: 0,
-      total_stake: 0,
+      total_wins: b.total_wins,
+      total_games: Math.max(b.total_wins, Math.round(b.total_wins * 2.5)),
+      total_stake: b.total_wins * 20,
     }));
     try {
       await supabase.from('users').upsert(userChunk, { onConflict: 'telegram_id' });
@@ -630,48 +683,61 @@ export async function addSystemPlayer(first_name: string, total_wins = 0): Promi
   }
 }
 
+let _allSystemPlayersCache: SystemPlayer[] = [];
+let _allSystemPlayersCacheAt = 0;
+
 /**
- * Get a random pool of active system players for joining a game.
+ * Fetch and cache all 1,000 system players from database.
  */
-export async function getActiveSystemPlayersPool(limit = 150): Promise<SystemPlayer[]> {
+export async function getAllSystemPlayers(): Promise<SystemPlayer[]> {
+  const now = Date.now();
+  if (_allSystemPlayersCache.length >= 100 && now - _allSystemPlayersCacheAt < 60000) {
+    return _allSystemPlayersCache;
+  }
+
   try {
     const { data, error } = await supabase
       .from('system_players')
       .select('telegram_id, first_name, total_wins, is_active')
       .eq('is_active', true)
-      .limit(limit);
+      .limit(1000);
 
     if (!error && data && data.length > 0) {
-      return data as SystemPlayer[];
+      _allSystemPlayersCache = data as SystemPlayer[];
+      _allSystemPlayersCacheAt = now;
+      return _allSystemPlayersCache;
     }
-  } catch {}
+  } catch (err: any) {
+    console.error('[systemPlayers] Failed to fetch 1000 players:', err?.message || err);
+  }
 
-  // Fallback: check users table where role = 'system_player'
-  try {
-    const { data } = await supabase
-      .from('users')
-      .select('telegram_id, first_name, total_wins')
-      .eq('role', 'system_player')
-      .neq('status', 'blocked')
-      .limit(limit);
+  return _allSystemPlayersCache;
+}
 
-    if (data && data.length > 0) {
-      return data.map((u: any) => ({
-        telegram_id: u.telegram_id,
-        first_name: u.first_name,
-        total_wins: Number(u.total_wins || 0),
-        is_active: true,
-      }));
-    }
-  } catch {}
+/**
+ * Get a random pool of active system players for joining a game.
+ * Truly uniform random selection across the FULL 1 to 1,000 player pool
+ * so players from all across the 1-1,000 roster participate across games at different times!
+ */
+export async function getActiveSystemPlayersPool(limit = 150): Promise<SystemPlayer[]> {
+  const allBots = await getAllSystemPlayers();
+  if (allBots.length === 0) {
+    return generate1000EthiopianNames().slice(0, 50).map((name, i) => ({
+      telegram_id: String(10000000 + i),
+      first_name: name,
+      total_wins: generateRealisticWinCount(i),
+      is_active: true,
+    }));
+  }
 
-  // Ultimate fallback: generate 100 on the fly
-  return generate1000EthiopianNames().slice(0, 50).map((name, i) => ({
-    telegram_id: String(10000000 + i),
-    first_name: name,
-    total_wins: 0,
-    is_active: true,
-  }));
+  // Fisher-Yates shuffle across the full 1,000 players
+  const pool = [...allBots];
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+
+  return pool.slice(0, Math.min(limit, pool.length));
 }
 
 /**
@@ -714,6 +780,11 @@ export async function recordSystemPlayerWin(telegramId: string): Promise<void> {
         total_wins: (Number(u.total_wins) || 0) + 1,
       }).eq('telegram_id', tid);
     }
+
+    // Update in-memory cache
+    const cached = _allSystemPlayersCache.find(b => b.telegram_id === tid);
+    if (cached) cached.total_wins = newWins;
+
     console.log(`🤖 [SystemPlayers] Recorded win for bot ${tid} (total: ${newWins})`);
   } catch (err: any) {
     console.error(`[SystemPlayers] Failed to record win for bot ${telegramId}:`, err?.message || err);
