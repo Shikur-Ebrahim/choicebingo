@@ -767,8 +767,8 @@ export default function AdminBroadcast() {
                     </div>
                     <div className="grid grid-cols-2 gap-1.5">
                       <div className="py-2 px-2 rounded-xl bg-white border border-slate-200 text-slate-800 font-bold text-[11px] flex items-center justify-center space-x-1 shadow-[0_2px_0_0_#cbd5e1]">
-                        <span>📢</span>
-                        <span>Official Channel</span>
+                        <span>👥</span>
+                        <span>Official Group</span>
                       </div>
                       <div className="py-2 px-2 rounded-xl bg-white border border-slate-200 text-slate-800 font-bold text-[11px] flex items-center justify-center space-x-1 shadow-[0_2px_0_0_#cbd5e1]">
                         <span>💬</span>
@@ -787,8 +787,8 @@ export default function AdminBroadcast() {
                         </div>
                         <div className="grid grid-cols-2 gap-1">
                           <div className="py-1.5 px-1 rounded-lg bg-white border border-slate-200 text-slate-800 font-bold text-[10px] flex items-center justify-center space-x-1 shadow-[0_1px_0_0_#cbd5e1]">
-                            <span>📢</span>
-                            <span>Official Channel</span>
+                            <span>👥</span>
+                            <span>Official Group</span>
                           </div>
                           <div className="py-1.5 px-1 rounded-lg bg-white border border-slate-200 text-slate-800 font-bold text-[10px] flex items-center justify-center space-x-1 shadow-[0_1px_0_0_#cbd5e1]">
                             <span>💬</span>
@@ -1098,8 +1098,8 @@ export default function AdminBroadcast() {
                       ) : (
                         <div className="grid grid-cols-2 gap-1.5 pointer-events-none select-none">
                           <div className="py-1.5 px-2 rounded-xl bg-slate-100 border border-slate-200 text-slate-800 font-bold text-[10px] flex items-center justify-center space-x-1 shadow-[0_2px_0_0_#cbd5e1]">
-                            <span>📢</span>
-                            <span className="truncate">Official Channel</span>
+                            <span>👥</span>
+                            <span className="truncate">Official Group</span>
                           </div>
                           <div className="py-1.5 px-2 rounded-xl bg-slate-100 border border-slate-200 text-slate-800 font-bold text-[10px] flex items-center justify-center space-x-1 shadow-[0_2px_0_0_#cbd5e1]">
                             <span>💬</span>

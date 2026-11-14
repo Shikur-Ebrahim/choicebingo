@@ -170,18 +170,18 @@ async function sendTelegramMessage(
     }
   }
 
-  // Fetch dynamic links for channel & support
-  let channelUrl = 'https://t.me/choicebingo';
+  // Fetch dynamic links for group & support
+  let groupUrl = 'https://t.me/choicebingo';
   let supportUrl = 'https://t.me/Choicebingosupport';
   try {
     const { data: rows } = await supabase
       .from('settings')
       .select('key, value')
-      .in('key', ['channel_link', 'support_username']);
+      .in('key', ['group_link', 'channel_link', 'support_username']);
     if (rows) {
-      const ch = rows.find(r => r.key === 'channel_link')?.value;
+      const gp = rows.find(r => r.key === 'group_link')?.value || rows.find(r => r.key === 'channel_link')?.value;
       const sp = rows.find(r => r.key === 'support_username')?.value;
-      if (ch && ch.trim()) channelUrl = ch.trim();
+      if (gp && gp.trim()) groupUrl = gp.trim();
       if (sp && sp.trim()) supportUrl = sp.trim().startsWith('http') ? sp.trim() : `https://t.me/${sp.trim().replace(/^@/, '')}`;
     }
   } catch {}
@@ -206,7 +206,7 @@ async function sendTelegramMessage(
         inline_keyboard: [
           [playButton],
           [
-            { text: '📢 Official Channel', url: channelUrl },
+            { text: '👥 Official Group', url: groupUrl },
             { text: '💬 24/7 Support', url: supportUrl },
           ],
         ],
