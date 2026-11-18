@@ -6,7 +6,6 @@ import { t } from '../lib/translations';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
-type Period = 'all' | 'daily' | 'weekly' | 'monthly';
 type Tab = 'players' | 'inviters';
 
 interface Player {
@@ -58,14 +57,7 @@ function getAvatarColor(id: string) {
 
 export default function Leaderboard() {
   const { user, language } = useGameStore();
-  const PERIODS: { key: Period; label: string }[] = [
-    { key: 'daily', label: t[language].leaderboard.periodDaily },
-    { key: 'weekly', label: t[language].leaderboard.periodWeekly },
-    { key: 'monthly', label: t[language].leaderboard.periodMonthly },
-    { key: 'all', label: t[language].leaderboard.periodAll },
-  ];
   const [tab, setTab] = useState<Tab>('players');
-  const [period, setPeriod] = useState<Period>('weekly');
   const [players, setPlayers] = useState<Player[]>([]);
   const [inviters, setInviters] = useState<Inviter[]>([]);
   const [myRank, setMyRank] = useState<number | null>(null);
@@ -87,8 +79,8 @@ export default function Leaderboard() {
     };
   }, []);
 
-  const fetchPlayers = useCallback(async (p: Period, pageNum = 1) => {
-    const res = await fetch(`${API_URL}/leaderboard/players?period=${p}&page=${pageNum}&limit=50`, { headers: headers() });
+  const fetchPlayers = useCallback(async (pageNum = 1) => {
+    const res = await fetch(`${API_URL}/leaderboard/players?page=${pageNum}&limit=50`, { headers: headers() });
     if (res.ok) {
       const data = await res.json();
       setPlayers(data.players || []);
@@ -111,11 +103,11 @@ export default function Leaderboard() {
     }
   }, [headers]);
 
-  const load = useCallback(async (t: Tab, p: Period, pageNum = 1, showRefresh = false) => {
+  const load = useCallback(async (t: Tab, pageNum = 1, showRefresh = false) => {
     if (showRefresh) setRefreshing(true);
     else setLoading(true);
     try {
-      if (t === 'players') await fetchPlayers(p, pageNum);
+      if (t === 'players') await fetchPlayers(pageNum);
       else await fetchInviters(pageNum);
     } finally {
       setLoading(false);
@@ -123,27 +115,21 @@ export default function Leaderboard() {
     }
   }, [fetchPlayers, fetchInviters]);
 
-  useEffect(() => { load(tab, period, 1); }, [tab, period]);
+  useEffect(() => { load(tab, 1); }, [tab]);
 
   const handleTab = (t: Tab) => {
     setTab(t);
     setMyRank(null);
     setPage(1);
-    load(t, period, 1);
+    load(t, 1);
   };
 
-  const handlePeriod = (p: Period) => {
-    setPeriod(p);
-    setPage(1);
-    load(tab, p, 1);
-  };
-
-  const handleRefresh = () => load(tab, period, page, true);
+  const handleRefresh = () => load(tab, page, true);
 
   const goToPage = (newPage: number) => {
     if (newPage < 1 || newPage > totalPages || newPage === page) return;
     setPage(newPage);
-    load(tab, period, newPage);
+    load(tab, newPage);
     if (tableRef.current) {
       tableRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
@@ -205,28 +191,6 @@ export default function Leaderboard() {
           </button>
         </div>
       </div>
-
-      {/* ── 3D PERIOD FILTER (players only) ── */}
-      {tab === 'players' && (
-        <div className="px-4 pt-3 pb-1 flex gap-2">
-          {PERIODS.map(p => {
-            const isActive = period === p.key;
-            return (
-              <button
-                key={p.key}
-                onClick={() => handlePeriod(p.key)}
-                className={`flex-1 py-1.5 rounded-xl text-[11px] font-black tracking-wide transition-all ${
-                  isActive
-                    ? 'bg-gradient-to-b from-amber-400 to-amber-500 text-white shadow-[0_4px_10px_rgba(245,158,11,0.35)] border-b-2 border-amber-600 active:translate-y-0.5'
-                    : 'bg-white dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 border border-slate-200/70 dark:border-slate-700/70 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-800'
-                }`}
-              >
-                {p.label}
-              </button>
-            );
-          })}
-        </div>
-      )}
 
       {loading ? (
         <div className="flex flex-col items-center justify-center py-20">

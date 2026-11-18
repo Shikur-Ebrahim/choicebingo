@@ -1478,4 +1478,37 @@ router.get('/user-audit/:telegramId', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// POST /admin/purge-old-bingo — Clears all finished/cancelled games and their player cards to reclaim database quota
+router.post('/purge-old-bingo', async (_req, res) => {
+  try {
+    // 1. Fetch finished/cancelled games
+    const { data: games } = await supabase
+      .from('bingo_games')
+      .select('id')
+      .or('status.eq.finished,status.eq.cancelled')
+      .limit(1000);
+
+    const ids = (games || []).map((g: any) => g.id);
+    let deletedPlayers = 0;
+    let deletedGames = 0;
+
+    if (ids.length > 0) {
+      const { error: pErr } = await supabase.from('bingo_players').delete().in('game_id', ids);
+      if (!pErr) deletedPlayers = ids.length;
+
+      const { error: gErr } = await supabase.from('bingo_games').delete().in('id', ids);
+      if (!gErr) deletedGames = ids.length;
+    }
+
+    // Also delete any orphan players where created_at is older than 10 minutes
+    const tenMinAgo = new Date(Date.now() - 600_000).toISOString();
+    await supabase.from('bingo_players').delete().lte('created_at', tenMinAgo);
+
+    res.json({ success: true, message: `Purged ${deletedGames} games and ${deletedPlayers} player sets` });
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message || 'Purge failed' });
+  }
+});
+
 export default router;

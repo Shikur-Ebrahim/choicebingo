@@ -69,6 +69,7 @@ interface GameBotSession {
 
 class BingoEngine {
   private timer: ReturnType<typeof setInterval> | null = null;
+  private cleanupTimer: ReturnType<typeof setInterval> | null = null;
   private busy = false;
   private busySince = 0;
   private botSessions = new Map<string, GameBotSession>();
@@ -76,11 +77,72 @@ class BingoEngine {
   start() {
     if (this.timer) return;
     this.timer = setInterval(() => this.tick(), TICK_MS);
+    // Recurring cleanup runs every 30 seconds to purge any finished games older than 2 minutes
+    this.cleanupTimer = setInterval(() => this.cleanupOldFinishedGames(), 30000);
     console.log('🎰 BingoEngine running — auto-game loop active');
+
+    // Run cleanup immediately on engine startup
+    this.cleanupOldFinishedGames().catch(console.error);
+
     // Auto-seed 1000 Ethiopian players across all regions in background if needed
     ensureDefaultSystemPlayersSeeded().catch((e) => {
       console.error('[BingoEngine] Auto-seed background error:', e);
     });
+  }
+
+  /**
+   * Schedule 2-minute delayed deletion for a finished game and its bingo_players
+   */
+  scheduleGameCleanup(gameId: string) {
+    setTimeout(async () => {
+      try {
+        await supabase.from('bingo_players').delete().eq('game_id', gameId);
+        await supabase.from('bingo_games').delete().eq('id', gameId);
+        console.log(`🧹 [BingoEngine] Game #${gameId.slice(0, 8).toUpperCase()} and players deleted (2-minute post-finish window reached)`);
+      } catch (err: any) {
+        console.error(`[BingoEngine] Failed to delete finished game #${gameId}:`, err?.message || err);
+      }
+    }, 120_000); // 2 minutes (120 seconds)
+  }
+
+  /**
+   * Automatically clears finished/cancelled games and their bingo_players
+   * older than 2 minutes so the database stays 100% clean, light, and within limits.
+   */
+  async cleanupOldFinishedGames() {
+    try {
+      const cutoffTime = new Date(Date.now() - 120_000).toISOString();
+      const { data: oldGames } = await supabase
+        .from('bingo_games')
+        .select('id')
+        .or('status.eq.finished,status.eq.cancelled')
+        .lte('finished_at', cutoffTime)
+        .limit(200);
+
+      if (oldGames && oldGames.length > 0) {
+        const ids = oldGames.map(g => g.id);
+        await supabase.from('bingo_players').delete().in('game_id', ids);
+        await supabase.from('bingo_games').delete().in('id', ids);
+        console.log(`🧹 [BingoEngine] Auto-purged ${ids.length} finished games & their players (>2m old)`);
+      }
+
+      // Also clean any orphan finished games where finished_at was not recorded or older than 5m
+      const fiveMinCutoff = new Date(Date.now() - 300_000).toISOString();
+      const { data: ghostGames } = await supabase
+        .from('bingo_games')
+        .select('id')
+        .or('status.eq.finished,status.eq.cancelled')
+        .lte('created_at', fiveMinCutoff)
+        .limit(100);
+
+      if (ghostGames && ghostGames.length > 0) {
+        const gIds = ghostGames.map(g => g.id);
+        await supabase.from('bingo_players').delete().in('game_id', gIds);
+        await supabase.from('bingo_games').delete().in('id', gIds);
+      }
+    } catch (e: any) {
+      console.error('[BingoEngine] Auto-cleanup error:', e?.message || e);
+    }
   }
 
   private async tick() {
@@ -561,6 +623,7 @@ class BingoEngine {
         finished_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }).eq('id', game.id);
+      this.scheduleGameCleanup(game.id);
       return;
     }
 
@@ -666,6 +729,7 @@ class BingoEngine {
         updated_at:         new Date().toISOString(),
       }).eq('id', gameId).eq('status', 'calling').select('id');
       if (claimErr || !claim || claim.length === 0) return;
+      this.scheduleGameCleanup(gameId);
 
       const isBot = isSystemPlayer(w.telegram_id);
       if (isBot) {
@@ -709,6 +773,7 @@ class BingoEngine {
         updated_at:         new Date().toISOString(),
       }).eq('id', gameId).eq('status', 'calling').select('id');
       if (claimErr || !claim || claim.length === 0) return;
+      this.scheduleGameCleanup(gameId);
 
       for (const w of winners) {
         const isBot = isSystemPlayer(w.telegram_id);
@@ -748,6 +813,7 @@ class BingoEngine {
         updated_at:        new Date().toISOString(),
       }).eq('id', gameId).eq('status', 'calling').select('id');
       if (claimErr || !claim || claim.length === 0) return;
+      this.scheduleGameCleanup(gameId);
 
     // Refund ALL REAL human players their stake
     for (const p of players) {
