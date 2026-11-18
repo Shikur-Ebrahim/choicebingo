@@ -12,6 +12,7 @@ import {
   ensureDefaultSystemPlayersSeeded,
   DEFAULT_STAKE_RANGES,
   getWeightedBotCartelaCount,
+  DEFAULT_WAITER_CONFIG,
 } from './systemPlayers';
 
 const TICK_MS = 500; // 500ms tick for exact call_interval_ms execution
@@ -67,12 +68,18 @@ interface GameBotSession {
   cadenceMs: number;
 }
 
+interface GameWaiterSession {
+  triggerAt: number;
+  targetWaiters: number;
+}
+
 class BingoEngine {
   private timer: ReturnType<typeof setInterval> | null = null;
   private cleanupTimer: ReturnType<typeof setInterval> | null = null;
   private busy = false;
   private busySince = 0;
   private botSessions = new Map<string, GameBotSession>();
+  private waiterSessions = new Map<string, GameWaiterSession>();
 
   start() {
     if (this.timer) return;
@@ -224,6 +231,9 @@ class BingoEngine {
     // ── Simulate System Players (if enabled and within schedule) ─────────────
     await this.simulateSystemPlayers(game, cfg);
 
+    // ── Simulate Waiter Players (standby bot opponent if real player is waiting alone) ───
+    await this.simulateWaiterPlayers(game, cfg);
+
     const startTime = new Date(game.start_at).getTime();
     if (startTime > Date.now() + 86400000) return;
     if (Date.now() < startTime) return;
@@ -271,6 +281,7 @@ class BingoEngine {
 
     // 2+ unique players: START GAME!
     this.botSessions.delete(game.id);
+    this.waiterSessions.delete(game.id);
     await supabase.from('bingo_games').update({
       status: 'calling',
       called_numbers: [],
@@ -509,9 +520,172 @@ class BingoEngine {
     }
   }
 
+  /**
+   * Waiter Player (የተጠባባቂ ተጫዋች):
+   * When a real human player buys a cartela and waits alone (e.g. system player schedule ended,
+   * or stake 50/100 has 0 bots, or regular bots haven't arrived), a Waiter Player from the 1,000
+   * system players pool joins after a 10s–30s delay so the real player has an opponent to play with.
+   * - Operates on all 4 stakes (10, 20, 50, 100)
+   * - 1 or 2 waiter players join
+   * - 95% buy 1 cartela, 5% buy 2 cartelas
+   * - Draws authentic names from the 1,000 system players table
+   * - If a waiter player wins, it updates system_players.total_wins just like normal
+   */
+  private async simulateWaiterPlayers(game: any, cfg: any) {
+    try {
+      const botCfg = await getSystemPlayersConfig();
+      const waiterCfg = botCfg.waiter || DEFAULT_WAITER_CONFIG;
+      const stakeNum = Number(game.stake);
+
+      // Check if waiter feature is enabled and active for this stake
+      if (!waiterCfg.enabled || !waiterCfg.target_stakes.includes(stakeNum)) {
+        this.waiterSessions.delete(game.id);
+        return;
+      }
+
+      // Query current players
+      const { data: pRows } = await supabase
+        .from('bingo_players')
+        .select('id, telegram_id, cartela_number, created_at')
+        .eq('game_id', game.id)
+        .order('created_at', { ascending: true });
+
+      const players = pRows || [];
+      const realPlayers = players.filter((p: any) => !isSystemPlayer(p.telegram_id));
+      const uniquePlayers = new Set(players.map((p: any) => p.telegram_id)).size;
+
+      // RULE 1: At least ONE real human player MUST have bought a cartela!
+      if (realPlayers.length === 0) {
+        this.waiterSessions.delete(game.id);
+        return;
+      }
+
+      // RULE 2: If the game already has 2 or more unique players, an opponent already exists!
+      if (uniquePlayers >= 2) {
+        this.waiterSessions.delete(game.id);
+        return;
+      }
+
+      // Real player is waiting alone (uniquePlayers < 2)
+      const now = Date.now();
+      let session = this.waiterSessions.get(game.id);
+
+      if (!session) {
+        const minD = Math.max(5, Number(waiterCfg.min_delay_s) || 10);
+        const maxD = Math.max(minD, Number(waiterCfg.max_delay_s) || 30);
+        const delaySec = Math.floor(Math.random() * (maxD - minD + 1)) + minD;
+        const minW = Math.max(1, Number(waiterCfg.min_waiters) || 1);
+        const maxW = Math.max(minW, Number(waiterCfg.max_waiters) || 2);
+        const targetWaiters = Math.floor(Math.random() * (maxW - minW + 1)) + minW; // 1 or 2 players
+
+        session = {
+          triggerAt: now + delaySec * 1000,
+          targetWaiters,
+        };
+        this.waiterSessions.set(game.id, session);
+        console.log(`⏳ [Waiter] Game #${game.id.slice(0,8).toUpperCase()} (Stake: ${game.stake}): Real player joined alone! Waiter will join in ${delaySec}s (Target: ${targetWaiters} waiter(s))`);
+        return;
+      }
+
+      // Check if the delay time has elapsed
+      if (now < session.triggerAt) {
+        return; // Still waiting between 10s and 30s
+      }
+
+      // Time reached! Now buy cartela(s) for the waiter player(s)
+      const existingBots = players.filter((p: any) => isSystemPlayer(p.telegram_id));
+      const uniqueBotCount = new Set(existingBots.map((p: any) => p.telegram_id)).size;
+      const waitersNeeded = Math.max(1, session.targetWaiters - uniqueBotCount);
+
+      // Available cartelas on board
+      const maxGameCartelas = Number(cfg.max_players) || 200;
+      const takenCartelas = new Set(players.map((p: any) => Number(p.cartela_number)));
+      const allCartelas = Array.from({ length: maxGameCartelas }, (_, i) => i + 1);
+      const availableCartelas = allCartelas.filter(c => !takenCartelas.has(c));
+      if (availableCartelas.length === 0) return;
+
+      // Pick from the 1,000 system players pool
+      const pool = await getActiveSystemPlayersPool(50);
+      if (!pool || pool.length === 0) return;
+
+      const existingTids = new Set(players.map((p: any) => String(p.telegram_id)));
+      const candidateBots = pool.filter(b => !existingTids.has(String(b.telegram_id)));
+      if (candidateBots.length === 0) return;
+
+      // Shuffle candidates & available cartelas
+      const shuffledBots = candidateBots.sort(() => Math.random() - 0.5).slice(0, waitersNeeded);
+      const shuffledCartelas = [...availableCartelas].sort(() => Math.random() - 0.5);
+
+      const onePct = Number(waiterCfg.one_cartela_pct ?? 95);
+      const rowsToInsert: any[] = [];
+      let cIdx = 0;
+
+      for (const bot of shuffledBots) {
+        if (cIdx >= shuffledCartelas.length) break;
+
+        // 95% buy 1 cartela, 5% buy 2 cartelas
+        const rand = Math.random() * 100;
+        const count = (rand < onePct || (shuffledCartelas.length - cIdx) < 2) ? 1 : 2;
+
+        for (let i = 0; i < count; i++) {
+          if (cIdx >= shuffledCartelas.length) break;
+          const cartelaNum = shuffledCartelas[cIdx++];
+          rowsToInsert.push({
+            game_id: game.id,
+            telegram_id: bot.telegram_id,
+            first_name: bot.first_name,
+            cartela_number: cartelaNum,
+            card_matrix: generateBingoCard(),
+            bonus_used: 0,
+            main_used: Number(game.stake),
+          });
+        }
+      }
+
+      if (rowsToInsert.length === 0) return;
+
+      const { error: insErr } = await supabase.from('bingo_players').insert(rowsToInsert);
+      if (insErr) {
+        console.error('[BingoEngine] Failed to insert waiter player:', insErr.message);
+        return;
+      }
+
+      // Clean up waiter session as waiter has joined
+      this.waiterSessions.delete(game.id);
+
+      // Recalculate derash prize pool
+      const totalCartelas = players.length + rowsToInsert.length;
+      const allUniquePlayers = new Set([...players.map((p: any) => p.telegram_id), ...rowsToInsert.map(r => r.telegram_id)]).size;
+      const rawPool = totalCartelas * Number(game.stake);
+      const prizePool = allUniquePlayers < 3
+        ? rawPool
+        : Math.floor(rawPool * (Number(cfg.prize_percent) || 80) / 100);
+
+      // Ensure start_at has a smooth countdown (10-15s) so real player sees the opponent join and game start
+      const currentStartAt = new Date(game.start_at).getTime();
+      const remainingSec = Math.max(0, (currentStartAt - now) / 1000);
+      let newStartAt = game.start_at;
+      if (remainingSec < 5 || currentStartAt > now + 60000) {
+        newStartAt = new Date(now + 12 * 1000).toISOString();
+      }
+
+      await supabase.from('bingo_games').update({
+        prize_pool: prizePool,
+        start_at: newStartAt,
+        updated_at: new Date().toISOString(),
+      }).eq('id', game.id);
+
+      const cartelaNums = rowsToInsert.map(r => `#${r.cartela_number}`).join(', ');
+      console.log(`🤖 [Waiter] Game #${game.id.slice(0,8).toUpperCase()} (Stake: ${game.stake}): ${shuffledBots.length} Waiter Player(s) (${shuffledBots.map(b => b.first_name).join(', ')}) took [${cartelaNums}]! (Now ${allUniquePlayers} players, Derash: ${prizePool} ETB)`);
+    } catch (err: any) {
+      console.error('[BingoEngine] Error in simulateWaiterPlayers:', err?.message || err);
+    }
+  }
+
 
   private async refundAndResetGame(game: any, players: any[]) {
     this.botSessions.delete(game.id);
+    this.waiterSessions.delete(game.id);
     const stake = Number(game.stake);
     const botToken = process.env.BOT_TOKEN;
 

@@ -15,6 +15,26 @@ export interface StakePlayerRange {
   max: number;
 }
 
+export interface WaiterConfig {
+  enabled: boolean;            // Master toggle for Waiter: ON / OFF (Default: true)
+  target_stakes: number[];      // Stakes where waiter is active (Default: [10, 20, 50, 100])
+  min_delay_s: number;         // Min wait delay in seconds (Default: 10)
+  max_delay_s: number;         // Max wait delay in seconds (Default: 30)
+  min_waiters: number;         // Min waiter bots to join (Default: 1)
+  max_waiters: number;         // Max waiter bots to join (Default: 2)
+  one_cartela_pct: number;     // % probability of buying 1 cartela (Default: 95)
+}
+
+export const DEFAULT_WAITER_CONFIG: WaiterConfig = {
+  enabled: true,
+  target_stakes: [10, 20, 50, 100],
+  min_delay_s: 10,
+  max_delay_s: 30,
+  min_waiters: 1,
+  max_waiters: 2,
+  one_cartela_pct: 95,
+};
+
 export interface SystemPlayersConfig {
   enabled: boolean;
   schedule_enabled: boolean;
@@ -26,6 +46,7 @@ export interface SystemPlayersConfig {
   min_cartelas_per_player: number;
   max_cartelas_per_player: number;
   stake_player_ranges: Record<string, StakePlayerRange>;
+  waiter?: WaiterConfig;
 }
 
 export const DEFAULT_STAKE_RANGES: Record<string, StakePlayerRange> = {
@@ -46,6 +67,7 @@ export const DEFAULT_CONFIG: SystemPlayersConfig = {
   min_cartelas_per_player: 1,
   max_cartelas_per_player: 3, // Default 1-3 (70% 1, 20% 2, 10% 3)
   stake_player_ranges: DEFAULT_STAKE_RANGES,
+  waiter: DEFAULT_WAITER_CONFIG,
 };
 
 
@@ -200,6 +222,15 @@ export async function getSystemPlayersConfig(): Promise<SystemPlayersConfig> {
     min_cartelas_per_player: Number(sObj?.min_cartelas_per_player ?? tObj?.min_cartelas_per_player ?? DEFAULT_CONFIG.min_cartelas_per_player),
     max_cartelas_per_player: Number(sObj?.max_cartelas_per_player ?? tObj?.max_cartelas_per_player ?? DEFAULT_CONFIG.max_cartelas_per_player),
     stake_player_ranges: sObj?.stake_player_ranges || tObj?.stake_player_ranges || DEFAULT_STAKE_RANGES,
+    waiter: {
+      enabled: sObj?.waiter?.enabled !== undefined ? Boolean(sObj.waiter.enabled) : DEFAULT_WAITER_CONFIG.enabled,
+      target_stakes: Array.isArray(sObj?.waiter?.target_stakes) ? sObj.waiter.target_stakes : DEFAULT_WAITER_CONFIG.target_stakes,
+      min_delay_s: Number(sObj?.waiter?.min_delay_s ?? DEFAULT_WAITER_CONFIG.min_delay_s),
+      max_delay_s: Number(sObj?.waiter?.max_delay_s ?? DEFAULT_WAITER_CONFIG.max_delay_s),
+      min_waiters: Number(sObj?.waiter?.min_waiters ?? DEFAULT_WAITER_CONFIG.min_waiters),
+      max_waiters: Number(sObj?.waiter?.max_waiters ?? DEFAULT_WAITER_CONFIG.max_waiters),
+      one_cartela_pct: Number(sObj?.waiter?.one_cartela_pct ?? DEFAULT_WAITER_CONFIG.one_cartela_pct),
+    },
   };
 
   _cfgCache = merged;
@@ -217,6 +248,17 @@ export async function saveSystemPlayersConfig(cfg: Partial<SystemPlayersConfig>)
     min_cartelas_per_player: Math.max(1, Math.min(4, Number(cfg.min_cartelas_per_player ?? current.min_cartelas_per_player))),
     max_cartelas_per_player: Math.max(1, Math.min(4, Number(cfg.max_cartelas_per_player ?? current.max_cartelas_per_player))),
     stake_player_ranges: cfg.stake_player_ranges ?? current.stake_player_ranges ?? DEFAULT_STAKE_RANGES,
+    waiter: cfg.waiter ? {
+      ...current.waiter,
+      ...cfg.waiter,
+      enabled: Boolean(cfg.waiter.enabled !== undefined ? cfg.waiter.enabled : current.waiter?.enabled ?? true),
+      target_stakes: Array.isArray(cfg.waiter.target_stakes) ? cfg.waiter.target_stakes : (current.waiter?.target_stakes ?? [10, 20, 50, 100]),
+      min_delay_s: Math.max(5, Number(cfg.waiter.min_delay_s ?? current.waiter?.min_delay_s ?? 10)),
+      max_delay_s: Math.max(Number(cfg.waiter.min_delay_s ?? 10), Number(cfg.waiter.max_delay_s ?? current.waiter?.max_delay_s ?? 30)),
+      min_waiters: Math.max(1, Number(cfg.waiter.min_waiters ?? current.waiter?.min_waiters ?? 1)),
+      max_waiters: Math.max(Number(cfg.waiter.min_waiters ?? 1), Number(cfg.waiter.max_waiters ?? current.waiter?.max_waiters ?? 2)),
+      one_cartela_pct: Math.min(100, Math.max(0, Number(cfg.waiter.one_cartela_pct ?? current.waiter?.one_cartela_pct ?? 95))),
+    } : (current.waiter || DEFAULT_WAITER_CONFIG),
   };
 
   // 1. Dual-write to settings table first (guaranteed persistence)

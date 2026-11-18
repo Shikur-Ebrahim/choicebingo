@@ -22,6 +22,26 @@ interface StakePlayerRange {
   max: number;
 }
 
+interface WaiterConfig {
+  enabled: boolean;
+  target_stakes: number[];
+  min_delay_s: number;
+  max_delay_s: number;
+  min_waiters: number;
+  max_waiters: number;
+  one_cartela_pct: number;
+}
+
+const DEFAULT_WAITER_CONFIG: WaiterConfig = {
+  enabled: true,
+  target_stakes: [10, 20, 50, 100],
+  min_delay_s: 10,
+  max_delay_s: 30,
+  min_waiters: 1,
+  max_waiters: 2,
+  one_cartela_pct: 95,
+};
+
 interface SystemPlayersConfig {
   enabled: boolean;
   schedule_enabled: boolean;
@@ -33,6 +53,7 @@ interface SystemPlayersConfig {
   min_cartelas_per_player: number;
   max_cartelas_per_player: number;
   stake_player_ranges: Record<string, StakePlayerRange>;
+  waiter?: WaiterConfig;
 }
 
 const DEFAULT_STAKE_RANGES: Record<string, StakePlayerRange> = {
@@ -65,6 +86,7 @@ export default function AdminSystemPlayers() {
     min_cartelas_per_player: 1,
     max_cartelas_per_player: 3, // Default 1-3
     stake_player_ranges: DEFAULT_STAKE_RANGES,
+    waiter: DEFAULT_WAITER_CONFIG,
   });
 
   const [savingConfig, setSavingConfig] = useState(false);
@@ -120,6 +142,7 @@ export default function AdminSystemPlayers() {
             ...prev,
             ...loaded,
             stake_player_ranges: loaded.stake_player_ranges || prev.stake_player_ranges || DEFAULT_STAKE_RANGES,
+            waiter: loaded.waiter || prev.waiter || DEFAULT_WAITER_CONFIG,
           }));
         }
       }
@@ -144,6 +167,7 @@ export default function AdminSystemPlayers() {
           ...prev,
           ...saved,
           stake_player_ranges: saved.stake_player_ranges || prev.stake_player_ranges || DEFAULT_STAKE_RANGES,
+          waiter: saved.waiter || prev.waiter || DEFAULT_WAITER_CONFIG,
         }));
         showToast('Settings saved successfully!');
       } else {
@@ -351,6 +375,46 @@ export default function AdminSystemPlayers() {
       });
       showToast(nextState ? 'Schedule mode enabled (custom hours)' : 'Schedule mode disabled (24/7 all day)');
     } catch {}
+  };
+
+  // Toggle Waiter Switch (instantly saves)
+  const handleToggleWaiter = async () => {
+    const currentWaiter = config.waiter || DEFAULT_WAITER_CONFIG;
+    const nextState = !currentWaiter.enabled;
+    const updatedWaiter = { ...currentWaiter, enabled: nextState };
+    const updatedConfig = { ...config, waiter: updatedWaiter };
+    setConfig(updatedConfig);
+    try {
+      const res = await fetch(`${API_URL}/admin/system-players/config`, {
+        method: 'PUT',
+        headers: getHeaders(),
+        body: JSON.stringify(updatedConfig),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        showToast(nextState ? 'Waiter Player feature turned ON!' : 'Waiter Player feature turned OFF!');
+      } else {
+        setConfig(prev => ({ ...prev, waiter: currentWaiter }));
+        showToast('Failed to toggle waiter state', 'error');
+      }
+    } catch {
+      setConfig(prev => ({ ...prev, waiter: currentWaiter }));
+      showToast('Error toggling waiter state', 'error');
+    }
+  };
+
+  const toggleWaiterStake = (stake: number) => {
+    const current = config.waiter?.target_stakes || [10, 20, 50, 100];
+    const next = current.includes(stake)
+      ? current.filter(s => s !== stake)
+      : [...current, stake].sort((a, b) => a - b);
+    setConfig(prev => ({
+      ...prev,
+      waiter: {
+        ...(prev.waiter || DEFAULT_WAITER_CONFIG),
+        target_stakes: next,
+      },
+    }));
   };
 
   const resetStakeRangesToDefault = () => {
@@ -1051,6 +1115,139 @@ export default function AdminSystemPlayers() {
               </div>
               <div className="text-[11px] text-violet-800 bg-violet-50/80 border border-violet-100 rounded-xl p-2.5">
                 🎯 Authentic Selection: <b>70%</b> buy 1 cartela • <b>20%</b> buy 2 cartelas • <b>10%</b> buy 3 cartelas (from full 200 board)
+              </div>
+            </div>
+
+            {/* ── WAITER PLAYER (የተጠባባቂ ተጫዋች) SECTION ── */}
+            <div className="bg-white border-2 border-cyan-400/60 rounded-2xl p-4 space-y-3.5 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
+                    <Users size={16} className="text-cyan-600" />
+                    Waiter Player (የተጠባባቂ ተጫዋች)
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Standby bot opponent that joins when a real player buys a cartela and waits alone
+                  </p>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <span className={`text-[11px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md ${
+                    (config.waiter?.enabled ?? true) ? 'bg-cyan-100 text-cyan-800' : 'bg-slate-100 text-slate-500'
+                  }`}>
+                    {(config.waiter?.enabled ?? true) ? 'ON' : 'OFF'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleToggleWaiter}
+                    className={`relative inline-flex h-7 w-14 items-center rounded-full transition-colors focus:outline-none ${
+                      (config.waiter?.enabled ?? true) ? 'bg-cyan-500' : 'bg-slate-300'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-md transition-transform ${
+                        (config.waiter?.enabled ?? true) ? 'translate-x-8' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
+
+              {/* Waiter Enabled Stakes (4 Stakes: 10, 20, 50, 100 ETB) */}
+              <div className="space-y-2 pt-1 border-t border-slate-100">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="font-bold text-slate-700">Active Waiter Stakes:</span>
+                  <span className="text-[10px] text-cyan-700 bg-cyan-50 px-2 py-0.5 rounded font-black">
+                    {(config.waiter?.target_stakes || [10, 20, 50, 100]).length}/4 Stakes Enabled
+                  </span>
+                </div>
+                <div className="grid grid-cols-4 gap-2">
+                  {[10, 20, 50, 100].map((stake) => {
+                    const activeStakes = config.waiter?.target_stakes || [10, 20, 50, 100];
+                    const isSelected = activeStakes.includes(stake);
+                    return (
+                      <button
+                        key={stake}
+                        type="button"
+                        onClick={() => toggleWaiterStake(stake)}
+                        className={`py-2 rounded-xl text-xs font-black flex items-center justify-center space-x-1 transition-all ${
+                          isSelected
+                            ? 'bg-cyan-600 text-white shadow-sm shadow-cyan-600/20 border border-cyan-600'
+                            : 'bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200'
+                        }`}
+                      >
+                        {isSelected && <Check size={12} strokeWidth={3} />}
+                        <span>{stake} ETB</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Delay Range (10s - 30s) */}
+              <div className="space-y-2 pt-1 border-t border-slate-100">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="font-bold text-slate-700">Wait Delay Before Joining (seconds):</span>
+                  <span className="text-[10px] text-cyan-800 bg-cyan-50 px-2 py-0.5 rounded font-bold">
+                    {config.waiter?.min_delay_s ?? 10}s – {config.waiter?.max_delay_s ?? 30}s
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] text-slate-500 font-bold block mb-1">Min Delay (Seconds)</label>
+                    <input
+                      type="number"
+                      min={5}
+                      max={60}
+                      value={config.waiter?.min_delay_s ?? 10}
+                      onChange={(e) => setConfig({
+                        ...config,
+                        waiter: {
+                          ...(config.waiter || DEFAULT_WAITER_CONFIG),
+                          min_delay_s: Math.max(5, Number(e.target.value)),
+                        },
+                      })}
+                      className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-sm text-slate-900 font-bold focus:outline-none focus:border-cyan-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-slate-500 font-bold block mb-1">Max Delay (Seconds)</label>
+                    <input
+                      type="number"
+                      min={config.waiter?.min_delay_s ?? 10}
+                      max={60}
+                      value={config.waiter?.max_delay_s ?? 30}
+                      onChange={(e) => setConfig({
+                        ...config,
+                        waiter: {
+                          ...(config.waiter || DEFAULT_WAITER_CONFIG),
+                          max_delay_s: Math.max(Number(config.waiter?.min_delay_s ?? 10), Number(e.target.value)),
+                        },
+                      })}
+                      className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-sm text-slate-900 font-bold focus:outline-none focus:border-cyan-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Waiter Players Count (1-2) & Cartela Odds */}
+              <div className="grid grid-cols-2 gap-3 pt-1 border-t border-slate-100">
+                <div>
+                  <label className="text-[10px] text-slate-500 font-bold block mb-1">Waiter Bots Count</label>
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-black text-slate-800">
+                    1 – 2 Players
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[10px] text-slate-500 font-bold block mb-1">Cartela Purchase Odds</label>
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-black text-cyan-800">
+                    95% 1 Card • 5% 2 Cards
+                  </div>
+                </div>
+              </div>
+
+              {/* Info Banner */}
+              <div className="text-[11px] text-cyan-900 bg-cyan-50 border border-cyan-200 rounded-xl p-2.5">
+                ⚡ <b>Independent Opponent Guard</b>: If a real player buys a cartela in any enabled stake and no opponent joins, a Waiter Player from the 1,000 system players automatically joins after 10–30s so the game can start smoothly without refunding solo players.
               </div>
             </div>
 
