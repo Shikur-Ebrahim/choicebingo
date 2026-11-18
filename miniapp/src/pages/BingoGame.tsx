@@ -807,7 +807,7 @@ export default function BingoGame() {
   useEffect(() => {
     if (!game) return;
 
-    if (game.status === 'calling') {
+    if (game.status === 'calling' || game.status === 'finished') {
       const isNewGame = hasStartedAudioGameIdRef.current !== game.id;
       const transitionedFromWaiting = prevGameStatusRef.current === 'waiting';
 
@@ -838,7 +838,7 @@ export default function BingoGame() {
     prevCalledLenRef.current = called.length;
   }, [called.length, game?.status, game?.id, lastNum, playCallAudio, playGameStart]);
 
-  // Fire celebration when game finishes — play stop sound + display 3D celebration card by any means
+  // Fire celebration when game finishes — wait 3 seconds so player clearly sees the winning ball marked on their card!
   useEffect(() => {
     if (game?.status !== 'finished') return;
     if (hasCelebratedRef.current === game.id) return;
@@ -854,85 +854,94 @@ export default function BingoGame() {
     hasCelebratedRef.current = game.id;
     isCelebratingRef.current = true;
 
-    // 1. ── REMATCH: 3+ way tie ──
-    if (game.winner_first_name === 'REMATCH') {
-      setCelebration({
-        winner_name: 'REMATCH',
-        winner_cartela: 0,
-        winner_prize: 0,
-        winner_matrix: null,
-        iWon: false,
-        called: [...(game.called_numbers || [])],
-      });
-      return;
-    }
-
-    // 4. ── Normal Win or 2-way tie ──
-    const iWon = game.winner_telegram_id === String(user?.telegram_id);
     let isMounted = true;
 
-    if (game.winner_first_name && game.winner_first_name.includes(' & ')) {
-      // Show celebration card immediately with zero delay
-      setCelebration({
-        winner_name: game.winner_first_name || 'Players',
-        winner_cartela: 0,
-        winner_prize: game.winner_prize || 0,
-        winner_matrix: null,
-        winners_list: [],
-        iWon,
-        called: [...(game.called_numbers || [])],
-      });
+    const showCelebrationCard = () => {
+      if (!isMounted) return;
+      isCelebratingRef.current = true;
 
-      fetch(`${API}/bingo/winners?game_id=${game.id}`, { headers: hdrs() })
-        .then(r => r.json())
-        .then(data => {
-          if (!isMounted) return;
-          setCelebration(prev => (prev ? { ...prev, winners_list: data.winners } : null));
-        })
-        .catch(() => {});
-    } else {
-      const localCard = myCartelas.find(c => c.cartela_number === game.winner_cartela)?.card_matrix;
-      if (localCard) {
+      // 1. ── REMATCH: 3+ way tie ──
+      if (game.winner_first_name === 'REMATCH') {
         setCelebration({
-          winner_name: game.winner_first_name || 'Player',
-          winner_cartela: game.winner_cartela || 0,
-          winner_prize: game.winner_prize || 0,
-          winner_matrix: localCard,
-          iWon,
-          called: [...(game.called_numbers || [])],
-        });
-      } else if (game.winner_cartela) {
-        // Immediately show celebration card so user sees it with zero delay!
-        setCelebration({
-          winner_name: game.winner_first_name || 'Player',
-          winner_cartela: game.winner_cartela,
-          winner_prize: game.winner_prize || 0,
+          winner_name: 'REMATCH',
+          winner_cartela: 0,
+          winner_prize: 0,
           winner_matrix: null,
-          iWon,
+          iWon: false,
           called: [...(game.called_numbers || [])],
         });
+        return;
+      }
 
-        fetch(`${API}/bingo/card?game_id=${game.id}&cartela=${game.winner_cartela}`, { headers: hdrs() })
-          .then(r => r.json())
-          .then(data => {
-            if (!isMounted) return;
-            setCelebration(prev => (prev ? { ...prev, winner_matrix: data.matrix || null } : null));
-          })
-          .catch(() => {});
-      } else {
-        // Fallback for any other game finish: by any means show celebration card!
+      // 2. ── Normal Win or 2-way tie ──
+      const iWon = game.winner_telegram_id === String(user?.telegram_id);
+
+      if (game.winner_first_name && game.winner_first_name.includes(' & ')) {
         setCelebration({
-          winner_name: game.winner_first_name || 'Bingo Winner',
+          winner_name: game.winner_first_name || 'Players',
           winner_cartela: 0,
           winner_prize: game.winner_prize || 0,
           winner_matrix: null,
+          winners_list: [],
           iWon,
           called: [...(game.called_numbers || [])],
         });
-      }
-    }
 
-    return () => { isMounted = false; };
+        fetch(`${API}/bingo/winners?game_id=${game.id}`, { headers: hdrs() })
+          .then(r => r.json())
+          .then(data => {
+            if (!isMounted) return;
+            setCelebration(prev => (prev ? { ...prev, winners_list: data.winners } : null));
+          })
+          .catch(() => {});
+      } else {
+        const localCard = myCartelas.find(c => c.cartela_number === game.winner_cartela)?.card_matrix;
+        if (localCard) {
+          setCelebration({
+            winner_name: game.winner_first_name || 'Player',
+            winner_cartela: game.winner_cartela || 0,
+            winner_prize: game.winner_prize || 0,
+            winner_matrix: localCard,
+            iWon,
+            called: [...(game.called_numbers || [])],
+          });
+        } else if (game.winner_cartela) {
+          setCelebration({
+            winner_name: game.winner_first_name || 'Player',
+            winner_cartela: game.winner_cartela,
+            winner_prize: game.winner_prize || 0,
+            winner_matrix: null,
+            iWon,
+            called: [...(game.called_numbers || [])],
+          });
+
+          fetch(`${API}/bingo/card?game_id=${game.id}&cartela=${game.winner_cartela}`, { headers: hdrs() })
+            .then(r => r.json())
+            .then(data => {
+              if (!isMounted) return;
+              setCelebration(prev => (prev ? { ...prev, winner_matrix: data.matrix || null } : null));
+            })
+            .catch(() => {});
+        } else {
+          setCelebration({
+            winner_name: game.winner_first_name || 'Bingo Winner',
+            winner_cartela: 0,
+            winner_prize: game.winner_prize || 0,
+            winner_matrix: null,
+            iWon,
+            called: [...(game.called_numbers || [])],
+          });
+        }
+      }
+    };
+
+    // Wait exactly 3 seconds (3000ms) so the winning ball appears in caller & lights up on the cartela before the card pops up!
+    const delayTimer = setTimeout(showCelebrationCard, 3000);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(delayTimer);
+    };
   }, [game?.status, game?.id, game?.winner_cartela, game?.winner_first_name, game?.winner_prize, game?.finished_at]);
 
   // Auto-dismiss celebration after exactly 5 seconds with live countdown

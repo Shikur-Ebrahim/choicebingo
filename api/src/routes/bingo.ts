@@ -57,9 +57,9 @@ router.get('/current', validateTelegramAuth, async (req: AuthRequest, res) => {
   const stake = Number(req.query.stake) || 10;
   const excludeId = req.query.exclude_id ? String(req.query.exclude_id) : null;
 
-  // 1. Check if a game finished in the last 2 seconds (< 2.0s)
-  // Serves finished game for 2s so client catches the finish event & celebration triggers immediately.
-  // After 2s, automatically serves the NEW waiting game so the new game loads behind the celebration card!
+  // 1. Check if a game finished in the last 9 seconds (< 9.0s)
+  // Serves finished game for 9s so client displays 3s cartela mark preview + 5s celebration card.
+  // When exclude_id is sent by client, it immediately serves the NEW active game!
   const { data: latestFinished } = await supabase
     .from('bingo_games')
     .select('*')
@@ -76,11 +76,11 @@ router.get('/current', validateTelegramAuth, async (req: AuthRequest, res) => {
 
   const isExcluded = Boolean(excludeId && latestFinished && latestFinished.id === excludeId);
 
-  // Serve finished game for only 2 seconds (2000ms)
-  if (latestFinished && finishElapsed >= 0 && finishElapsed < 2000 && !isExcluded) {
+  // Serve finished game for 9 seconds (9000ms)
+  if (latestFinished && finishElapsed >= 0 && finishElapsed < 9000 && !isExcluded) {
     game = latestFinished;
   } else {
-    // 2. After 2s, immediately serve active new game (waiting or calling)
+    // 2. After 9s or if excluded, serve active new game (waiting or calling)
     const { data: activeGame } = await supabase
       .from('bingo_games')
       .select('*')
