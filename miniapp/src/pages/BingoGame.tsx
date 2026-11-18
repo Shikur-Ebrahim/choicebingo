@@ -533,6 +533,9 @@ export default function BingoGame() {
   const hasCelebratedRef = useRef<string | null>(null);
   const hasCelebratedSoundRef = useRef<string | null>(null);
   const isCelebratingRef = useRef(false);
+  const [isFinishingView, setIsFinishingView] = useState(false);
+  const isFinishingViewRef = useRef(false);
+  const hasTriggeredFinishedRef = useRef<string | null>(null);
 
   // Sync Auto/Manual play mode with backend BingoEngine
   useEffect(() => {
@@ -557,6 +560,9 @@ export default function BingoGame() {
     hasCelebratedRef.current = null;
     hasCelebratedSoundRef.current = null;
     isCelebratingRef.current = false;
+    isFinishingViewRef.current = false;
+    setIsFinishingView(false);
+    hasTriggeredFinishedRef.current = null;
     hasStartedAudioGameIdRef.current = null;
     lastPlayedBallRef.current = null;
     prevGameStatusRef.current = null;
@@ -586,6 +592,9 @@ export default function BingoGame() {
       hasCelebratedRef.current = null;
       hasCelebratedSoundRef.current = null;
       isCelebratingRef.current = false;
+      isFinishingViewRef.current = false;
+      setIsFinishingView(false);
+      hasTriggeredFinishedRef.current = null;
       hasStartedAudioGameIdRef.current = null;
       lastPlayedBallRef.current = null;
       prevGameStatusRef.current = null;
@@ -597,19 +606,21 @@ export default function BingoGame() {
 
   const fetchState = useCallback(async () => {
     if (!selectedStake) return;
-    if (isCelebratingRef.current) return;
+    if (isCelebratingRef.current || isFinishingViewRef.current || celebration) return;
     if (!game) setLoading(true);
     try {
       const excludeParam = hasCelebratedRef.current ? `&exclude_id=${hasCelebratedRef.current}` : '';
       const r = await fetch(`${API}/bingo/current?stake=${selectedStake}${excludeParam}`, { headers: hdrs() });
+      if (isCelebratingRef.current || isFinishingViewRef.current || celebration) return;
       if (r.ok) {
         const d = await r.json();
+        if (isCelebratingRef.current || isFinishingViewRef.current || celebration) return;
+
         // If server returns finished game that we already celebrated, ignore it
         if (d.game && d.game.status === 'finished') {
           if (hasCelebratedRef.current === d.game.id) {
             return;
           }
-          isCelebratingRef.current = true;
         }
         if (d.max_players) setMaxPlayers(Math.min(500, Number(d.max_players)));
         if (d.max_cartelas_per_user) setMaxCartelasPerUser(Number(d.max_cartelas_per_user));
@@ -646,6 +657,8 @@ export default function BingoGame() {
         };
 
         if (d.game && d.game.id !== gameIdRef.current) {
+          if (isFinishingViewRef.current || isCelebratingRef.current || celebration) return;
+
           gameIdRef.current = d.game.id;
           pendingSeatsRef.current.clear();
           setGame(d.game);
@@ -657,6 +670,7 @@ export default function BingoGame() {
           setManuallyMarked(new Set()); // Reset manual marks on new game
           if (d.game.status !== 'finished') {
             hasCelebratedRef.current = null;
+            hasTriggeredFinishedRef.current = null;
           }
         } else if (d.game) {
           setGame(d.game);
@@ -750,12 +764,14 @@ export default function BingoGame() {
     const ch = supabase.channel(`bingo-rt-${selectedStake}-${Date.now()}`)
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "bingo_games" }, ({ new: g }) => {
         if (Number(g.stake) === selectedStake) {
-          if (isCelebratingRef.current && g.id !== gameIdRef.current) return;
-          if (g.status === 'finished') {
-            isCelebratingRef.current = true;
+          if ((isCelebratingRef.current || isFinishingViewRef.current || celebration) && g.id !== gameIdRef.current) return;
+          if (g.status === 'finished' && g.id === gameIdRef.current) {
+            isFinishingViewRef.current = true;
+            setIsFinishingView(true);
           }
           setGame(g as BGame);
           if (g.id !== gameIdRef.current) {
+            if (isCelebratingRef.current || isFinishingViewRef.current || celebration) return;
             gameIdRef.current = g.id;
             prevCalledLenRef.current = 0;
             setManuallyMarked(new Set());
@@ -764,10 +780,11 @@ export default function BingoGame() {
         }
       })
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "bingo_games" }, () => {
-        if (isCelebratingRef.current) return;
+        if (isCelebratingRef.current || isFinishingViewRef.current || celebration) return;
         fetchState();
       })
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "bingo_players" }, ({ new: p }) => {
+        if (isCelebratingRef.current || isFinishingViewRef.current || celebration) return;
         const np = p as { game_id: string; cartela_number: number; telegram_id: string };
         if (np.game_id === gameIdRef.current) {
           setTaken(prev => prev.includes(np.cartela_number) ? prev : [...prev, np.cartela_number]);
@@ -779,11 +796,12 @@ export default function BingoGame() {
         }
       })
       .on("postgres_changes", { event: "DELETE", schema: "public", table: "bingo_players" }, () => {
+        if (isCelebratingRef.current || isFinishingViewRef.current || celebration) return;
         fetchState();
         refreshUser();
       }).subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [selectedStake, fetchState]);
+  }, [selectedStake, fetchState, celebration]);
 
   useEffect(() => {
     if (!game || game.status !== "waiting") return;
@@ -841,18 +859,28 @@ export default function BingoGame() {
   // Fire celebration when game finishes — wait 3 seconds so player clearly sees the winning ball marked on their card!
   useEffect(() => {
     if (game?.status !== 'finished') return;
-    if (hasCelebratedRef.current === game.id) return;
+    if (hasTriggeredFinishedRef.current === game.id) return;
 
     // Suppress only if game finished more than 30s ago (stale game history)
     const finishTime = game.finished_at ? new Date(game.finished_at).getTime() : 0;
     if (finishTime > 0 && Date.now() - finishTime > 30_000) {
+      hasTriggeredFinishedRef.current = game.id;
       hasCelebratedRef.current = game.id;
+      isFinishingViewRef.current = false;
+      setIsFinishingView(false);
       fetchState();
       return;
     }
 
-    hasCelebratedRef.current = game.id;
-    isCelebratingRef.current = true;
+    hasTriggeredFinishedRef.current = game.id;
+    isFinishingViewRef.current = true;
+    setIsFinishingView(true);
+
+    // CRITICAL: Play winning ball audio announcement so user clearly hears and sees it!
+    if (lastNum) {
+      playCallAudio(lastNum);
+      if (WebApp?.HapticFeedback) WebApp.HapticFeedback.impactOccurred('medium');
+    }
 
     let isMounted = true;
 
@@ -942,7 +970,7 @@ export default function BingoGame() {
       isMounted = false;
       clearTimeout(delayTimer);
     };
-  }, [game?.status, game?.id, game?.winner_cartela, game?.winner_first_name, game?.winner_prize, game?.finished_at]);
+  }, [game?.status, game?.id, game?.winner_cartela, game?.winner_first_name, game?.winner_prize, game?.finished_at, lastNum, playCallAudio]);
 
   // Auto-dismiss celebration after exactly 5 seconds with live countdown
   useEffect(() => {
@@ -965,35 +993,27 @@ export default function BingoGame() {
       setCelebrationSecondsLeft(prev => Math.max(0, prev - 1));
     }, 1000);
 
-    // After 2 seconds: automatically prepare and fetch the new waiting game in background
-    const bgLoadTimer = setTimeout(() => {
-      isCelebratingRef.current = false;
-      setMyCard(null);
-      setMyCartelas([]);
-      setActiveCartelaIdx(0);
-      setTaken([]);
-      fetchState();
-    }, 2000);
-
-    // After 5 seconds: dismiss celebration card so user immediately sees the already-loaded new game!
+    // After 5 seconds: dismiss celebration card so user cleanly transitions to the new game!
     const dismissTimer = setTimeout(() => {
       isCelebratingRef.current = false;
+      isFinishingViewRef.current = false;
+      setIsFinishingView(false);
       setCelebration(null);
       setMyCard(null);
       setMyCartelas([]);
       setActiveCartelaIdx(0);
       setTaken([]);
+      hasCelebratedRef.current = game?.id || null;
       setGame(prev => prev && prev.status === 'finished' ? { ...prev, status: 'waiting', called_numbers: [] } : prev);
       fetchState();
       refreshUser();
     }, 5000);
 
     return () => {
-      clearTimeout(bgLoadTimer);
       clearTimeout(dismissTimer);
       clearInterval(interval);
     };
-  }, [celebration]);
+  }, [celebration, game?.id, fetchState, refreshUser, playSpecial]);
 
   // Generate matrix client-side for preview
   const generateBingoCard = () => {
@@ -1344,7 +1364,7 @@ export default function BingoGame() {
   if (game?.status === "waiting") { statusTxt = timeLeft > 86400 ? "Waiting..." : `${timeLeft}s`; statusCls = "text-orange-400"; }
   else if (game?.status === "calling") { statusTxt = "Active"; statusCls = "text-emerald-400"; }
 
-  const showCallingBoard = Boolean(game && (game.status === 'calling' || game.status === 'finished'));
+  const showCallingBoard = Boolean(isFinishingView || celebration || (game && (game.status === 'calling' || game.status === 'finished')));
 
   const Header = () => (
     <div
@@ -2738,11 +2758,16 @@ export default function BingoGame() {
             {/* Close button */}
             <button
               onClick={() => {
+                isCelebratingRef.current = false;
+                isFinishingViewRef.current = false;
+                setIsFinishingView(false);
                 setCelebration(null);
                 setMyCard(null);
                 setMyCartelas([]);
                 setActiveCartelaIdx(0);
                 setTaken([]);
+                hasCelebratedRef.current = game?.id || null;
+                setGame(prev => prev && prev.status === 'finished' ? { ...prev, status: 'waiting', called_numbers: [] } : prev);
                 fetchState();
                 refreshUser();
               }}
