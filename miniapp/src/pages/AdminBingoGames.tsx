@@ -35,7 +35,7 @@ const DEFAULT: GameSettings = {
   waiting_period_s: 30, 
   release_time_s: 60,
   min_players: 2, 
-  max_players: 200, 
+  max_players: 500, 
   prize_percent: 80,
   max_cartelas_per_user: 4,
   early_call_8_enabled: false,

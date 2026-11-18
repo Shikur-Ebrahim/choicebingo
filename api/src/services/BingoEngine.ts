@@ -14,22 +14,15 @@ import {
   getWeightedBotCartelaCount,
   DEFAULT_WAITER_CONFIG,
 } from './systemPlayers';
+import { getFixedCartela } from './fixedCartelas';
 
 const TICK_MS = 500; // 500ms tick for exact call_interval_ms execution
 const STAKES  = [10, 20, 50, 100];
 
-export function generateBingoCard(): number[][] {
-  const zones: [number, number][] = [[1,15],[16,30],[31,45],[46,60],[61,75]];
-  const card: number[][] = Array.from({ length: 5 }, () => Array(5).fill(0));
-  for (let col = 0; col < 5; col++) {
-    const [lo, hi] = zones[col];
-    const chosen = new Set<number>();
-    while (chosen.size < 5) chosen.add(Math.floor(Math.random() * (hi - lo + 1)) + lo);
-    const nums = Array.from(chosen);
-    for (let row = 0; row < 5; row++) card[row][col] = nums[row];
-  }
-  card[2][2] = 0; // FREE center
-  return card;
+export { getFixedCartela };
+
+export function generateBingoCard(cartelaNumber?: number): number[][] {
+  return getFixedCartela(cartelaNumber || 1);
 }
 
 export function checkBingo(card: number[][], called: number[]): boolean {
@@ -419,8 +412,8 @@ class BingoEngine {
         return; // Target already reached for this game
       }
 
-      // Available cartelas on the full 200 board (or configured max_players)
-      const maxGameCartelas = Number(cfg.max_players) || 200;
+      // Available cartelas on the full 500 board (or configured max_players)
+      const maxGameCartelas = Number(cfg.max_players) || 500;
       const takenCartelas = new Set(players.map((p: any) => Number(p.cartela_number)));
       const allCartelas = Array.from({ length: maxGameCartelas }, (_, i) => i + 1);
       const availableCartelas = allCartelas.filter(c => !takenCartelas.has(c));
@@ -450,7 +443,7 @@ class BingoEngine {
       // Shuffle candidates
       const shuffledBots = candidateBots.sort(() => Math.random() - 0.5);
 
-      // Fisher-Yates shuffle across the ENTIRE 200 board
+      // Fisher-Yates shuffle across the ENTIRE 500 board
       const shuffledCartelas = [...availableCartelas];
       for (let i = shuffledCartelas.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -480,7 +473,7 @@ class BingoEngine {
             telegram_id: bot.telegram_id,
             first_name: bot.first_name,
             cartela_number: cartelaNum,
-            card_matrix: generateBingoCard(),
+            card_matrix: getFixedCartela(cartelaNum),
             bonus_used: 0,
             main_used: Number(game.stake),
           });
@@ -598,7 +591,7 @@ class BingoEngine {
       const waitersNeeded = Math.max(1, session.targetWaiters - uniqueBotCount);
 
       // Available cartelas on board
-      const maxGameCartelas = Number(cfg.max_players) || 200;
+      const maxGameCartelas = Number(cfg.max_players) || 500;
       const takenCartelas = new Set(players.map((p: any) => Number(p.cartela_number)));
       const allCartelas = Array.from({ length: maxGameCartelas }, (_, i) => i + 1);
       const availableCartelas = allCartelas.filter(c => !takenCartelas.has(c));
@@ -635,7 +628,7 @@ class BingoEngine {
             telegram_id: bot.telegram_id,
             first_name: bot.first_name,
             cartela_number: cartelaNum,
-            card_matrix: generateBingoCard(),
+            card_matrix: getFixedCartela(cartelaNum),
             bonus_used: 0,
             main_used: Number(game.stake),
           });

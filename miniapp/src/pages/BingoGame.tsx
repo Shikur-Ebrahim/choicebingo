@@ -6,6 +6,7 @@ import { supabase } from "../lib/supabase";
 import { useGameStore } from "../store/gameStore";
 import { t } from '../lib/translations';
 import VideoGuideModal from "../components/VideoGuideModal";
+import { getFixedCartela } from "../lib/fixedCartelas";
 
 const API = import.meta.env.VITE_API_URL || "/api";
 
@@ -147,7 +148,7 @@ export default function BingoGame() {
   const urlStake = searchParams.get("stake");
   const [selectedStake, setSelectedStake] = useState<number | null>(urlStake ? Number(urlStake) : null);
   const [showStakeDropdown, setShowStakeDropdown] = useState(false);
-  const [maxPlayers, setMaxPlayers] = useState<number>(200);
+  const [maxPlayers, setMaxPlayers] = useState<number>(500);
   const [maxCartelasPerUser, setMaxCartelasPerUser] = useState<number>(4);
   const [myCartelas, setMyCartelas] = useState<Array<{
     cartela_number: number;
@@ -934,11 +935,12 @@ export default function BingoGame() {
             called: [...(game.called_numbers || [])],
           });
         } else if (game.winner_cartela) {
+          const fixedMatrix = getFixedCartela(game.winner_cartela);
           setCelebration({
             winner_name: game.winner_first_name || 'Player',
             winner_cartela: game.winner_cartela,
             winner_prize: game.winner_prize || 0,
-            winner_matrix: null,
+            winner_matrix: fixedMatrix,
             iWon,
             called: [...(game.called_numbers || [])],
           });
@@ -947,7 +949,9 @@ export default function BingoGame() {
             .then(r => r.json())
             .then(data => {
               if (!isMounted) return;
-              setCelebration(prev => (prev ? { ...prev, winner_matrix: data.matrix || null } : null));
+              if (data?.matrix) {
+                setCelebration(prev => (prev ? { ...prev, winner_matrix: data.matrix } : null));
+              }
             })
             .catch(() => {});
         } else {
@@ -1015,19 +1019,9 @@ export default function BingoGame() {
     };
   }, [celebration, game?.id, fetchState, refreshUser, playSpecial]);
 
-  // Generate matrix client-side for preview
-  const generateBingoCard = () => {
-    const zones: [number, number][] = [[1, 15], [16, 30], [31, 45], [46, 60], [61, 75]];
-    const card: number[][] = Array.from({ length: 5 }, () => Array(5).fill(0));
-    for (let col = 0; col < 5; col++) {
-      const [lo, hi] = zones[col];
-      const chosen = new Set<number>();
-      while (chosen.size < 5) chosen.add(Math.floor(Math.random() * (hi - lo + 1)) + lo);
-      const nums = Array.from(chosen);
-      for (let row = 0; row < 5; row++) card[row][col] = nums[row];
-    }
-    card[2][2] = 0;
-    return card;
+  // Generate matrix client-side (deterministic permanent fixed cartelas)
+  const generateBingoCard = (seat?: number) => {
+    return getFixedCartela(seat || 1);
   };
 
   const [releasing, setReleasing] = useState<number | null>(null);
@@ -1156,8 +1150,8 @@ export default function BingoGame() {
       return;
     }
 
-    // Direct buy without preview popup!
-    const matrix = generateBingoCard();
+    // Direct buy with authentic permanent fixed cartela
+    const matrix = getFixedCartela(seat);
     joinGame(seat, matrix);
   };
 
@@ -2316,7 +2310,7 @@ export default function BingoGame() {
 
   const renderCartelaPicker = () => {
     const myNums = myCartelas.map(c => c.cartela_number);
-    const displayPlayers = maxPlayers || 200;
+    const displayPlayers = maxPlayers || 500;
     const canPickMore = myCartelas.length < maxCartelasPerUser;
     const currentStake = selectedStake || game?.stake || 10;
 

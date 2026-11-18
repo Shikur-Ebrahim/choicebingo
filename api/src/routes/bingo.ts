@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { AuthRequest, validateTelegramAuth } from '../middleware/auth';
 import { supabase } from '../services/supabase';
-import { generateBingoCard, checkBingo, setPlayerMode } from '../services/BingoEngine';
+import { generateBingoCard, checkBingo, setPlayerMode, getFixedCartela } from '../services/BingoEngine';
 import { getSettings } from './adminSettings';
 import { randomUUID } from 'crypto';
 
@@ -108,7 +108,7 @@ router.get('/current', validateTelegramAuth, async (req: AuthRequest, res) => {
     game = newGame;
   }
 
-  if (!game) { res.json({ game: null, taken_cartelas: [], my_card: null, my_cartelas: [], max_players: 200, max_cartelas_per_user: 4 }); return; }
+  if (!game) { res.json({ game: null, taken_cartelas: [], my_card: null, my_cartelas: [], max_players: 500, max_cartelas_per_user: 4 }); return; }
 
   const { data: rows } = await supabase
     .from('bingo_players')
@@ -129,7 +129,7 @@ router.get('/current', validateTelegramAuth, async (req: AuthRequest, res) => {
   const my_card = my_cartelas.length > 0 ? my_cartelas[0] : null;
 
   const cfg = await getSettings();
-  const maxPlayersAllowed = Math.min(500, cfg.max_players || 200);
+  const maxPlayersAllowed = Math.min(500, cfg.max_players || 500);
   res.json({ game, taken_cartelas, unique_players, my_card, my_cartelas, max_players: maxPlayersAllowed, max_cartelas_per_user: cfg.max_cartelas_per_user });
 });
 
@@ -140,7 +140,7 @@ router.post('/join', validateTelegramAuth, async (req: AuthRequest, res) => {
     const { cartela_number } = req.body;
     const seat = Number(cartela_number);
     const cfg = await getSettings();
-    const maxPlayersAllowed = Math.min(500, cfg.max_players || 200);
+    const maxPlayersAllowed = Math.min(500, cfg.max_players || 500);
 
     if (!seat || seat < 1 || seat > maxPlayersAllowed) {
       res.status(400).json({ error: `Pick a cartela between 1 and ${maxPlayersAllowed}` }); return;
@@ -240,27 +240,8 @@ router.post('/join', validateTelegramAuth, async (req: AuthRequest, res) => {
 
     if (deductErr) { res.status(400).json({ error: 'Payment failed — please try again' }); return; }
 
-    // Validate or generate card_matrix
-    let card_matrix = req.body.card_matrix;
-    if (!card_matrix || !Array.isArray(card_matrix) || card_matrix.length !== 5) {
-      card_matrix = generateBingoCard();
-    } else {
-      // Basic validation to prevent obvious cheating
-      let valid = true;
-      const zones = [[1,15],[16,30],[31,45],[46,60],[61,75]];
-      for (let c=0; c<5; c++) {
-        const [lo, hi] = zones[c];
-        const seen = new Set();
-        for (let r=0; r<5; r++) {
-          if (c===2 && r===2) continue; // Free space
-          const val = card_matrix[r][c];
-          if (typeof val !== 'number' || val < lo || val > hi || seen.has(val)) valid = false;
-          seen.add(val);
-        }
-      }
-      if (!valid) card_matrix = generateBingoCard();
-      card_matrix[2][2] = 0; // Ensure free space
-    }
+    // Enforce authentic permanent fixed card matrix for cartela seat
+    const card_matrix = getFixedCartela(seat);
 
     const { error: insertErr } = await supabase.from('bingo_players').insert({
       game_id: game.id,
@@ -429,14 +410,20 @@ router.post('/release', validateTelegramAuth, async (req: AuthRequest, res) => {
 
 router.get('/card', async (req, res) => {
   const { game_id, cartela } = req.query;
-  if (!game_id || !cartela) { res.json({ matrix: null }); return; }
   const cNum = Number(cartela);
-  const { data } = await supabase.from('bingo_players')
-    .select('card_matrix')
-    .eq('game_id', String(game_id))
-    .eq('cartela_number', isNaN(cNum) ? cartela : cNum)
-    .maybeSingle();
-  res.json({ matrix: data?.card_matrix || null });
+  if (!cNum || isNaN(cNum)) { res.json({ matrix: null }); return; }
+  if (game_id) {
+    const { data } = await supabase.from('bingo_players')
+      .select('card_matrix')
+      .eq('game_id', String(game_id))
+      .eq('cartela_number', cNum)
+      .maybeSingle();
+    if (data?.card_matrix) {
+      res.json({ matrix: data.card_matrix });
+      return;
+    }
+  }
+  res.json({ matrix: getFixedCartela(cNum) });
 });
 
 router.get('/winners', async (req, res) => {
