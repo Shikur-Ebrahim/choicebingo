@@ -13,7 +13,6 @@ import Admin from './pages/Admin';
 import Worker from './pages/Worker';
 import BingoGame from './pages/BingoGame';
 import AdminBingoGames from './pages/AdminBingoGames';
-import AdminUserAudit from './pages/AdminUserAudit';
 import AdminSystemPlayers from './pages/AdminSystemPlayers';
 import Leaderboard from './pages/Leaderboard';
 import Rewards from './pages/Rewards';
@@ -135,7 +134,6 @@ import AdminWithdrawalMethods from './pages/AdminWithdrawalMethods';
 import AdminDeposits from './pages/AdminDeposits';
 import AdminWithdrawals from './pages/AdminWithdrawals';
 import AdminSettings from './pages/AdminSettings';
-import AdminTxReport from './pages/AdminTxReport';
 import AdminUsers from './pages/AdminUsers';
 import AdminWorkers from './pages/AdminWorkers';
 import AdminBroadcast from './pages/AdminBroadcast';
@@ -212,7 +210,6 @@ function App() {
           <Route path="/rules" element={<Rules />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/admin/bingo-games" element={<AdminBingoGames />} />
-          <Route path="/admin/user-audit" element={<AdminUserAudit />} />
           <Route path="/admin/deposit-methods" element={<AdminDepositMethods />} />
           <Route path="/admin/withdrawal-methods" element={<AdminWithdrawalMethods />} />
           <Route path="/admin/deposits" element={<AdminDeposits />} />
@@ -220,7 +217,6 @@ function App() {
           <Route path="/admin/settings" element={<AdminSettings />} />
           <Route path="/admin/rewards" element={<AdminRewards />} />
           <Route path="/admin/support-videos" element={<AdminSupportVideos />} />
-          <Route path="/admin/tx-report" element={<AdminTxReport />} />
           <Route path="/admin/users" element={<AdminUsers />} />
           <Route path="/admin/workers" element={<AdminWorkers />} />
           <Route path="/admin/broadcast" element={<AdminBroadcast />} />
