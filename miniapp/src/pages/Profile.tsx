@@ -66,8 +66,8 @@ export default function Profile() {
   };
 
   // Shared class for every list row matching reference layout
-  const row = "w-full flex items-center px-2 py-[7px] hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors active:bg-slate-100 text-left";
-  const icon = (color: string) => `w-6 h-6 rounded-full ${color} flex items-center justify-center mr-2 shrink-0`;
+  const row = "w-full flex items-center px-2.5 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-800/60 rounded-xl transition-colors active:bg-slate-100 dark:active:bg-slate-800 text-left";
+  const icon = (color: string) => `w-7 h-7 rounded-full ${color} flex items-center justify-center mr-2.5 shrink-0 shadow-xs`;
 
   return (
     <>
@@ -81,7 +81,7 @@ export default function Profile() {
 
       {/* SIDEBAR */}
       <div
-        className={`fixed top-0 left-0 h-full w-[75%] max-w-[310px] bg-slate-50 dark:bg-slate-900 border-r dark:border-slate-800 z-50 transform transition-transform duration-300 ease-in-out shadow-2xl flex flex-col overflow-hidden ${
+        className={`fixed top-0 left-0 h-full w-[80%] max-w-[325px] bg-slate-50 dark:bg-slate-900 border-r dark:border-slate-800 z-50 transform transition-transform duration-300 ease-in-out shadow-2xl flex flex-col overflow-hidden ${
           isProfileOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
@@ -125,97 +125,97 @@ export default function Profile() {
           </div>
 
           <div className="grid grid-cols-2 gap-2">
-            <div className="bg-white/10 backdrop-blur-md rounded-xl p-2 border border-white/10 flex flex-col">
+            <div className="bg-white/10 backdrop-blur-md rounded-xl p-2.5 border border-white/10 flex flex-col">
               <div className="flex items-center space-x-1 text-white/70 mb-0.5">
-                <Wallet size={10} />
-                <p className="text-[8px] font-bold uppercase tracking-wider">{t[language].profile.mainBalance}</p>
+                <Wallet size={11} />
+                <p className="text-[8.5px] font-bold uppercase tracking-wider">{t[language].profile.mainBalance}</p>
               </div>
-              <p className="text-base font-black text-white">{formatMoney(user?.main_balance)} <span className="text-[8px]">ETB</span></p>
+              <p className="text-base font-black text-white">{formatMoney(user?.main_balance)} <span className="text-[9px]">ETB</span></p>
             </div>
-            <div className="bg-white/10 backdrop-blur-md rounded-xl p-2 border border-white/10 flex flex-col">
+            <div className="bg-white/10 backdrop-blur-md rounded-xl p-2.5 border border-white/10 flex flex-col">
               <div className="flex items-center space-x-1 text-purple-300 mb-0.5">
-                <Gift size={10} />
-                <p className="text-[8px] font-bold uppercase tracking-wider">{t[language].profile.bonusBalance}</p>
+                <Gift size={11} />
+                <p className="text-[8.5px] font-bold uppercase tracking-wider">{t[language].profile.bonusBalance}</p>
               </div>
-              <p className="text-base font-black text-white">{formatMoney(user?.bonus_balance)} <span className="text-[8px]">ETB</span></p>
+              <p className="text-base font-black text-white">{formatMoney(user?.bonus_balance)} <span className="text-[9px]">ETB</span></p>
             </div>
           </div>
         </div>
 
         {/* ── CONTENT CONTAINER ── */}
-        <div className="px-3 pt-2.5 pb-4 flex flex-col gap-2 flex-1 overflow-y-auto overscroll-contain">
+        <div className="px-3 pt-3 pb-5 flex flex-col gap-2.5 flex-1 overflow-y-auto overscroll-contain">
 
           {/* Action buttons 2×2 */}
-          <div className="grid grid-cols-2 gap-1.5 shrink-0">
-            <button onClick={() => navigateTo('/deposit')} className="bg-yellow-400 active:bg-yellow-500 transition-colors text-yellow-950 rounded-xl py-1.5 flex flex-col items-center justify-center shadow-xs">
-              <PlusCircle size={16} className="mb-0.5" />
-              <span className="font-bold text-[9px]">{t[language].profile.deposit}</span>
+          <div className="grid grid-cols-2 gap-2 shrink-0">
+            <button onClick={() => navigateTo('/deposit')} className="bg-yellow-400 active:bg-yellow-500 transition-colors text-yellow-950 rounded-xl py-2 flex flex-col items-center justify-center shadow-xs">
+              <PlusCircle size={18} className="mb-0.5" />
+              <span className="font-bold text-[10px]">{t[language].profile.deposit}</span>
             </button>
-            <button onClick={() => navigateTo('/withdraw')} className="bg-white dark:bg-slate-800 active:bg-gray-100 transition-colors text-slate-700 dark:text-slate-200 rounded-xl py-1.5 flex flex-col items-center justify-center shadow-xs border border-gray-100 dark:border-slate-700">
-              <ArrowDownToLine size={16} className="mb-0.5" />
-              <span className="font-bold text-[9px]">{t[language].profile.withdraw}</span>
+            <button onClick={() => navigateTo('/withdraw')} className="bg-white dark:bg-slate-800 active:bg-gray-100 dark:active:bg-slate-700 transition-colors text-slate-700 dark:text-slate-200 rounded-xl py-2 flex flex-col items-center justify-center shadow-xs border border-gray-100 dark:border-slate-700">
+              <ArrowDownToLine size={18} className="mb-0.5" />
+              <span className="font-bold text-[10px]">{t[language].profile.withdraw}</span>
             </button>
-            <button onClick={() => navigateTo('/invite')} className="bg-white dark:bg-slate-800 active:bg-gray-100 transition-colors text-slate-700 dark:text-slate-200 rounded-xl py-1.5 flex flex-col items-center justify-center shadow-xs border border-gray-100 dark:border-slate-700">
-              <Share2 size={16} className="mb-0.5 text-blue-500" />
-              <span className="font-bold text-[9px]">{t[language].profile.invite}</span>
+            <button onClick={() => navigateTo('/invite')} className="bg-white dark:bg-slate-800 active:bg-gray-100 dark:active:bg-slate-700 transition-colors text-slate-700 dark:text-slate-200 rounded-xl py-2 flex flex-col items-center justify-center shadow-xs border border-gray-100 dark:border-slate-700">
+              <Share2 size={18} className="mb-0.5 text-blue-500" />
+              <span className="font-bold text-[10px]">{t[language].profile.invite}</span>
             </button>
-            <button onClick={() => navigateTo('/transfer')} className="bg-white dark:bg-slate-800 active:bg-gray-100 transition-colors text-slate-700 dark:text-slate-200 rounded-xl py-1.5 flex flex-col items-center justify-center shadow-xs border border-gray-100 dark:border-slate-700">
-              <ArrowRightLeft size={16} className="mb-0.5 text-emerald-500" />
-              <span className="font-bold text-[9px]">{t[language].profile.transfer}</span>
+            <button onClick={() => navigateTo('/transfer')} className="bg-white dark:bg-slate-800 active:bg-gray-100 dark:active:bg-slate-700 transition-colors text-slate-700 dark:text-slate-200 rounded-xl py-2 flex flex-col items-center justify-center shadow-xs border border-gray-100 dark:border-slate-700">
+              <ArrowRightLeft size={18} className="mb-0.5 text-emerald-500" />
+              <span className="font-bold text-[10px]">{t[language].profile.transfer}</span>
             </button>
           </div>
 
           {/* List items */}
-          <div className="bg-white dark:bg-slate-800 rounded-2xl px-1.5 shadow-xs border border-gray-100 dark:border-slate-700 flex flex-col py-1 space-y-0.5">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl px-2 py-1.5 shadow-xs border border-gray-100 dark:border-slate-700 flex flex-col space-y-1">
 
             <button onClick={() => navigateTo('/deposit-history')} className={row}>
-              <div className={icon('bg-blue-50 text-blue-500')}><History size={12} /></div>
-              <span className="flex-1 font-bold text-slate-700 dark:text-slate-200 text-[10px]">{t[language].profile.depositHistory}</span>
-              <ChevronRight size={11} className="text-slate-300" />
+              <div className={icon('bg-blue-50 text-blue-500 dark:bg-blue-950/60 dark:text-blue-400')}><History size={14} /></div>
+              <span className="flex-1 font-bold text-slate-700 dark:text-slate-200 text-xs">{t[language].profile.depositHistory}</span>
+              <ChevronRight size={13} className="text-slate-300 dark:text-slate-600" />
             </button>
 
             <button onClick={() => navigateTo('/withdraw-history')} className={row}>
-              <div className={icon('bg-rose-50 text-rose-500')}><History size={12} /></div>
-              <span className="flex-1 font-bold text-slate-700 dark:text-slate-200 text-[10px]">{t[language].profile.withdrawHistory}</span>
-              <ChevronRight size={11} className="text-slate-300" />
+              <div className={icon('bg-rose-50 text-rose-500 dark:bg-rose-950/60 dark:text-rose-400')}><History size={14} /></div>
+              <span className="flex-1 font-bold text-slate-700 dark:text-slate-200 text-xs">{t[language].profile.withdrawHistory}</span>
+              <ChevronRight size={13} className="text-slate-300 dark:text-slate-600" />
             </button>
 
             <button onClick={() => navigateTo('/invited')} className={row}>
-              <div className={icon('bg-emerald-50 text-emerald-500')}><Users size={12} /></div>
-              <span className="flex-1 font-bold text-slate-700 dark:text-slate-200 text-[10px]">{t[language].profile.invitePerson}</span>
-              <ChevronRight size={11} className="text-slate-300" />
+              <div className={icon('bg-emerald-50 text-emerald-500 dark:bg-emerald-950/60 dark:text-emerald-400')}><Users size={14} /></div>
+              <span className="flex-1 font-bold text-slate-700 dark:text-slate-200 text-xs">{t[language].profile.invitePerson}</span>
+              <ChevronRight size={13} className="text-slate-300 dark:text-slate-600" />
             </button>
 
             <button onClick={() => navigateTo('/rules')} className={row}>
-              <div className={icon('bg-yellow-50 text-yellow-500')}><BookOpen size={12} /></div>
-              <span className="flex-1 font-bold text-slate-700 dark:text-slate-200 text-[10px]">{t[language].profile.rules}</span>
-              <ChevronRight size={11} className="text-slate-300" />
+              <div className={icon('bg-yellow-50 text-yellow-500 dark:bg-yellow-950/60 dark:text-yellow-400')}><BookOpen size={14} /></div>
+              <span className="flex-1 font-bold text-slate-700 dark:text-slate-200 text-xs">{t[language].profile.rules}</span>
+              <ChevronRight size={13} className="text-slate-300 dark:text-slate-600" />
             </button>
 
             {/* Language Selector */}
             <div className="relative">
               <button onClick={() => setShowLangDropdown(!showLangDropdown)} className={row}>
-                <div className={icon('bg-purple-50 text-purple-500')}><Globe size={12} /></div>
-                <span className="flex-1 font-bold text-slate-700 dark:text-slate-200 text-[10px]">{t[language].profile.language}</span>
-                <span className="text-[8px] font-black text-slate-400 mr-1.5 uppercase bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded transition-all">{language.toUpperCase()}</span>
-                <ChevronRight size={11} className={`text-slate-300 transition-transform ${showLangDropdown ? 'rotate-90' : ''}`} />
+                <div className={icon('bg-purple-50 text-purple-500 dark:bg-purple-950/60 dark:text-purple-400')}><Globe size={14} /></div>
+                <span className="flex-1 font-bold text-slate-700 dark:text-slate-200 text-xs">{t[language].profile.language}</span>
+                <span className="text-[9px] font-black text-slate-500 dark:text-slate-400 mr-1.5 uppercase bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded-md transition-all">{language.toUpperCase()}</span>
+                <ChevronRight size={13} className={`text-slate-300 dark:text-slate-600 transition-transform ${showLangDropdown ? 'rotate-90' : ''}`} />
               </button>
               
               {showLangDropdown && (
                 <div className="absolute top-[100%] right-2 w-32 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-100 dark:border-slate-700 z-50 overflow-hidden">
                   <button 
                     onClick={() => { setLanguage('en'); setShowLangDropdown(false); }}
-                    className={`w-full text-left px-3 py-2 text-[10px] font-bold flex items-center justify-between ${language === 'en' ? 'text-purple-600 bg-purple-50 dark:bg-purple-900/20' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50'}`}
+                    className={`w-full text-left px-3 py-2 text-xs font-bold flex items-center justify-between ${language === 'en' ? 'text-purple-600 bg-purple-50 dark:bg-purple-900/20' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50'}`}
                   >
                     English
-                    {language === 'en' && <Check size={10} />}
+                    {language === 'en' && <Check size={12} />}
                   </button>
                   <button 
                     onClick={() => { setLanguage('am'); setShowLangDropdown(false); }}
-                    className={`w-full text-left px-3 py-2 text-[10px] font-bold flex items-center justify-between border-t border-slate-100 dark:border-slate-700 ${language === 'am' ? 'text-purple-600 bg-purple-50 dark:bg-purple-900/20' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50'}`}
+                    className={`w-full text-left px-3 py-2 text-xs font-bold flex items-center justify-between border-t border-slate-100 dark:border-slate-700 ${language === 'am' ? 'text-purple-600 bg-purple-50 dark:bg-purple-900/20' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50'}`}
                   >
                     አማርኛ
-                    {language === 'am' && <Check size={10} />}
+                    {language === 'am' && <Check size={12} />}
                   </button>
                 </div>
               )}
@@ -223,10 +223,10 @@ export default function Profile() {
             </div>
 
             <button onClick={toggleDarkMode} className={row}>
-              <div className={icon('bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300')}><Moon size={12} /></div>
-              <span className="flex-1 font-bold text-slate-700 dark:text-slate-200 text-[10px]">{t[language].profile.darkMode}</span>
-              <div className={`w-7 h-3.5 rounded-full relative mr-1 transition-colors ${isDarkMode ? 'bg-violet-500' : 'bg-slate-200'}`}>
-                <div className={`w-3 h-3 bg-white rounded-full absolute top-[1px] shadow-sm transition-all duration-300 ${isDarkMode ? 'left-[15px]' : 'left-[1px]'}`} />
+              <div className={icon('bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300')}><Moon size={14} /></div>
+              <span className="flex-1 font-bold text-slate-700 dark:text-slate-200 text-xs">{t[language].profile.darkMode}</span>
+              <div className={`w-8 h-4 rounded-full relative mr-1 transition-colors ${isDarkMode ? 'bg-violet-500' : 'bg-slate-200 dark:bg-slate-700'}`}>
+                <div className={`w-3.5 h-3.5 bg-white rounded-full absolute top-[1px] shadow-sm transition-all duration-300 ${isDarkMode ? 'left-[17px]' : 'left-[1px]'}`} />
               </div>
             </button>
 
@@ -243,20 +243,20 @@ export default function Profile() {
                     );
                   }
                 }}
-                className={`${row} bg-amber-500/10 dark:bg-amber-500/20 border-amber-300 dark:border-amber-500/40`}
+                className={`${row} bg-amber-500/10 dark:bg-amber-500/20 border border-amber-300 dark:border-amber-500/40`}
               >
                 <div className={icon('bg-amber-500 text-slate-950')}>
-                  <Download size={12} className="stroke-[2.5]" />
+                  <Download size={14} className="stroke-[2.5]" />
                 </div>
                 <div className="flex-1 text-left">
-                  <span className="font-black text-amber-700 dark:text-amber-400 text-[10px] block">
+                  <span className="font-black text-amber-700 dark:text-amber-400 text-xs block">
                     {language === 'am' ? 'Choice Bingo አፕ ጫን (PWA)' : 'Install Choice Bingo App (PWA)'}
                   </span>
-                  <span className="text-[8px] text-slate-400 block font-medium">
+                  <span className="text-[9px] text-slate-400 block font-medium">
                     {language === 'am' ? 'በስልክዎ ላይ በቀጥታ ይጫኑ' : 'Add to home screen as PWA'}
                   </span>
                 </div>
-                <span className="bg-amber-500 text-slate-950 font-black text-[9px] px-2 py-0.5 rounded-lg shadow-xs">
+                <span className="bg-amber-500 text-slate-950 font-black text-[10px] px-2 py-0.5 rounded-lg shadow-xs">
                   {language === 'am' ? 'ጫን' : 'Install'}
                 </span>
               </button>
@@ -264,16 +264,16 @@ export default function Profile() {
 
             {/* Support Team */}
             <button onClick={handleSupport} className={row}>
-              <div className={icon('bg-orange-50 text-orange-500')}><Headphones size={12} /></div>
-              <span className="flex-1 font-bold text-slate-700 dark:text-slate-200 text-[10px]">{t[language].profile.support}</span>
-              <ChevronRight size={11} className="text-slate-300" />
+              <div className={icon('bg-orange-50 text-orange-500 dark:bg-orange-950/60 dark:text-orange-400')}><Headphones size={14} /></div>
+              <span className="flex-1 font-bold text-slate-700 dark:text-slate-200 text-xs">{t[language].profile.support}</span>
+              <ChevronRight size={13} className="text-slate-300 dark:text-slate-600" />
             </button>
 
             {/* Official Group */}
             <button onClick={handleChannel} className={row}>
-              <div className={icon('bg-indigo-50 text-indigo-500')}><Users size={12} /></div>
-              <span className="flex-1 font-bold text-slate-700 dark:text-slate-200 text-[10px]">{t[language].profile.channel}</span>
-              <ChevronRight size={11} className="text-slate-300" />
+              <div className={icon('bg-indigo-50 text-indigo-500 dark:bg-indigo-950/60 dark:text-indigo-400')}><Users size={14} /></div>
+              <span className="flex-1 font-bold text-slate-700 dark:text-slate-200 text-xs">{t[language].profile.channel}</span>
+              <ChevronRight size={13} className="text-slate-300 dark:text-slate-600" />
             </button>
 
             {/* ── BELOW CHANNEL: TELEGRAM MINI APP: Mobile Application Password ── */}
@@ -283,17 +283,17 @@ export default function Profile() {
                 className={row}
               >
                 <div className={icon('bg-amber-50 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400')}>
-                  <KeyRound size={12} />
+                  <KeyRound size={14} />
                 </div>
                 <div className="flex-1 text-left">
-                  <span className="font-bold text-slate-700 dark:text-slate-200 text-[10px] block">
+                  <span className="font-bold text-slate-700 dark:text-slate-200 text-xs block">
                     {language === 'am' ? 'የሞባይል አፕሊኬሽን የይለፍ ቃል' : 'Mobile Application Password'}
                   </span>
-                  <span className="text-[8px] text-slate-400 block font-mono">
+                  <span className="text-[9px] text-slate-400 block font-mono">
                     {language === 'am' ? `በሞባይል አፕሊኬሽን ለመግባት (ID: ${user?.telegram_id || ''})` : `Login on Mobile Application with ID: ${user?.telegram_id || ''}`}
                   </span>
                 </div>
-                <ChevronRight size={11} className="text-slate-300" />
+                <ChevronRight size={13} className="text-slate-300 dark:text-slate-600" />
               </button>
             )}
 
@@ -306,17 +306,17 @@ export default function Profile() {
                 className={row}
               >
                 <div className={icon('bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400')}>
-                  <KeyRound size={12} />
+                  <KeyRound size={14} />
                 </div>
                 <div className="flex-1 text-left">
-                  <span className="font-bold text-slate-700 dark:text-slate-200 text-[10px] block">
+                  <span className="font-bold text-slate-700 dark:text-slate-200 text-xs block">
                     {language === 'am' ? 'የይለፍ ቃል ቀይር (Reset Password)' : 'Reset Password'}
                   </span>
-                  <span className="text-[8px] text-slate-400 block">
+                  <span className="text-[9px] text-slate-400 block">
                     {language === 'am' ? 'የአካውንትዎን የይለፍ ቃል ይቀይሩ' : 'Change your account password'}
                   </span>
                 </div>
-                <ChevronRight size={11} className="text-slate-300" />
+                <ChevronRight size={13} className="text-slate-300 dark:text-slate-600" />
               </button>
             )}
 
@@ -329,18 +329,18 @@ export default function Profile() {
                 }}
                 className={row}
               >
-                <div className={icon('bg-emerald-50 text-emerald-600')}>
-                  <Smartphone size={12} />
+                <div className={icon('bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400')}>
+                  <Smartphone size={14} />
                 </div>
                 <div className="flex-1 text-left">
-                  <span className="font-bold text-slate-700 dark:text-slate-200 text-[10px] block">
+                  <span className="font-bold text-slate-700 dark:text-slate-200 text-xs block">
                     {language === 'am' ? 'የስልክ ቁጥር መለያ' : 'Phone Account'}
                   </span>
-                  <span className="text-[8px] text-slate-400 block font-mono">
+                  <span className="text-[9px] text-slate-400 block font-mono">
                     {localStorage.getItem('cb_pwa_phone') || (language === 'am' ? 'ያልተገናኘ' : 'Not Connected')}
                   </span>
                 </div>
-                <ChevronRight size={11} className="text-slate-300" />
+                <ChevronRight size={13} className="text-slate-300 dark:text-slate-600" />
               </button>
             )}
 
