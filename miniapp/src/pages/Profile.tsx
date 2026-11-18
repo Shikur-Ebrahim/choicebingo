@@ -4,7 +4,7 @@ import { t } from '../lib/translations';
 import { 
   Wallet, Gift, PlusCircle, ArrowDownToLine, Share2, 
   ArrowRightLeft, History, Users, Globe, Headphones, Megaphone,
-  ChevronRight, X, Moon, BarChart2, Copy, Check, BookOpen, Download, Smartphone, KeyRound
+  ChevronRight, X, Moon, Copy, Check, BookOpen, Download, Smartphone, KeyRound
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import WebApp from '@twa-dev/sdk';
@@ -177,18 +177,6 @@ export default function Profile() {
             <button onClick={() => navigateTo('/withdraw-history')} className={row}>
               <div className={icon('bg-rose-50 text-rose-500')}><History size={12} /></div>
               <span className="flex-1 font-bold text-slate-700 dark:text-slate-200 text-[10px]">{t[language].profile.withdrawHistory}</span>
-              <ChevronRight size={11} className="text-slate-300" />
-            </button>
-
-            <button onClick={() => navigateTo('/games-report')} className={row}>
-              <div className={icon('bg-teal-50 text-teal-500')}><BarChart2 size={12} /></div>
-              <span className="flex-1 font-bold text-slate-700 dark:text-slate-200 text-[10px]">{t[language].profile.gamesReport}</span>
-              <ChevronRight size={11} className="text-slate-300" />
-            </button>
-
-            <button onClick={() => navigateTo('/audit')} className={row}>
-              <div className={icon('bg-indigo-50 text-indigo-500')}><History size={12} /></div>
-              <span className="flex-1 font-bold text-slate-700 dark:text-slate-200 text-[10px]">{t[language].profile.fullAudit}</span>
               <ChevronRight size={11} className="text-slate-300" />
             </button>
 

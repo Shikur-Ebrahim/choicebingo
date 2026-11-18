@@ -17,8 +17,6 @@ import AdminUserAudit from './pages/AdminUserAudit';
 import AdminSystemPlayers from './pages/AdminSystemPlayers';
 import Leaderboard from './pages/Leaderboard';
 import Rewards from './pages/Rewards';
-import GamesReport from './pages/GamesReport';
-import Audit from './pages/Audit';
 import Rules from './pages/Rules';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
@@ -211,8 +209,6 @@ function App() {
           <Route path="/withdraw" element={<Withdraw />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/rewards" element={<Rewards />} />
-          <Route path="/games-report" element={<GamesReport />} />
-          <Route path="/audit" element={<Audit />} />
           <Route path="/rules" element={<Rules />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/admin/bingo-games" element={<AdminBingoGames />} />
