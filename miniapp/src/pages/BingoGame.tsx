@@ -1025,21 +1025,25 @@ export default function BingoGame() {
   };
 
   const [releasing, setReleasing] = useState<number | null>(null);
+  const releasingSeatsRef = useRef<Set<number>>(new Set());
   const lastSeatClickTimeRef = useRef<{ [seat: number]: number }>({});
   const pendingSeatsRef = useRef<Set<number>>(new Set());
 
   const releaseCartela = async (seat: number) => {
-    if (!game || game.status !== 'waiting' || releasing !== null) return;
+    if (!game || game.status !== 'waiting') return;
+    if (releasing !== null || releasingSeatsRef.current.has(seat)) return;
+
+    // Synchronous immediate lock - completely blocks concurrent rapid clicks!
+    releasingSeatsRef.current.add(seat);
+    setReleasing(seat);
     initWebAudio();
 
     const stakeAmt = Number(game.stake || selectedStake || 10);
-    setReleasing(seat);
     setErrMsg("");
 
-    // Optimistic remove
+    // Optimistic remove from UI list so UI feels instant and smooth
     const prevMyCartelas = myCartelas;
     const prevTaken = taken;
-    const prevUser = user;
     const newCartelas = myCartelas.filter(c => c.cartela_number !== seat);
     setMyCartelas(newCartelas);
     myCartelasRef.current = newCartelas;
@@ -1049,19 +1053,6 @@ export default function BingoGame() {
     } else {
       setMyCard(null);
     }
-
-    // Optimistic refund back to the exact balance(s) it was purchased with (bonus first if paid with bonus)
-    const targetCard = prevMyCartelas.find(c => c.cartela_number === seat);
-    const bonusToRefund = targetCard?.bonus_used !== undefined ? Number(targetCard.bonus_used) : 0;
-    const mainToRefund = targetCard?.main_used !== undefined ? Number(targetCard.main_used) : (stakeAmt - bonusToRefund);
-
-    useGameStore.setState(s => ({
-      user: s.user ? {
-        ...s.user,
-        main_balance: Number(s.user.main_balance || 0) + mainToRefund,
-        bonus_balance: Number(s.user.bonus_balance || 0) + bonusToRefund,
-      } : s.user
-    }));
 
     try {
       const res = await fetch(`${API}/bingo/release`, {
@@ -1075,6 +1066,7 @@ export default function BingoGame() {
         if (WebApp?.HapticFeedback) {
           WebApp.HapticFeedback.notificationOccurred("success");
         }
+        // Authoritative balance update strictly from server response!
         if (data.main_balance !== undefined && data.bonus_balance !== undefined) {
           useGameStore.setState(s => ({
             user: s.user ? {
@@ -1092,35 +1084,21 @@ export default function BingoGame() {
         refreshUser();
         fetchState();
       } else {
-        const errStr = String(data?.error || '');
-        if (errStr.toLowerCase().includes('not found') || errStr.toLowerCase().includes('already')) {
-          // The cartela was already refunded/deleted on server (e.g. by timeout/engine solo refund)
-          // Keep it removed from UI! Do NOT roll back!
-          setMyCartelas(newCartelas);
-          myCartelasRef.current = newCartelas;
-          setTaken(prev => prev.filter(n => n !== seat));
-          if (newCartelas.length > 0) setMyCard(newCartelas[0]);
-          else setMyCard(null);
-          setErrMsg("");
-          refreshUser();
-          fetchState();
-        } else {
-          // Real server failure - rollback
-          setMyCartelas(prevMyCartelas);
-          myCartelasRef.current = prevMyCartelas;
-          setTaken(prevTaken);
-          useGameStore.setState({ user: prevUser });
-          setErrMsg(data?.error || "Could not release cartela");
-          fetchState();
+        // Release failed or was rejected by server -> resync exact balance & state from server
+        refreshUser();
+        fetchState();
+        if (data?.error && !data.error.toLowerCase().includes('already')) {
+          setErrMsg(data.error);
         }
       }
     } catch (err: any) {
       setMyCartelas(prevMyCartelas);
       myCartelasRef.current = prevMyCartelas;
       setTaken(prevTaken);
-      useGameStore.setState({ user: prevUser });
-      setErrMsg("Network error while releasing cartela");
+      refreshUser();
+      fetchState();
     } finally {
+      releasingSeatsRef.current.delete(seat);
       setReleasing(null);
     }
   };
@@ -1128,12 +1106,13 @@ export default function BingoGame() {
   const handleSeatClick = (seat: number) => {
     const isMine = myCartelas.some(c => c.cartela_number === seat);
     if (isMine) {
+      if (releasing !== null || releasingSeatsRef.current.has(seat)) return;
       // Check double click / tap within 450ms
       const now = Date.now();
       const lastClick = lastSeatClickTimeRef.current[seat] || 0;
       if (now - lastClick < 450) {
-        releaseCartela(seat);
         lastSeatClickTimeRef.current[seat] = 0;
+        releaseCartela(seat);
       } else {
         lastSeatClickTimeRef.current[seat] = now;
         if (WebApp?.HapticFeedback) {
@@ -2371,7 +2350,7 @@ export default function BingoGame() {
                       key={n}
                       type="button"
                       onClick={() => handleSeatClick(n)}
-                      disabled={isReleasing}
+                      disabled={isReleasing || releasing !== null || releasingSeatsRef.current.has(n)}
                       className="aspect-square flex flex-col items-center justify-center rounded-[6px] font-black z-10 select-none cursor-pointer active:scale-95 transition-all"
                       style={{
                         background: 'radial-gradient(circle at 35% 25%, #34d399 0%, #10b981 50%, #047857 100%)',
@@ -2414,7 +2393,7 @@ export default function BingoGame() {
                   <button
                     key={n}
                     type="button"
-                    disabled={buying !== null || !canPickMore}
+                    disabled={buying !== null || !canPickMore || releasing !== null}
                     onClick={() => handleSeatClick(n)}
                     className={`aspect-square flex items-center justify-center rounded-[6px] text-[10.5px] font-black transition-all select-none ${
                       !canPickMore
@@ -2481,20 +2460,27 @@ export default function BingoGame() {
                 <div
                   key={cartela.cartela_number}
                   className="relative bg-white rounded-xl p-1 shadow-[0_4px_10px_rgba(0,0,0,0.12)] border border-slate-200/90 select-none cursor-pointer active:scale-95 transition-transform"
-                  onClick={() => releaseCartela(cartela.cartela_number)}
+                  onClick={() => {
+                    if (releasing !== null || releasingSeatsRef.current.has(cartela.cartela_number)) return;
+                    releaseCartela(cartela.cartela_number);
+                  }}
                   title={language === 'am' ? 'ካርቴላውን ለመልቀቅ ይጫኑ' : 'Tap to release'}
                 >
                   {/* Release Button */}
                   <button
                     type="button"
+                    disabled={releasing !== null || releasingSeatsRef.current.has(cartela.cartela_number)}
                     onClick={(e) => {
                       e.stopPropagation();
+                      if (releasing !== null || releasingSeatsRef.current.has(cartela.cartela_number)) return;
                       releaseCartela(cartela.cartela_number);
                     }}
-                    className="absolute -top-1.5 -right-1.5 w-4.5 h-4.5 bg-red-500 hover:bg-red-600 active:scale-90 text-white rounded-full flex items-center justify-center text-[9px] font-black shadow-md z-20 cursor-pointer border-1.5 border-white"
+                    className={`absolute -top-1.5 -right-1.5 w-4.5 h-4.5 bg-red-500 hover:bg-red-600 active:scale-90 text-white rounded-full flex items-center justify-center text-[9px] font-black shadow-md z-20 border-1.5 border-white ${
+                      releasing !== null ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                    }`}
                     title={language === 'am' ? 'ካርቴላውን ልቀቅ' : 'Release Cartela'}
                   >
-                    ✕
+                    {releasing === cartela.cartela_number ? '⏳' : '✕'}
                   </button>
 
                   {/* Top Row: "Choice" & "#Num" */}

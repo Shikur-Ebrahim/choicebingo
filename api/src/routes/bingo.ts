@@ -7,6 +7,9 @@ import { randomUUID } from 'crypto';
 
 const router = Router();
 
+// In-memory mutex to serialize financial transactions per user (prevents race condition exploits)
+const userFinancialLocks = new Set<string>();
+
 // ── GET /api/bingo/pools ── server-side unique player count (bypasses RLS) ──
 router.get('/pools', validateTelegramAuth, async (_req, res) => {
   const { data: allGames } = await supabase
@@ -135,8 +138,14 @@ router.get('/current', validateTelegramAuth, async (req: AuthRequest, res) => {
 
 // ── POST /api/bingo/join ────────────────────────────────────────────────────
 router.post('/join', validateTelegramAuth, async (req: AuthRequest, res) => {
+  const telegramId = req.telegramUser!.id.toString();
+  if (userFinancialLocks.has(telegramId)) {
+    res.status(429).json({ error: 'Another transaction is in progress. Please wait a moment.' });
+    return;
+  }
+  userFinancialLocks.add(telegramId);
+
   try {
-    const telegramId = req.telegramUser!.id.toString();
     const { cartela_number } = req.body;
     const seat = Number(cartela_number);
     const cfg = await getSettings();
@@ -299,6 +308,8 @@ router.post('/join', validateTelegramAuth, async (req: AuthRequest, res) => {
   } catch (err: any) {
     console.error('Error in /api/bingo/join:', err);
     res.status(500).json({ error: err.message || 'Server error joining game' });
+  } finally {
+    userFinancialLocks.delete(telegramId);
   }
 });
 
@@ -313,99 +324,117 @@ router.post('/release', validateTelegramAuth, async (req: AuthRequest, res) => {
     return;
   }
 
-  // 1. Find the waiting game
-  let gameQuery = supabase.from('bingo_games').select('*').eq('status', 'waiting');
-  if (game_id) {
-    gameQuery = gameQuery.eq('id', game_id);
-  }
-  const { data: games } = await gameQuery.limit(1);
-  const game = games?.[0];
-
-  if (!game) {
-    res.status(400).json({ error: 'Game not found or has already started' });
+  // Prevent concurrent releases or financial actions from the same user
+  if (userFinancialLocks.has(telegramId)) {
+    res.status(429).json({ error: 'Another transaction is in progress. Please wait a moment.' });
     return;
   }
+  userFinancialLocks.add(telegramId);
 
-  // 2. Find the player entry
-  const { data: playerEntry } = await supabase
-    .from('bingo_players')
-    .select('*')
-    .eq('game_id', game.id)
-    .eq('telegram_id', telegramId)
-    .eq('cartela_number', seat)
-    .maybeSingle();
+  try {
+    // 1. Find the waiting game
+    let gameQuery = supabase.from('bingo_games').select('*').eq('status', 'waiting');
+    if (game_id) {
+      gameQuery = gameQuery.eq('id', game_id);
+    }
+    const { data: games } = await gameQuery.limit(1);
+    const game = games?.[0];
 
-  if (!playerEntry) {
-    res.status(404).json({ error: 'Cartela not found for this user in this game' });
-    return;
+    if (!game) {
+      res.status(400).json({ error: 'Game not found or has already started' });
+      return;
+    }
+
+    // 2. ATOMIC DELETE: directly delete row and return it.
+    // In PostgreSQL, this atomic operation guarantees exactly ONE request can delete the row.
+    // If another concurrent request or background solo refund already deleted it, deletedRows is empty!
+    const { data: deletedRows, error: delErr } = await supabase
+      .from('bingo_players')
+      .delete()
+      .eq('game_id', game.id)
+      .eq('telegram_id', telegramId)
+      .eq('cartela_number', seat)
+      .select('id, bonus_used, main_used');
+
+    if (delErr) {
+      console.error('[Release Cartela Error] Delete failed:', delErr);
+      res.status(500).json({ error: 'Failed to release cartela' });
+      return;
+    }
+
+    if (!deletedRows || deletedRows.length === 0) {
+      // Row was NOT deleted (either never existed or already released) -> NO REFUND!
+      res.status(400).json({ error: 'Cartela was already released or not found' });
+      return;
+    }
+
+    const playerEntry = deletedRows[0];
+
+    // 3. Refund user balances strictly based on the deleted row
+    const bonusRefund = Number(playerEntry.bonus_used || 0);
+    const mainRefund = Number(
+      playerEntry.main_used !== undefined
+        ? playerEntry.main_used
+        : (playerEntry.bonus_used ? 0 : game.stake)
+    );
+
+    const { data: user } = await supabase
+      .from('users')
+      .select('main_balance, bonus_balance')
+      .eq('telegram_id', telegramId)
+      .single();
+
+    const newMain = Number(user?.main_balance || 0) + mainRefund;
+    const newBonus = Number(user?.bonus_balance || 0) + bonusRefund;
+
+    await supabase
+      .from('users')
+      .update({ main_balance: newMain, bonus_balance: newBonus })
+      .eq('telegram_id', telegramId);
+
+    // 4. Recalculate game prize pool & unique players
+    const { data: remainingPlayers } = await supabase
+      .from('bingo_players')
+      .select('telegram_id')
+      .eq('game_id', game.id);
+
+    const totalCartelas = remainingPlayers?.length || 0;
+    const uniquePlayers = new Set((remainingPlayers || []).map((r: any) => r.telegram_id)).size;
+    const cfg = await getSettings();
+    const rawPool = totalCartelas * Number(game.stake);
+    const prizePool = uniquePlayers < 3
+      ? rawPool
+      : Math.floor(rawPool * (cfg.prize_percent || 80) / 100);
+
+    // If no players left, reset start_at countdown
+    let newStartAt = game.start_at;
+    if (totalCartelas === 0) {
+      newStartAt = new Date(Date.now() + 86400000 * 365).toISOString();
+    }
+
+    await supabase.from('bingo_games').update({
+      prize_pool: prizePool,
+      start_at: newStartAt,
+      updated_at: new Date().toISOString()
+    }).eq('id', game.id);
+
+    res.json({
+      success: true,
+      cartela_number: seat,
+      refunded_main: mainRefund,
+      refunded_bonus: bonusRefund,
+      main_balance: newMain,
+      bonus_balance: newBonus,
+      unique_players: uniquePlayers,
+      total_cartelas: totalCartelas,
+      prize_pool: prizePool
+    });
+  } catch (err: any) {
+    console.error('[Release Cartela Error]:', err);
+    res.status(500).json({ error: err.message || 'Server error releasing cartela' });
+  } finally {
+    userFinancialLocks.delete(telegramId);
   }
-
-  // 3. Delete player entry
-  const { error: delErr } = await supabase
-    .from('bingo_players')
-    .delete()
-    .eq('id', playerEntry.id);
-
-  if (delErr) {
-    res.status(500).json({ error: 'Failed to release cartela' });
-    return;
-  }
-
-  // 4. Refund user balances
-  const bonusRefund = Number(playerEntry.bonus_used || 0);
-  const mainRefund = Number(playerEntry.main_used !== undefined ? playerEntry.main_used : (playerEntry.bonus_used ? 0 : game.stake));
-
-  const { data: user } = await supabase
-    .from('users')
-    .select('main_balance, bonus_balance')
-    .eq('telegram_id', telegramId)
-    .single();
-
-  const newMain = Number(user?.main_balance || 0) + mainRefund;
-  const newBonus = Number(user?.bonus_balance || 0) + bonusRefund;
-
-  await supabase
-    .from('users')
-    .update({ main_balance: newMain, bonus_balance: newBonus })
-    .eq('telegram_id', telegramId);
-
-  // 5. Recalculate game prize pool & unique players
-  const { data: remainingPlayers } = await supabase
-    .from('bingo_players')
-    .select('telegram_id')
-    .eq('game_id', game.id);
-
-  const totalCartelas = remainingPlayers?.length || 0;
-  const uniquePlayers = new Set((remainingPlayers || []).map((r: any) => r.telegram_id)).size;
-  const cfg = await getSettings();
-  const rawPool = totalCartelas * Number(game.stake);
-  const prizePool = uniquePlayers < 3
-    ? rawPool
-    : Math.floor(rawPool * (cfg.prize_percent || 80) / 100);
-
-  // If no players left, reset start_at countdown
-  let newStartAt = game.start_at;
-  if (totalCartelas === 0) {
-    newStartAt = new Date(Date.now() + 86400000 * 365).toISOString();
-  }
-
-  await supabase.from('bingo_games').update({
-    prize_pool: prizePool,
-    start_at: newStartAt,
-    updated_at: new Date().toISOString()
-  }).eq('id', game.id);
-
-  res.json({
-    success: true,
-    cartela_number: seat,
-    refunded_main: mainRefund,
-    refunded_bonus: bonusRefund,
-    main_balance: newMain,
-    bonus_balance: newBonus,
-    unique_players: uniquePlayers,
-    total_cartelas: totalCartelas,
-    prize_pool: prizePool
-  });
 });
 
 router.get('/card', async (req, res) => {
