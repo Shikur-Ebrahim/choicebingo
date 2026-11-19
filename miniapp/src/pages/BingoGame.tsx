@@ -169,8 +169,9 @@ export default function BingoGame() {
   });
   const [volume, setVolume] = useState(1.0);
   const [autoMark, setAutoMark] = useState<boolean>(() => {
-    const saved = localStorage.getItem('bingo_auto_mark');
-    return saved !== null ? saved === 'true' : false; // default is manual (false)
+    const saved = localStorage.getItem('bingo_auto_mark_pref');
+    if (saved !== null) return saved === 'true';
+    return true; // default is MANUAL OFF (autoMark: true)
   });
   const [manuallyMarked, setManuallyMarked] = useState<Set<number>>(new Set());
   const [claimLockSeconds, setClaimLockSeconds] = useState(0);
@@ -1891,6 +1892,7 @@ export default function BingoGame() {
                   onClick={() => {
                     const next = !autoMark;
                     setAutoMark(next);
+                    localStorage.setItem('bingo_auto_mark_pref', String(next));
                     localStorage.setItem('bingo_auto_mark', String(next));
                     if (WebApp?.HapticFeedback) WebApp.HapticFeedback.selectionChanged();
                     if (game?.id) {
