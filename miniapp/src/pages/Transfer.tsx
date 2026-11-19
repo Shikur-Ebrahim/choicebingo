@@ -11,7 +11,7 @@ const API_URL = import.meta.env.VITE_API_URL || '/api';
 type Step = 'form' | 'confirm' | 'success' | 'error';
 
 export default function Transfer() {
-  const { user, fetchUser, language, setProfileOpen } = useGameStore();
+  const { user, fetchUser, fetchBalanceFast, language, setProfileOpen } = useGameStore();
   const [recipientId, setRecipientId] = useState('');
   const [amount, setAmount] = useState('');
   const [step, setStep] = useState<Step>('form');
@@ -113,7 +113,7 @@ export default function Transfer() {
         setStep('form');
       } else {
         setRecipientName(data.recipient_name || recipientName);
-        await fetchUser(); // refresh balance
+        await Promise.all([fetchUser(), fetchBalanceFast?.()]); // refresh balance instantly
         setStep('success');
         if (typeof WebApp !== 'undefined') WebApp.HapticFeedback?.notificationOccurred('success');
       }

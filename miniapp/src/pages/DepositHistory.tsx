@@ -25,7 +25,7 @@ export default function DepositHistory() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const navigate = useNavigate();
-  const { setProfileOpen, language } = useGameStore();
+  const { setProfileOpen, language, fetchBalanceFast } = useGameStore();
 
   const handleBack = () => {
     navigate(-1);
@@ -33,27 +33,42 @@ export default function DepositHistory() {
   };
 
   useEffect(() => {
+    let isMounted = true;
     const fetchHistory = async () => {
       try {
         const initData = typeof WebApp !== 'undefined' ? WebApp.initData : '';
+        const pwaPhone = typeof window !== 'undefined' ? localStorage.getItem('cb_pwa_phone') || '' : '';
         const res = await fetch(`${API_URL}/deposit/history`, {
           headers: {
             'Content-Type': 'application/json',
-            'x-telegram-init-data': initData
+            'x-telegram-init-data': initData,
+            'x-pwa-phone': pwaPhone,
           }
         });
-        if (res.ok) {
+        if (res.ok && isMounted) {
           const data = await res.json();
           setHistory(data);
         }
       } catch (err) {
         console.error(err);
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
+
     fetchHistory();
-  }, []);
+
+    // Fast polling every 2 seconds: auto-refreshes deposit status & balance when admin approves!
+    const timer = setInterval(() => {
+      fetchHistory();
+      fetchBalanceFast?.();
+    }, 2000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(timer);
+    };
+  }, [fetchBalanceFast]);
 
   const formatDate = (dateString: string) => {
     const d = new Date(dateString);

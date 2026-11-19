@@ -166,7 +166,7 @@ function getInitialEntries(): string[] {
 }
 
 function App() {
-  const { fetchUser, subscribeToBalance, isDarkMode, isBlocked, setProfileOpen, isPhoneModalOpen, setIsPhoneModalOpen } = useGameStore();
+  const { user, fetchUser, subscribeToBalance, isDarkMode, isBlocked, setProfileOpen, isPhoneModalOpen, setIsPhoneModalOpen } = useGameStore();
 
   useEffect(() => {
     WebApp.ready();
@@ -181,11 +181,16 @@ function App() {
       document.documentElement.classList.remove('dark');
     }
 
-    fetchUser().then(() => {
-      const unsub = subscribeToBalance();
-      return unsub;
-    });
-  }, [fetchUser, subscribeToBalance]);
+    fetchUser();
+  }, [fetchUser, isDarkMode, setProfileOpen]);
+
+  // Real-time live balance synchronization: catches verified deposits & transfers instantly
+  useEffect(() => {
+    const unsub = subscribeToBalance();
+    return () => {
+      if (unsub) unsub();
+    };
+  }, [subscribeToBalance, user?.telegram_id]);
 
   if (isBlocked) {
     return <BlockedScreen />;

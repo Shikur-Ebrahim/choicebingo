@@ -27,6 +27,7 @@ interface GameStore {
   loginWithPhoneAndPass: (phone: string, password: string) => Promise<{ success: boolean; error?: string }>;
   registerWithPhoneAndPass: (phone: string, password: string, firstName: string) => Promise<{ success: boolean; error?: string }>;
   logoutPwaPhone: () => void;
+  fetchBalanceFast: () => Promise<void>;
   subscribeToBalance: () => () => void;
 }
 
@@ -277,39 +278,179 @@ export const useGameStore = create<GameStore>()(
         set({ user: null });
       },
 
-      // Realtime subscription — updates balance and active/inactive status instantly
-      subscribeToBalance: () => {
-        const telegramId = get().user?.telegram_id || WebApp.initDataUnsafe?.user?.id?.toString();
-        if (!telegramId) return () => {};
+      // Ultra-fast direct balance query: executes in milliseconds directly against Supabase
+      fetchBalanceFast: async () => {
+        const u = get().user;
+        let tgId = u?.telegram_id;
+        if (!tgId && typeof WebApp !== 'undefined' && WebApp.initDataUnsafe?.user?.id) {
+          tgId = WebApp.initDataUnsafe.user.id.toString();
+        }
+        if (!tgId && typeof window !== 'undefined') {
+          tgId = localStorage.getItem('cb_pwa_phone') || undefined;
+        }
+        if (!tgId && !u?.id) return;
 
-        const channel = supabase
-          .channel(`user-sync-${telegramId}-${Date.now()}`)
-          .on(
-            'postgres_changes',
-            {
-              event: 'UPDATE',
-              schema: 'public',
-              table: 'users',
-              filter: `telegram_id=eq.${telegramId}`,
-            },
-            (payload) => {
-              const updated = payload.new as User;
-              const isInactive = updated.status === 'inactive';
+        try {
+          const cleanId = tgId ? tgId.replace(/[^\d]/g, '') : '';
+          let q = supabase
+            .from('users')
+            .select('main_balance, bonus_balance, status, role, total_wins, total_games');
+
+          if (tgId && cleanId && cleanId !== tgId) {
+            q = q.or(`telegram_id.eq.${tgId},telegram_id.eq.${cleanId}`);
+          } else if (tgId) {
+            q = q.eq('telegram_id', tgId);
+          } else if (u?.id) {
+            q = q.eq('id', u.id);
+          }
+
+          const { data, error } = await q.limit(1).maybeSingle();
+          if (!error && data) {
+            const newMain = Number(data.main_balance || 0);
+            const newBonus = Number(data.bonus_balance || 0);
+            const isInactive = data.status === 'inactive';
+
+            const cur = get().user;
+            if (
+              !cur ||
+              cur.main_balance !== newMain ||
+              cur.bonus_balance !== newBonus ||
+              cur.status !== data.status ||
+              get().isBlocked !== isInactive
+            ) {
               set((state) => ({
                 isBlocked: isInactive,
-                user: state.user ? { 
-                  ...state.user, 
-                  main_balance: updated.main_balance, 
-                  bonus_balance: updated.bonus_balance,
-                  status: updated.status,
-                  role: updated.role,
-                } : updated,
+                user: state.user ? {
+                  ...state.user,
+                  main_balance: newMain,
+                  bonus_balance: newBonus,
+                  status: data.status,
+                  role: data.role || state.user.role,
+                  total_wins: data.total_wins ?? state.user.total_wins,
+                  total_games: data.total_games ?? state.user.total_games,
+                } : null,
               }));
             }
-          )
-          .subscribe();
+          }
+        } catch {
+          // silent fallback
+        }
+      },
 
-        return () => { supabase.removeChannel(channel); };
+      // Realtime subscription + high-speed live sync: instantly catches deposits, transfers, and wins
+      subscribeToBalance: () => {
+        const getTgId = () => {
+          const u = get().user;
+          if (u?.telegram_id) return u.telegram_id;
+          if (typeof WebApp !== 'undefined' && WebApp.initDataUnsafe?.user?.id) {
+            return WebApp.initDataUnsafe.user.id.toString();
+          }
+          if (typeof window !== 'undefined') {
+            return localStorage.getItem('cb_pwa_phone') || null;
+          }
+          return null;
+        };
+
+        const telegramId = getTgId();
+        if (!telegramId) return () => {};
+
+        const cleanId = telegramId.replace(/[^\d]/g, '');
+
+        // 1. Initial immediate fast balance check
+        get().fetchBalanceFast();
+
+        // 2. High-speed smart polling interval: checks live balance directly every 2 seconds
+        const pollInterval = setInterval(() => {
+          get().fetchBalanceFast();
+        }, 2000);
+
+        // 3. Fast sync when window returns to focus / active screen
+        const onVisibilityChange = () => {
+          if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+            get().fetchBalanceFast();
+          }
+        };
+        const onFocus = () => {
+          get().fetchBalanceFast();
+        };
+
+        if (typeof window !== 'undefined') {
+          document.addEventListener('visibilitychange', onVisibilityChange);
+          window.addEventListener('focus', onFocus);
+        }
+
+        // 4. Supabase Realtime WebSocket subscription (instant push when publication is enabled)
+        let channel: any = null;
+        try {
+          channel = supabase
+            .channel(`user-sync-${telegramId}`)
+            .on(
+              'postgres_changes',
+              {
+                event: 'UPDATE',
+                schema: 'public',
+                table: 'users',
+                filter: `telegram_id=eq.${telegramId}`,
+              },
+              (payload) => {
+                const updated = payload.new as User;
+                const isInactive = updated.status === 'inactive';
+                set((state) => ({
+                  isBlocked: isInactive,
+                  user: state.user ? {
+                    ...state.user,
+                    main_balance: Number(updated.main_balance || 0),
+                    bonus_balance: Number(updated.bonus_balance || 0),
+                    status: updated.status,
+                    role: updated.role,
+                  } : updated,
+                }));
+              }
+            );
+
+          if (cleanId && cleanId !== telegramId) {
+            channel.on(
+              'postgres_changes',
+              {
+                event: 'UPDATE',
+                schema: 'public',
+                table: 'users',
+                filter: `telegram_id=eq.${cleanId}`,
+              },
+              (payload: any) => {
+                const updated = payload.new as User;
+                const isInactive = updated.status === 'inactive';
+                set((state) => ({
+                  isBlocked: isInactive,
+                  user: state.user ? {
+                    ...state.user,
+                    main_balance: Number(updated.main_balance || 0),
+                    bonus_balance: Number(updated.bonus_balance || 0),
+                    status: updated.status,
+                    role: updated.role,
+                  } : updated,
+                }));
+              }
+            );
+          }
+
+          channel.subscribe();
+        } catch (e) {
+          console.error('[gameStore] Realtime subscription error:', e);
+        }
+
+        return () => {
+          clearInterval(pollInterval);
+          if (typeof window !== 'undefined') {
+            document.removeEventListener('visibilitychange', onVisibilityChange);
+            window.removeEventListener('focus', onFocus);
+          }
+          if (channel) {
+            try {
+              supabase.removeChannel(channel);
+            } catch {}
+          }
+        };
       },
     }),
     {
