@@ -684,6 +684,100 @@ router.get('/profit-report', validateTelegramAuth, requireAdmin, async (req, res
   }
 });
 
+// Financial Report Breakdown Details (Approved deposits, approved withdrawals, users with main_balance > 0)
+router.get('/profit-report/details', validateTelegramAuth, requireAdmin, async (req, res) => {
+  try {
+    const type = req.query.type as string; // 'deposits' | 'withdrawals' | 'users'
+
+    if (type === 'deposits') {
+      const deps = await fetchAllRows(async (rangeFrom, rangeTo) => {
+        return supabase
+          .from('deposits')
+          .select('id, telegram_id, amount, created_at, status, deposit_methods(name, type)')
+          .eq('status', 'approved')
+          .order('created_at', { ascending: false })
+          .range(rangeFrom, rangeTo);
+      });
+
+      const tids = [...new Set(deps.map(d => d.telegram_id))];
+      const { data: users } = await supabase
+        .from('users')
+        .select('telegram_id, username, first_name')
+        .in('telegram_id', tids);
+      const uMap = new Map((users || []).map(u => [u.telegram_id, u]));
+
+      const items = deps.map(d => ({
+        id: d.id,
+        telegram_id: d.telegram_id,
+        amount: Number(d.amount || 0),
+        created_at: d.created_at,
+        method: d.deposit_methods?.name || d.deposit_methods?.type || 'Deposit',
+        user: uMap.get(d.telegram_id) || { first_name: 'User', username: d.telegram_id }
+      }));
+
+      return res.json({ type: 'deposits', totalCount: items.length, items });
+    }
+
+    if (type === 'withdrawals') {
+      const withs = await fetchAllRows(async (rangeFrom, rangeTo) => {
+        return supabase
+          .from('withdrawals')
+          .select('id, telegram_id, amount, account_name, account_number, created_at, status, withdrawal_methods(type)')
+          .eq('status', 'approved')
+          .order('created_at', { ascending: false })
+          .range(rangeFrom, rangeTo);
+      });
+
+      const tids = [...new Set(withs.map(w => w.telegram_id))];
+      const { data: users } = await supabase
+        .from('users')
+        .select('telegram_id, username, first_name')
+        .in('telegram_id', tids);
+      const uMap = new Map((users || []).map(u => [u.telegram_id, u]));
+
+      const items = withs.map(w => ({
+        id: w.id,
+        telegram_id: w.telegram_id,
+        amount: Number(w.amount || 0),
+        account_name: w.account_name,
+        account_number: w.account_number,
+        created_at: w.created_at,
+        method: w.withdrawal_methods?.type || 'Withdrawal',
+        user: uMap.get(w.telegram_id) || { first_name: 'User', username: w.telegram_id }
+      }));
+
+      return res.json({ type: 'withdrawals', totalCount: items.length, items });
+    }
+
+    if (type === 'users') {
+      const users = await fetchAllRows(async (rangeFrom, rangeTo) => {
+        return supabase
+          .from('users')
+          .select('id, telegram_id, username, first_name, main_balance, created_at')
+          .gt('main_balance', 0)
+          .order('main_balance', { ascending: false })
+          .range(rangeFrom, rangeTo);
+      });
+
+      const items = users.map(u => ({
+        id: u.id,
+        telegram_id: u.telegram_id,
+        username: u.username,
+        first_name: u.first_name,
+        main_balance: Number(u.main_balance || 0),
+        created_at: u.created_at
+      }));
+
+      return res.json({ type: 'users', totalCount: items.length, items });
+    }
+
+    res.status(400).json({ error: 'Invalid type. Allowed: deposits, withdrawals, users' });
+  } catch (err: any) {
+    console.error('Failed to fetch profit report details:', err);
+    res.status(500).json({ error: err.message || 'Failed to fetch details' });
+  }
+});
+
 // Helper: fetch all rows across 1000-row PostgREST pagination limit
 async function fetchAllRows<T = any>(buildQuery: (from: number, to: number) => any): Promise<T[]> {
   const allRows: T[] = [];
