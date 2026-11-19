@@ -62,20 +62,36 @@ async function saveRewards(rewards: LoyaltyReward[]): Promise<boolean> {
   }
 }
 
-// Admin guard middleware
+// Admin guard middleware (Allows both Admin and Worker roles)
 const requireAdmin = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   const telegramId = req.telegramUser?.id?.toString() || '';
+  if (!telegramId) {
+    res.status(401).json({ error: 'Unauthorized: Missing user info' });
+    return;
+  }
   const clean = telegramId.replace(/[^\d]/g, '');
 
-  const { data } = await supabase
-    .from('users')
-    .select('role')
-    .or(`telegram_id.eq.${telegramId},telegram_id.eq.${clean}`)
-    .limit(1)
-    .maybeSingle();
+  let query = supabase.from('users').select('role, permissions');
+  if (clean && clean !== telegramId) {
+    query = query.or(`telegram_id.eq.${telegramId},telegram_id.eq.${clean}`);
+  } else {
+    query = query.eq('telegram_id', telegramId);
+  }
 
-  if (data?.role !== 'admin') {
-    res.status(403).json({ error: 'Access denied: Admin only' });
+  const { data, error } = await query.limit(1).maybeSingle();
+
+  if (error || !data) {
+    // Fallback: check direct eq by clean
+    const fallback = await supabase.from('users').select('role').eq('telegram_id', clean || telegramId).maybeSingle();
+    if (fallback.data && (fallback.data.role === 'admin' || fallback.data.role === 'worker')) {
+      return next();
+    }
+    res.status(403).json({ error: 'Access denied: Admin or Worker required' });
+    return;
+  }
+
+  if (data.role !== 'admin' && data.role !== 'worker') {
+    res.status(403).json({ error: 'Access denied: Admin or Worker required' });
     return;
   }
   next();
@@ -276,8 +292,8 @@ router.post('/admin/create', validateTelegramAuth, requireAdmin, async (req: Aut
     const {
       telegram_id,
       amount = 50,
-      title = 'Exclusive Loyalty Gift 🎁',
-      message = 'Thank you for your loyalty to Choice Bingo! Enjoy this special gift on us.',
+      title = 'የታማኝ ደንበኛ ልዩ ስጦታ 🎁',
+      message = 'ለ Choice Bingo ላሳዩት ታማኝነት የተዘጋጀ ልዩ ስጦታ! ቦነሱን ተጠቅመው ይጫወቱ እና ያሸንፉ!',
       scheduled_at,
     } = req.body;
 
@@ -308,8 +324,8 @@ router.post('/admin/create', validateTelegramAuth, requireAdmin, async (req: Aut
       recipient_name: userRow?.first_name || 'Loyal Player',
       recipient_username: userRow?.username || '',
       amount: numericAmount,
-      title: (title || 'Exclusive Loyalty Gift 🎁').trim(),
-      message: (message || 'Thank you for being our valued player!').trim(),
+      title: (title || 'የታማኝ ደንበኛ ልዩ ስጦታ 🎁').trim(),
+      message: (message || 'ለ Choice Bingo ላሳዩት ታማኝነት የተዘጋጀ ልዩ ስጦታ! ቦነሱን ተጠቅመው ይጫወቱ እና ያሸንፉ!').trim(),
       scheduled_at: validScheduledAt,
       status: 'pending',
       created_at: new Date().toISOString(),

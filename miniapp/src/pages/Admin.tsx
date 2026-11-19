@@ -40,7 +40,7 @@ export default function Admin() {
     { id: 'bingo_games', title: 'Bingo Games', icon: Gamepad2, color: 'text-yellow-600', bg: 'bg-yellow-100', show: isAdmin || perms.games },
     { id: 'settings', title: 'Settings', icon: Settings2, color: 'text-slate-600', bg: 'bg-slate-100', show: isAdmin || perms.settings },
     { id: 'rewards', title: 'Reward Settings', icon: Gift, color: 'text-amber-600', bg: 'bg-amber-100', show: true },
-    { id: 'loyalty_rewards', title: 'Loyalty Rewards', icon: Sparkles, color: 'text-amber-600', bg: 'bg-amber-100', show: isAdmin },
+    { id: 'loyalty_rewards', title: 'Loyalty Rewards', icon: Sparkles, color: 'text-amber-600', bg: 'bg-amber-100', show: true },
     { id: 'system_players', title: 'System Players', icon: Bot, color: 'text-violet-600', bg: 'bg-violet-100', show: isAdmin },
     { id: 'support_videos', title: 'Support Videos', icon: Video, color: 'text-rose-600', bg: 'bg-rose-100', show: true },
     { id: 'broadcast', title: 'Broadcast', icon: Radio, color: 'text-pink-600', bg: 'bg-pink-100', show: true },

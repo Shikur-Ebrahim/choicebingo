@@ -1,21 +1,18 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowLeft,
   Gift,
   Search,
-  Calendar,
   Clock,
   Sparkles,
   CheckCircle2,
   XCircle,
   AlertCircle,
   RefreshCw,
-  Send,
-  User,
   Trash2,
-  ChevronRight,
-  Sliders,
+  Users,
+  Coins,
 } from 'lucide-react';
 import WebApp from '@twa-dev/sdk';
 
@@ -69,17 +66,23 @@ export default function AdminLoyaltyRewards() {
   const [isScheduled, setIsScheduled] = useState(false);
   const [scheduledDateTime, setScheduledDateTime] = useState('');
 
-  // Content states
-  const [title, setTitle] = useState('Exclusive Loyalty Gift 🎁');
-  const [message, setMessage] = useState('Thank you for being our valued loyal player! Here is a special bonus reward just for you.');
+  // Default Amharic Title & Congratulatory Message
+  const [title, setTitle] = useState('የታማኝ ደንበኛ ልዩ ስጦታ 🎁');
+  const [message, setMessage] = useState(
+    'ለ Choice Bingo ላሳዩት ታማኝነት የተዘጋጀ ልዩ ስጦታ! ቦነሱን ተጠቅመው ይጫወቱ እና ያሸንፉ!'
+  );
 
   // List filter state
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'claimed' | 'cancelled'>('all');
   const [listSearch, setListSearch] = useState('');
 
   const getHeaders = useCallback(() => {
-    const initData = typeof WebApp !== 'undefined' ? WebApp.initData : '';
+    let initData = '';
+    if (typeof WebApp !== 'undefined' && WebApp.initData) {
+      initData = WebApp.initData;
+    }
     const pwaPhone = typeof window !== 'undefined' ? localStorage.getItem('cb_pwa_phone') || '' : '';
+
     return {
       'Content-Type': 'application/json',
       'x-telegram-init-data': initData,
@@ -99,11 +102,16 @@ export default function AdminLoyaltyRewards() {
       const res = await fetch(`${API_URL}/loyalty-rewards/admin/list`, {
         headers: getHeaders(),
       });
-      if (!res.ok) throw new Error('Failed to load rewards');
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || `ስጦታዎችን መጫን አልተቻለም (HTTP ${res.status})`);
+      }
+
       const data = await res.json();
       setRewards(data.rewards || []);
     } catch (err: any) {
-      showToastMsg('error', err.message || 'Error loading rewards');
+      showToastMsg('error', err.message || 'ስጦታዎችን መጫን አልተቻለም');
     } finally {
       setLoading(false);
     }
@@ -123,9 +131,10 @@ export default function AdminLoyaltyRewards() {
     const timer = setTimeout(async () => {
       try {
         setIsSearchingUsers(true);
-        const res = await fetch(`${API_URL}/loyalty-rewards/admin/search-users?q=${encodeURIComponent(searchQuery.trim())}`, {
-          headers: getHeaders(),
-        });
+        const res = await fetch(
+          `${API_URL}/loyalty-rewards/admin/search-users?q=${encodeURIComponent(searchQuery.trim())}`,
+          { headers: getHeaders() }
+        );
         if (res.ok) {
           const data = await res.json();
           setUserSuggestions(data.users || []);
@@ -148,19 +157,19 @@ export default function AdminLoyaltyRewards() {
     const targetTelegramId = selectedUser ? selectedUser.telegram_id : customTelegramId.trim();
 
     if (!targetTelegramId) {
-      showToastMsg('error', 'Please select a customer or enter a valid Telegram ID');
+      showToastMsg('error', 'እባክዎ ተጠቃሚ ይምረጡ ወይም ትክክለኛ የቴሌግራም መለያ (Telegram ID) ያስገቡ');
       return;
     }
 
     if (!amount || amount <= 0) {
-      showToastMsg('error', 'Please enter a valid reward amount (e.g. 50 ETB)');
+      showToastMsg('error', 'እባክዎ ትክክለኛ የቦነስ መጠን ያስገቡ (ለምሳሌ 50 ብር)');
       return;
     }
 
     let validScheduledAt = new Date().toISOString();
     if (isScheduled) {
       if (!scheduledDateTime) {
-        showToastMsg('error', 'Please pick a scheduled date and time');
+        showToastMsg('error', 'እባክዎ ስጦታው የሚላክበትን ቀን እና ሰዓት ይምረጡ');
         return;
       }
       validScheduledAt = new Date(scheduledDateTime).toISOString();
@@ -174,20 +183,25 @@ export default function AdminLoyaltyRewards() {
         body: JSON.stringify({
           telegram_id: targetTelegramId,
           amount: Number(amount),
-          title: title.trim(),
-          message: message.trim(),
+          title: title.trim() || 'የታማኝ ደንበኛ ልዩ ስጦታ 🎁',
+          message:
+            message.trim() ||
+            'ለ Choice Bingo ላሳዩት ታማኝነት የተዘጋጀ ልዩ ስጦታ! ቦነሱን ተጠቅመው ይጫወቱ እና ያሸንፉ!',
           scheduled_at: validScheduledAt,
         }),
       });
 
       const data = await res.json();
       if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Failed to grant loyalty reward');
+        throw new Error(data.error || 'ስጦታውን ማስተላለፍ አልተቻለም');
       }
 
-      showToastMsg('success', `Loyalty reward of ${amount} ETB successfully created for ${data.reward.recipient_name || targetTelegramId}!`);
+      showToastMsg(
+        'success',
+        `የ ${amount} ብር የታማኝ ደንበኛ ስጦታ ለ ${data.reward.recipient_name || targetTelegramId} በተሳካ ሁኔታ ተዘጋጅቷል!`
+      );
 
-      // Reset form
+      // Reset form to defaults
       setSelectedUser(null);
       setCustomTelegramId('');
       setSearchQuery('');
@@ -198,7 +212,7 @@ export default function AdminLoyaltyRewards() {
       // Refresh list
       fetchRewards();
     } catch (err: any) {
-      showToastMsg('error', err.message || 'Error submitting reward');
+      showToastMsg('error', err.message || 'ስጦታውን ማስተላለፍ አልተቻለም');
     } finally {
       setSubmitting(false);
     }
@@ -206,7 +220,7 @@ export default function AdminLoyaltyRewards() {
 
   // Cancel / Revoke Reward
   const handleCancelReward = async (id: string) => {
-    if (!window.confirm('Are you sure you want to cancel this pending loyalty reward?')) return;
+    if (!window.confirm('ይህን በመጠባበቅ ላይ ያለ ስጦታ መሰረዝ እርግጠኛ ነዎት?')) return;
 
     try {
       const res = await fetch(`${API_URL}/loyalty-rewards/admin/${id}`, {
@@ -214,12 +228,12 @@ export default function AdminLoyaltyRewards() {
         headers: getHeaders(),
       });
       const data = await res.json();
-      if (!res.ok || !data.success) throw new Error(data.error || 'Failed to cancel');
+      if (!res.ok || !data.success) throw new Error(data.error || 'ስጦታውን መሰረዝ አልተቻለም');
 
-      showToastMsg('success', 'Reward cancelled successfully');
+      showToastMsg('success', 'ስጦታው በተሳካ ሁኔታ ተሰርዟል');
       setRewards((prev) => prev.map((r) => (r.id === id ? { ...r, status: 'cancelled' } : r)));
     } catch (err: any) {
-      showToastMsg('error', err.message || 'Error cancelling reward');
+      showToastMsg('error', err.message || 'ስጦታውን መሰረዝ አልተቻለም');
     }
   };
 
@@ -245,12 +259,16 @@ export default function AdminLoyaltyRewards() {
       {/* Toast Notification */}
       {toast && (
         <div
-          className={`fixed top-4 left-4 right-4 z-50 p-4 rounded-2xl shadow-xl flex items-center space-x-3 text-sm font-semibold transition-all transform animate-in fade-in slide-in-from-top-4 ${
+          className={`fixed top-4 left-4 right-4 z-50 p-4 rounded-2xl shadow-xl flex items-center space-x-3 text-xs font-bold transition-all transform animate-in fade-in slide-in-from-top-4 ${
             toast.type === 'success' ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'
           }`}
         >
-          {toast.type === 'success' ? <CheckCircle2 size={20} className="shrink-0" /> : <AlertCircle size={20} className="shrink-0" />}
-          <span className="flex-1">{toast.message}</span>
+          {toast.type === 'success' ? (
+            <CheckCircle2 size={18} className="shrink-0" />
+          ) : (
+            <AlertCircle size={18} className="shrink-0" />
+          )}
+          <span className="flex-1 leading-snug">{toast.message}</span>
         </div>
       )}
 
@@ -264,11 +282,11 @@ export default function AdminLoyaltyRewards() {
             <ArrowLeft size={20} />
           </Link>
           <div>
-            <h1 className="text-base font-black text-slate-800 flex items-center gap-1.5">
-              <span>Loyalty Rewards</span>
-              <Sparkles size={16} className="text-amber-500 fill-amber-400" />
+            <h1 className="text-sm font-black text-slate-900 flex items-center gap-1.5">
+              <span>የታማኝ ደንበኛ ቦነስ</span>
+              <Sparkles size={15} className="text-amber-500 fill-amber-400" />
             </h1>
-            <p className="text-[11px] text-slate-500">Targeted bonus gifts for loyal customers</p>
+            <p className="text-[10px] text-slate-500">ለተመረጡ ደንበኞች ልዩ የቦነስ ስጦታ መላኪያ</p>
           </div>
         </div>
 
@@ -276,58 +294,60 @@ export default function AdminLoyaltyRewards() {
           onClick={fetchRewards}
           disabled={loading}
           className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 active:scale-95 transition-all"
-          title="Refresh"
+          title="አድስ"
         >
-          <RefreshCw size={18} className={loading ? 'animate-spin text-amber-500' : ''} />
+          <RefreshCw size={17} className={loading ? 'animate-spin text-amber-500' : ''} />
         </button>
       </div>
 
-      <div className="p-4 max-w-lg mx-auto space-y-5">
+      <div className="p-4 max-w-lg mx-auto space-y-4">
         {/* Banner */}
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-amber-500 via-orange-500 to-amber-600 p-5 text-white shadow-lg shadow-amber-500/20">
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-amber-500 via-orange-500 to-amber-600 p-4 sm:p-5 text-white shadow-lg shadow-amber-500/20">
           <div className="absolute -right-4 -bottom-6 w-32 h-32 bg-white/10 rounded-full blur-2xl pointer-events-none" />
           <div className="relative z-10 space-y-2">
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/20 backdrop-blur-md text-[11px] font-bold tracking-wide uppercase">
-              <Gift size={13} />
-              <span>VIP Loyalty System</span>
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/20 backdrop-blur-md text-[10px] font-black tracking-wide uppercase">
+              <Gift size={12} />
+              <span>ልዩ የታማኝ ደንበኞች ስጦታ</span>
             </div>
-            <h2 className="text-xl font-black">Reward Loyal Customers</h2>
-            <p className="text-xs text-amber-50 leading-relaxed">
-              Target any loyal customer with custom bonus balance (default: 50 ETB). When they open the home page, a celebratory popup allows them to claim it instantly!
+            <h2 className="text-lg font-black leading-tight">ለታማኝ ደንበኞች ቦነስ ይላኩ</h2>
+            <p className="text-[11px] text-amber-50 leading-relaxed">
+              ለተመረጡ ደንበኞች ልዩ የቦነስ ስጦታ (መደበኛ 50 ብር) ይላኩ። ደንበኛው መነሻ ገጽ (Home) ላይ ሲደርስ በሚያምር ፖፕአፕ ወስዶ ቦነሱ ወዲያውኑ ሂሳቡ ላይ ይጨመራል!
             </p>
           </div>
         </div>
 
         {/* ── CREATE FORM CARD ── */}
-        <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100 space-y-4">
+        <div className="bg-white rounded-3xl p-4 sm:p-5 shadow-sm border border-slate-100 space-y-4">
           <div className="flex items-center space-x-2 border-b border-slate-100 pb-3">
             <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center">
               <Gift size={18} />
             </div>
-            <h3 className="font-bold text-sm text-slate-800">Grant New Loyalty Gift</h3>
+            <div>
+              <h3 className="font-bold text-xs sm:text-sm text-slate-800">አዲስ የቦነስ ስጦታ መላኪያ</h3>
+              <p className="text-[10px] text-slate-400">ተጠቃሚ ይምረጡ እና የቦነሱን መጠን ያስገቡ</p>
+            </div>
           </div>
 
           <form onSubmit={handleCreateReward} className="space-y-4">
             {/* Target Customer Selection */}
-            <div className="space-y-2 relative">
-              <label className="text-xs font-bold text-slate-700 flex items-center justify-between">
-                <span>Target Loyal Customer *</span>
-                <span className="text-[10px] text-slate-400 font-normal">Search by username, name, or Telegram ID</span>
+            <div className="space-y-1.5 relative">
+              <label className="text-xs font-bold text-slate-700 block">
+                የታማኝ ደንበኛ መለያ (Telegram ID ወይም ስም) <span className="text-rose-500">*</span>
               </label>
 
               {/* Selected User Badge */}
               {selectedUser ? (
                 <div className="flex items-center justify-between p-3 rounded-2xl bg-amber-50 border border-amber-200">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 rounded-full bg-amber-500 text-white font-black flex items-center justify-center text-sm shadow-sm">
+                  <div className="flex items-center space-x-2.5 overflow-hidden">
+                    <div className="w-9 h-9 rounded-full bg-amber-500 text-white font-black flex items-center justify-center text-xs shrink-0 shadow-sm">
                       {selectedUser.first_name?.[0] || 'U'}
                     </div>
-                    <div>
-                      <div className="font-bold text-xs text-slate-900">
+                    <div className="truncate">
+                      <div className="font-bold text-xs text-slate-900 truncate">
                         {selectedUser.first_name} {selectedUser.username ? `@${selectedUser.username}` : ''}
                       </div>
-                      <div className="text-[11px] text-slate-500 font-mono">
-                        ID: {selectedUser.telegram_id} • Balance: {selectedUser.main_balance || 0} ETB
+                      <div className="text-[10px] text-slate-500 font-mono">
+                        ID: {selectedUser.telegram_id} • ሂሳብ: {selectedUser.main_balance || 0} ብር
                       </div>
                     </div>
                   </div>
@@ -338,34 +358,34 @@ export default function AdminLoyaltyRewards() {
                       setCustomTelegramId('');
                       setSearchQuery('');
                     }}
-                    className="p-1 text-slate-400 hover:text-rose-500 transition-colors"
+                    className="p-1 text-slate-400 hover:text-rose-500 transition-colors shrink-0"
                   >
                     <XCircle size={18} />
                   </button>
                 </div>
               ) : (
-                <div className="relative">
+                <div className="space-y-1.5">
                   <div className="relative flex items-center">
-                    <Search size={16} className="absolute left-3.5 text-slate-400" />
+                    <Search size={15} className="absolute left-3 text-slate-400" />
                     <input
                       type="text"
-                      placeholder="Type username or name to search..."
+                      placeholder="የተጠቃሚውን ስም ወይም Telegram ID ይፈልጉ..."
                       value={searchQuery}
                       onChange={(e) => {
                         setSearchQuery(e.target.value);
                         setCustomTelegramId(e.target.value);
                       }}
                       onFocus={() => userSuggestions.length > 0 && setShowSuggestions(true)}
-                      className="w-full pl-9 pr-9 py-2.5 text-xs bg-slate-50 rounded-2xl border border-slate-200 focus:outline-none focus:border-amber-500 focus:bg-white transition-all"
+                      className="w-full pl-8 pr-8 py-2.5 text-xs bg-slate-50 rounded-2xl border border-slate-200 focus:outline-none focus:border-amber-500 focus:bg-white transition-all font-medium"
                     />
                     {isSearchingUsers && (
-                      <RefreshCw size={14} className="absolute right-3.5 text-amber-500 animate-spin" />
+                      <RefreshCw size={13} className="absolute right-3 text-amber-500 animate-spin" />
                     )}
                   </div>
 
                   {/* Suggestions Dropdown */}
                   {showSuggestions && userSuggestions.length > 0 && (
-                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl z-20 max-h-56 overflow-y-auto divide-y divide-slate-100">
+                    <div className="bg-white border border-slate-200 rounded-2xl shadow-xl z-20 max-h-52 overflow-y-auto divide-y divide-slate-100">
                       {userSuggestions.map((u) => (
                         <div
                           key={u.id}
@@ -376,25 +396,25 @@ export default function AdminLoyaltyRewards() {
                           }}
                           className="p-2.5 flex items-center justify-between hover:bg-amber-50 cursor-pointer transition-colors"
                         >
-                          <div className="flex items-center space-x-2.5">
-                            <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-700 font-bold flex items-center justify-center text-xs">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-7 h-7 rounded-full bg-slate-100 text-slate-700 font-bold flex items-center justify-center text-xs shrink-0">
                               {u.first_name?.[0] || 'U'}
                             </div>
-                            <div>
-                              <div className="text-xs font-bold text-slate-800">
+                            <div className="truncate">
+                              <div className="text-xs font-bold text-slate-800 truncate">
                                 {u.first_name} {u.username ? `@${u.username}` : ''}
                               </div>
-                              <div className="text-[10px] text-slate-400 font-mono">
+                              <div className="text-[9px] text-slate-400 font-mono">
                                 ID: {u.telegram_id}
                               </div>
                             </div>
                           </div>
-                          <div className="text-right">
-                            <span className="text-[11px] font-bold text-emerald-600 block">
-                              {u.main_balance || 0} ETB
+                          <div className="text-right shrink-0">
+                            <span className="text-[10px] font-bold text-emerald-600 block">
+                              {u.main_balance || 0} ብር
                             </span>
                             <span className="text-[9px] text-slate-400 block">
-                              Bonus: {u.bonus_balance || 0}
+                              ቦነስ: {u.bonus_balance || 0}
                             </span>
                           </div>
                         </div>
@@ -402,20 +422,26 @@ export default function AdminLoyaltyRewards() {
                     </div>
                   )}
 
-                  <div className="mt-1 flex items-center justify-between text-[10px] text-slate-400 px-1">
-                    <span>Or enter direct Telegram ID:</span>
-                    <span className="font-mono">{customTelegramId || 'None'}</span>
+                  <div className="flex items-center justify-between text-[10px] text-slate-400 px-1">
+                    <span>የተመረጠ መለያ (Telegram ID):</span>
+                    <span className="font-mono font-bold text-slate-600">
+                      {customTelegramId || 'አልተመረጠም'}
+                    </span>
                   </div>
                 </div>
               )}
             </div>
 
             {/* Bonus Amount (Default: 50 ETB) */}
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-700 flex items-center justify-between">
-                <span>Reward Amount (ETB Bonus) *</span>
-                <span className="text-[10px] font-bold text-amber-600">Default: 50 ETB</span>
-              </label>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-slate-700">
+                  የቦነስ መጠን (ብር) <span className="text-rose-500">*</span>
+                </label>
+                <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                  መደበኛ: 50 ብር
+                </span>
+              </div>
 
               {/* Quick Amount Chips */}
               <div className="grid grid-cols-6 gap-1.5">
@@ -446,49 +472,49 @@ export default function AdminLoyaltyRewards() {
                   step="1"
                   value={amount}
                   onChange={(e) => setAmount(Number(e.target.value))}
-                  placeholder="Custom ETB Amount"
+                  placeholder="የቦነስ መጠን በብር"
                   required
                   className="w-full px-3 py-2.5 text-sm font-bold bg-slate-50 rounded-2xl border border-slate-200 focus:outline-none focus:border-amber-500 focus:bg-white transition-all text-slate-800"
                 />
-                <span className="absolute right-3.5 text-xs font-bold text-slate-400 uppercase">
-                  ETB Bonus
+                <span className="absolute right-3.5 text-xs font-bold text-slate-400">
+                  ብር ቦነስ
                 </span>
               </div>
             </div>
 
-            {/* Schedule Option */}
+            {/* Delivery Timing */}
             <div className="space-y-2 border border-slate-100 rounded-2xl p-3 bg-slate-50/50">
               <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <Clock size={16} className="text-slate-500" />
-                  <span className="text-xs font-bold text-slate-700">Delivery Timing</span>
+                <div className="flex items-center space-x-1.5">
+                  <Clock size={15} className="text-slate-500" />
+                  <span className="text-xs font-bold text-slate-700">የሚላክበት ሰዓት</span>
                 </div>
                 <div className="flex items-center bg-slate-200 p-0.5 rounded-xl">
                   <button
                     type="button"
                     onClick={() => setIsScheduled(false)}
-                    className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all ${
+                    className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all ${
                       !isScheduled ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500'
                     }`}
                   >
-                    Immediate (Now)
+                    አሁኑኑ (ወዲያው)
                   </button>
                   <button
                     type="button"
                     onClick={() => setIsScheduled(true)}
-                    className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all ${
+                    className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all ${
                       isScheduled ? 'bg-amber-500 text-white shadow-sm' : 'text-slate-500'
                     }`}
                   >
-                    Schedule Time
+                    በተወሰነ ሰዓት
                   </button>
                 </div>
               </div>
 
               {isScheduled && (
-                <div className="pt-2 animate-in fade-in space-y-1.5">
-                  <label className="text-[11px] text-slate-500 block font-medium">
-                    Pick exact date & time when the reward becomes claimable:
+                <div className="pt-1.5 animate-in fade-in space-y-1">
+                  <label className="text-[10px] text-slate-500 block font-medium">
+                    ስጦታው ለተጠቃሚው የሚደርስበትን ቀን እና ሰዓት ይምረጡ:
                   </label>
                   <input
                     type="datetime-local"
@@ -501,40 +527,50 @@ export default function AdminLoyaltyRewards() {
               )}
             </div>
 
-            {/* Title & Message */}
+            {/* Popup Title & Congratulatory Message (Amharic by default) */}
             <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-700">Popup Title & Greeting</label>
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g. Exclusive Loyalty Gift 🎁"
-                className="w-full px-3 py-2 text-xs bg-slate-50 rounded-xl border border-slate-200 focus:outline-none focus:border-amber-500 font-medium"
-              />
-              <textarea
-                rows={2}
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                placeholder="Custom message shown to the user on Home page..."
-                className="w-full px-3 py-2 text-xs bg-slate-50 rounded-xl border border-slate-200 focus:outline-none focus:border-amber-500 font-medium resize-none"
-              />
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">
+                  የፖፕአፕ ርዕስ (Title)
+                </label>
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="የታማኝ ደንበኛ ልዩ ስጦታ 🎁"
+                  className="w-full px-3 py-2 text-xs bg-slate-50 rounded-xl border border-slate-200 focus:outline-none focus:border-amber-500 font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">
+                  የማበረታቻ መልእክት (Message)
+                </label>
+                <textarea
+                  rows={2}
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  placeholder="ለ Choice Bingo ላሳዩት ታማኝነት የተዘጋጀ ልዩ ስጦታ! ቦነሱን ተጠቅመው ይጫወቱ እና ያሸንፉ!"
+                  className="w-full px-3 py-2 text-xs bg-slate-50 rounded-xl border border-slate-200 focus:outline-none focus:border-amber-500 font-medium resize-none leading-relaxed"
+                />
+              </div>
             </div>
 
             {/* Submit Button */}
             <button
               type="submit"
               disabled={submitting}
-              className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-2xl font-bold text-sm shadow-md shadow-amber-500/25 active:scale-[0.98] transition-all flex items-center justify-center space-x-2 disabled:opacity-50"
+              className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-2xl font-black text-xs sm:text-sm shadow-md shadow-amber-500/25 active:scale-[0.98] transition-all flex items-center justify-center space-x-2 disabled:opacity-50"
             >
               {submitting ? (
                 <>
-                  <RefreshCw size={18} className="animate-spin" />
-                  <span>Creating Reward...</span>
+                  <RefreshCw size={17} className="animate-spin" />
+                  <span>ስጦታውን በማዘጋጀት ላይ...</span>
                 </>
               ) : (
                 <>
                   <Gift size={18} />
-                  <span>Grant {amount} ETB Loyalty Reward</span>
+                  <span>🎁 የ {amount} ብር ቦነስ ስጦታ ላክ</span>
                 </>
               )}
             </button>
@@ -544,28 +580,42 @@ export default function AdminLoyaltyRewards() {
         {/* ── REWARD HISTORY & STATUS ── */}
         <div className="space-y-3">
           <div className="flex items-center justify-between px-1">
-            <h3 className="font-bold text-sm text-slate-800 flex items-center gap-2">
-              <span>Rewards History</span>
-              <span className="text-xs bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full font-bold">
+            <h3 className="font-bold text-xs sm:text-sm text-slate-800 flex items-center gap-1.5">
+              <span>የተላኩ ስጦታዎች ታሪክ</span>
+              <span className="text-[10px] bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full font-bold">
                 {rewards.length}
               </span>
             </h3>
 
             {/* Status Filter Pills */}
             <div className="flex items-center space-x-1">
-              {(['all', 'pending', 'claimed', 'cancelled'] as const).map((st) => {
-                const count = st === 'all' ? rewards.length : st === 'pending' ? pendingCount : st === 'claimed' ? claimedCount : cancelledCount;
+              {(
+                [
+                  { key: 'all', label: 'ሁሉም' },
+                  { key: 'pending', label: 'መጠባበቅ' },
+                  { key: 'claimed', label: 'የተወሰደ' },
+                  { key: 'cancelled', label: 'የተሰረዘ' },
+                ] as const
+              ).map((st) => {
+                const count =
+                  st.key === 'all'
+                    ? rewards.length
+                    : st.key === 'pending'
+                    ? pendingCount
+                    : st.key === 'claimed'
+                    ? claimedCount
+                    : cancelledCount;
                 return (
                   <button
-                    key={st}
-                    onClick={() => setStatusFilter(st)}
-                    className={`px-2.5 py-1 rounded-xl text-[10px] font-bold capitalize transition-all ${
-                      statusFilter === st
+                    key={st.key}
+                    onClick={() => setStatusFilter(st.key)}
+                    className={`px-2 py-1 rounded-xl text-[9px] sm:text-[10px] font-bold transition-all ${
+                      statusFilter === st.key
                         ? 'bg-slate-800 text-white shadow-sm'
                         : 'bg-white text-slate-500 border border-slate-200'
                     }`}
                   >
-                    {st} ({count})
+                    {st.label} ({count})
                   </button>
                 );
               })}
@@ -577,7 +627,7 @@ export default function AdminLoyaltyRewards() {
             <Search size={14} className="absolute left-3 top-2.5 text-slate-400" />
             <input
               type="text"
-              placeholder="Search history by name, username, ID..."
+              placeholder="ስም፣ ዩዘርኔም ወይም ID በመጻፍ ይፈልጉ..."
               value={listSearch}
               onChange={(e) => setListSearch(e.target.value)}
               className="w-full pl-8 pr-3 py-1.5 text-xs bg-white rounded-xl border border-slate-200 focus:outline-none focus:border-amber-500"
@@ -586,11 +636,13 @@ export default function AdminLoyaltyRewards() {
 
           {/* List items */}
           {filteredRewards.length === 0 ? (
-            <div className="bg-white rounded-3xl p-8 text-center border border-slate-100">
-              <Gift size={32} className="mx-auto text-slate-300 mb-2" />
-              <p className="text-xs font-bold text-slate-500">No loyalty rewards found</p>
-              <p className="text-[11px] text-slate-400 mt-1">
-                {statusFilter !== 'all' ? `No ${statusFilter} rewards in history.` : 'Create a new reward above to get started!'}
+            <div className="bg-white rounded-3xl p-6 text-center border border-slate-100">
+              <Gift size={28} className="mx-auto text-slate-300 mb-1.5" />
+              <p className="text-xs font-bold text-slate-500">ምንም የተመዘገበ ስጦታ አልተገኘም</p>
+              <p className="text-[10px] text-slate-400 mt-0.5">
+                {statusFilter !== 'all'
+                  ? 'በዚህ ሁኔታ ውስጥ ምንም የተመዘገበ ስጦታ የለም።'
+                  : 'ከላይ ያለውን ቅጽ በመጠቀም የመጀመሪያውን የታማኝ ደንበኛ ስጦታ ይላኩ!'}
               </p>
             </div>
           ) : (
@@ -604,53 +656,53 @@ export default function AdminLoyaltyRewards() {
                 return (
                   <div
                     key={r.id}
-                    className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 space-y-2.5 transition-all hover:border-slate-200"
+                    className="bg-white rounded-2xl p-3.5 shadow-sm border border-slate-100 space-y-2 transition-all hover:border-slate-200"
                   >
                     <div className="flex items-start justify-between">
-                      <div className="space-y-0.5">
-                        <div className="flex items-center space-x-2">
-                          <span className="font-bold text-xs text-slate-900">
-                            {r.recipient_name || 'Customer'}
+                      <div className="space-y-0.5 truncate pr-2">
+                        <div className="flex items-center space-x-1.5">
+                          <span className="font-bold text-xs text-slate-900 truncate">
+                            {r.recipient_name || 'ደንበኛ'}
                           </span>
                           {r.recipient_username && (
-                            <span className="text-[11px] text-amber-600 font-medium">
+                            <span className="text-[10px] text-amber-600 font-medium truncate">
                               @{r.recipient_username}
                             </span>
                           )}
                         </div>
-                        <div className="text-[10px] text-slate-400 font-mono">
+                        <div className="text-[9px] text-slate-400 font-mono">
                           Telegram ID: {r.telegram_id}
                         </div>
                       </div>
 
                       {/* Amount & Status Badge */}
-                      <div className="text-right space-y-1">
-                        <div className="inline-block px-2.5 py-0.5 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 text-white font-black text-xs shadow-sm">
-                          +{r.amount} ETB
+                      <div className="text-right shrink-0 space-y-1">
+                        <div className="inline-block px-2 py-0.5 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 text-white font-black text-xs shadow-sm">
+                          +{r.amount} ብር
                         </div>
                         <div>
                           {isClaimed && (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">
-                              <CheckCircle2 size={11} />
-                              <span>Claimed</span>
+                            <span className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-md">
+                              <CheckCircle2 size={10} />
+                              <span>ተወስዷል</span>
                             </span>
                           )}
                           {isPending && (
                             <span
-                              className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                              className={`inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded-md ${
                                 isDue
                                   ? 'text-amber-700 bg-amber-100 animate-pulse'
                                   : 'text-blue-700 bg-blue-100'
                               }`}
                             >
-                              <Clock size={11} />
-                              <span>{isDue ? 'Available Now' : 'Scheduled'}</span>
+                              <Clock size={10} />
+                              <span>{isDue ? 'አሁን ይገኛል' : 'የተያዘ'}</span>
                             </span>
                           )}
                           {isCancelled && (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
-                              <XCircle size={11} />
-                              <span>Cancelled</span>
+                            <span className="inline-flex items-center gap-1 text-[9px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-md">
+                              <XCircle size={10} />
+                              <span>ተሰርዟል</span>
                             </span>
                           )}
                         </div>
@@ -658,25 +710,24 @@ export default function AdminLoyaltyRewards() {
                     </div>
 
                     {/* Title & Message */}
-                    <div className="bg-slate-50 rounded-xl p-2.5 text-[11px] text-slate-600 border border-slate-100">
+                    <div className="bg-slate-50 rounded-xl p-2 text-[10px] text-slate-600 border border-slate-100">
                       <div className="font-bold text-slate-800">{r.title}</div>
-                      <div className="text-slate-500 text-[10px] mt-0.5">{r.message}</div>
+                      <div className="text-slate-500 text-[9px] mt-0.5 leading-snug">{r.message}</div>
                     </div>
 
                     {/* Metadata & Actions */}
-                    <div className="flex items-center justify-between pt-1 border-t border-slate-50 text-[10px] text-slate-400">
+                    <div className="flex items-center justify-between pt-1 border-t border-slate-50 text-[9px] text-slate-400">
                       <div>
                         {isClaimed && r.claimed_at ? (
                           <span className="text-emerald-600 font-medium">
-                            Claimed on {new Date(r.claimed_at).toLocaleDateString()} at{' '}
-                            {new Date(r.claimed_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            የተወሰደበት ቀን: {new Date(r.claimed_at).toLocaleDateString()} {new Date(r.claimed_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </span>
                         ) : isPending && !isDue ? (
                           <span>
-                            Becomes available: {new Date(r.scheduled_at).toLocaleString()}
+                            የሚደርስበት ቀን: {new Date(r.scheduled_at).toLocaleString()}
                           </span>
                         ) : (
-                          <span>Created {new Date(r.created_at).toLocaleDateString()}</span>
+                          <span>የተፈጠረው: {new Date(r.created_at).toLocaleDateString()}</span>
                         )}
                       </div>
 
@@ -687,8 +738,8 @@ export default function AdminLoyaltyRewards() {
                           onClick={() => handleCancelReward(r.id)}
                           className="inline-flex items-center gap-1 text-rose-500 hover:text-rose-600 font-bold px-2 py-0.5 rounded-md hover:bg-rose-50 transition-colors"
                         >
-                          <Trash2 size={12} />
-                          <span>Cancel</span>
+                          <Trash2 size={11} />
+                          <span>ሰርዝ</span>
                         </button>
                       )}
                     </div>
