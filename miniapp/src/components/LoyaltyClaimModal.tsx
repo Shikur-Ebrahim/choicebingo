@@ -2,54 +2,30 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Gift, Sparkles, Trophy, CheckCircle2, Star, PartyPopper } from 'lucide-react';
 import WebApp from '@twa-dev/sdk';
 import { useGameStore } from '../store/gameStore';
-
-const API_URL = import.meta.env.VITE_API_URL || '/api';
-
-interface EligibleReward {
-  id: string;
-  amount: number;
-  title: string;
-  message: string;
-  scheduled_at: string;
-}
+import { LoyaltyReward, checkEligibleLoyaltyReward, claimLoyaltyReward } from '../lib/loyaltyService';
 
 export default function LoyaltyClaimModal() {
   const { user, fetchUser, language } = useGameStore();
-  const [reward, setReward] = useState<EligibleReward | null>(null);
+  const [reward, setReward] = useState<LoyaltyReward | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [claiming, setClaiming] = useState(false);
   const [claimedSuccess, setClaimedSuccess] = useState(false);
   const [creditedAmount, setCreditedAmount] = useState<number>(50);
 
-  const getHeaders = useCallback(() => {
-    const initData = typeof WebApp !== 'undefined' ? WebApp.initData : '';
-    const pwaPhone = typeof window !== 'undefined' ? localStorage.getItem('cb_pwa_phone') || '' : '';
-    return {
-      'Content-Type': 'application/json',
-      'x-telegram-init-data': initData,
-      'x-pwa-phone': pwaPhone,
-    };
-  }, []);
-
-  // Check if current user has an eligible pending reward
+  // Check if current user has an eligible pending reward (Failsafe & Direct)
   const checkLoyaltyReward = useCallback(async () => {
-    if (!user) return;
+    if (!user || !user.telegram_id) return;
     try {
-      const res = await fetch(`${API_URL}/loyalty-rewards/check`, {
-        headers: getHeaders(),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.hasReward && data.reward) {
-          setReward(data.reward);
-          setCreditedAmount(data.reward.amount || 50);
-          setIsOpen(true);
-        }
+      const activeReward = await checkEligibleLoyaltyReward(user.telegram_id);
+      if (activeReward) {
+        setReward(activeReward);
+        setCreditedAmount(activeReward.amount || 50);
+        setIsOpen(true);
       }
     } catch (err) {
       console.error('[LoyaltyClaimModal] Check reward failed:', err);
     }
-  }, [user, getHeaders]);
+  }, [user]);
 
   useEffect(() => {
     checkLoyaltyReward();
@@ -57,24 +33,19 @@ export default function LoyaltyClaimModal() {
 
   // Handle claiming the reward
   const handleClaim = async () => {
-    if (!reward || claiming) return;
+    if (!reward || !user || !user.telegram_id || claiming) return;
 
     try {
       setClaiming(true);
-      const res = await fetch(`${API_URL}/loyalty-rewards/claim`, {
-        method: 'POST',
-        headers: getHeaders(),
-        body: JSON.stringify({ rewardId: reward.id }),
-      });
+      const res = await claimLoyaltyReward(user.telegram_id, reward.id);
 
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Failed to claim reward');
+      if (!res.success) {
+        throw new Error(res.error || 'ስጦታውን መውሰድ አልተቻለም');
       }
 
       // Trigger celebration state
       setClaimedSuccess(true);
-      setCreditedAmount(data.reward?.amount || creditedAmount);
+      setCreditedAmount(reward.amount || creditedAmount);
 
       // Refresh user balance in gameStore
       await fetchUser();
@@ -93,7 +64,7 @@ export default function LoyaltyClaimModal() {
       }, 3000);
     } catch (err: any) {
       console.error('[LoyaltyClaimModal] Claim error:', err);
-      alert(err.message || 'Failed to claim reward. Please try again.');
+      alert(err.message || 'ስጦታውን መውሰድ አልተቻለም። እባክዎ እንደገና ይሞክሩ።');
     } finally {
       setClaiming(false);
     }
@@ -165,7 +136,7 @@ export default function LoyaltyClaimModal() {
                   : `Successfully added ${creditedAmount} ETB to your Bonus Balance!`)
               : (reward.message ||
                   (isAmharic
-                    ? 'ለ Choice Bingo ላሳዩት ታማኝነት የተዘጋጀ ልዩ ስጦታ!'
+                    ? 'ለ Choice Bingo ላሳዩት ታማኝነት የተዘጋጀ ልዩ ስጦታ! ቦነሱን ተጠቅመው ይጫወቱ እና ያሸንፉ!'
                     : 'As a special thank you for being our loyal player, enjoy this exclusive bonus!'))}
           </p>
         </div>
@@ -173,7 +144,7 @@ export default function LoyaltyClaimModal() {
         {/* Glowing Amount Display Banner */}
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-amber-500/20 via-orange-500/30 to-amber-500/20 border border-amber-500/40 p-3.5 shadow-inner">
           <div className="text-[10px] font-bold text-amber-300 uppercase tracking-widest">
-            {isAmharic ? 'የጉርሻ መጠን' : 'REWARD VALUE'}
+            {isAmharic ? 'የቦነስ መጠን' : 'REWARD VALUE'}
           </div>
           <div className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-amber-200 to-yellow-100 flex items-center justify-center gap-1.5 drop-shadow">
             <span>+{reward.amount || 50}</span>

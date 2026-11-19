@@ -11,38 +11,15 @@ import {
   AlertCircle,
   RefreshCw,
   Trash2,
-  Users,
-  Coins,
 } from 'lucide-react';
-import WebApp from '@twa-dev/sdk';
-
-const API_URL = import.meta.env.VITE_API_URL || '/api';
-
-interface LoyaltyReward {
-  id: string;
-  telegram_id: string;
-  recipient_name?: string;
-  recipient_username?: string;
-  amount: number;
-  title: string;
-  message: string;
-  scheduled_at: string;
-  status: 'pending' | 'claimed' | 'cancelled';
-  created_at: string;
-  claimed_at?: string;
-  created_by?: string;
-}
-
-interface UserCandidate {
-  id: string;
-  telegram_id: string;
-  username: string;
-  first_name: string;
-  main_balance: number;
-  bonus_balance: number;
-  total_wins: number;
-  total_games: number;
-}
+import {
+  LoyaltyReward,
+  UserCandidate,
+  getLoyaltyRewards,
+  searchUsers,
+  createLoyaltyReward,
+  cancelLoyaltyReward,
+} from '../lib/loyaltyService';
 
 export default function AdminLoyaltyRewards() {
   const [rewards, setRewards] = useState<LoyaltyReward[]>([]);
@@ -76,46 +53,23 @@ export default function AdminLoyaltyRewards() {
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'claimed' | 'cancelled'>('all');
   const [listSearch, setListSearch] = useState('');
 
-  const getHeaders = useCallback(() => {
-    let initData = '';
-    if (typeof WebApp !== 'undefined' && WebApp.initData) {
-      initData = WebApp.initData;
-    }
-    const pwaPhone = typeof window !== 'undefined' ? localStorage.getItem('cb_pwa_phone') || '' : '';
-
-    return {
-      'Content-Type': 'application/json',
-      'x-telegram-init-data': initData,
-      'x-pwa-phone': pwaPhone,
-    };
-  }, []);
-
   const showToastMsg = (type: 'success' | 'error', message: string) => {
     setToast({ type, message });
     setTimeout(() => setToast(null), 4000);
   };
 
-  // Fetch all loyalty rewards
+  // Fetch all loyalty rewards (Failsafe & Direct)
   const fetchRewards = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_URL}/loyalty-rewards/admin/list`, {
-        headers: getHeaders(),
-      });
-
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.error || `ስጦታዎችን መጫን አልተቻለም (HTTP ${res.status})`);
-      }
-
-      const data = await res.json();
-      setRewards(data.rewards || []);
+      const list = await getLoyaltyRewards();
+      setRewards(list);
     } catch (err: any) {
       showToastMsg('error', err.message || 'ስጦታዎችን መጫን አልተቻለም');
     } finally {
       setLoading(false);
     }
-  }, [getHeaders]);
+  }, []);
 
   useEffect(() => {
     fetchRewards();
@@ -131,24 +85,18 @@ export default function AdminLoyaltyRewards() {
     const timer = setTimeout(async () => {
       try {
         setIsSearchingUsers(true);
-        const res = await fetch(
-          `${API_URL}/loyalty-rewards/admin/search-users?q=${encodeURIComponent(searchQuery.trim())}`,
-          { headers: getHeaders() }
-        );
-        if (res.ok) {
-          const data = await res.json();
-          setUserSuggestions(data.users || []);
-          setShowSuggestions(true);
-        }
+        const users = await searchUsers(searchQuery);
+        setUserSuggestions(users);
+        setShowSuggestions(true);
       } catch (err) {
         console.error('Failed to search users:', err);
       } finally {
         setIsSearchingUsers(false);
       }
-    }, 300);
+    }, 250);
 
     return () => clearTimeout(timer);
-  }, [searchQuery, getHeaders]);
+  }, [searchQuery]);
 
   // Handle Create / Submit Reward
   const handleCreateReward = async (e: React.FormEvent) => {
@@ -177,28 +125,23 @@ export default function AdminLoyaltyRewards() {
 
     try {
       setSubmitting(true);
-      const res = await fetch(`${API_URL}/loyalty-rewards/admin/create`, {
-        method: 'POST',
-        headers: getHeaders(),
-        body: JSON.stringify({
-          telegram_id: targetTelegramId,
-          amount: Number(amount),
-          title: title.trim() || 'የታማኝ ደንበኛ ልዩ ስጦታ 🎁',
-          message:
-            message.trim() ||
-            'ለ Choice Bingo ላሳዩት ታማኝነት የተዘጋጀ ልዩ ስጦታ! ቦነሱን ተጠቅመው ይጫወቱ እና ያሸንፉ!',
-          scheduled_at: validScheduledAt,
-        }),
+      const res = await createLoyaltyReward({
+        telegram_id: targetTelegramId,
+        amount: Number(amount),
+        title: title.trim() || 'የታማኝ ደንበኛ ልዩ ስጦታ 🎁',
+        message:
+          message.trim() ||
+          'ለ Choice Bingo ላሳዩት ታማኝነት የተዘጋጀ ልዩ ስጦታ! ቦነሱን ተጠቅመው ይጫወቱ እና ያሸንፉ!',
+        scheduled_at: validScheduledAt,
       });
 
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'ስጦታውን ማስተላለፍ አልተቻለም');
+      if (!res.success || !res.reward) {
+        throw new Error(res.error || 'ስጦታውን ማስተላለፍ አልተቻለም');
       }
 
       showToastMsg(
         'success',
-        `የ ${amount} ብር የታማኝ ደንበኛ ስጦታ ለ ${data.reward.recipient_name || targetTelegramId} በተሳካ ሁኔታ ተዘጋጅቷል!`
+        `የ ${amount} ብር የታማኝ ደንበኛ ስጦታ ለ ${res.reward.recipient_name || targetTelegramId} በተሳካ ሁኔታ ተዘጋጅቷል!`
       );
 
       // Reset form to defaults
@@ -223,12 +166,8 @@ export default function AdminLoyaltyRewards() {
     if (!window.confirm('ይህን በመጠባበቅ ላይ ያለ ስጦታ መሰረዝ እርግጠኛ ነዎት?')) return;
 
     try {
-      const res = await fetch(`${API_URL}/loyalty-rewards/admin/${id}`, {
-        method: 'DELETE',
-        headers: getHeaders(),
-      });
-      const data = await res.json();
-      if (!res.ok || !data.success) throw new Error(data.error || 'ስጦታውን መሰረዝ አልተቻለም');
+      const ok = await cancelLoyaltyReward(id);
+      if (!ok) throw new Error('ስጦታውን መሰረዝ አልተቻለም');
 
       showToastMsg('success', 'ስጦታው በተሳካ ሁኔታ ተሰርዟል');
       setRewards((prev) => prev.map((r) => (r.id === id ? { ...r, status: 'cancelled' } : r)));
