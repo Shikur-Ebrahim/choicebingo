@@ -1,77 +1,58 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { Navigate, Link } from 'react-router-dom';
-import {
-  ArrowDownToLine,
-  ArrowUpFromLine,
-  TrendingUp,
-  RefreshCw,
-  LogOut,
-  Wallet,
-  Users,
-  ShieldAlert,
-  ChevronRight,
-  X,
-  Search
-} from 'lucide-react';
+import { ArrowDownToLine, ArrowUpFromLine, TrendingUp, Calendar, RefreshCw, LogOut, Search } from 'lucide-react';
 import WebApp from '@twa-dev/sdk';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
-interface DetailItem {
-  id: string;
-  telegram_id: string;
-  amount?: number;
-  main_balance?: number;
-  created_at: string;
-  method?: string;
-  account_name?: string;
-  account_number?: string;
-  username?: string;
-  first_name?: string;
-  user?: {
-    first_name?: string;
-    username?: string;
-    telegram_id?: string;
-  };
+function toDateStr(d: Date) {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 export default function Worker() {
   const { user } = useGameStore();
-  const [stats, setStats] = useState<{
-    totalDeposits: number;
-    totalWithdrawals: number;
-    totalUserMainBalance: number;
-    netProfit: number;
-    netProfitAfterBalances: number;
-  }>({
-    totalDeposits: 0,
-    totalWithdrawals: 0,
-    totalUserMainBalance: 0,
-    netProfit: 0,
-    netProfitAfterBalances: 0
-  });
+  const [activePreset, setActivePreset] = useState('Today');
+  const [stats, setStats] = useState({ totalDeposits: 0, totalWithdrawals: 0, netProfit: 0 });
   const [loading, setLoading] = useState(true);
   const [pendingDeposits, setPendingDeposits] = useState(0);
   const [pendingWithdrawals, setPendingWithdrawals] = useState(0);
 
-  // Detail Modal state
-  const [detailType, setDetailType] = useState<'deposits' | 'withdrawals' | 'users' | null>(null);
-  const [detailItems, setDetailItems] = useState<DetailItem[]>([]);
-  const [detailLoading, setDetailLoading] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  // Custom date range state
+  const [customFrom, setCustomFrom] = useState('');
+  const [customTo, setCustomTo] = useState('');
+  const [showCustom, setShowCustom] = useState(false);
 
-  const getHeaders = () => {
-    const initData = typeof WebApp !== 'undefined' ? WebApp.initData : '';
-    return { 'Content-Type': 'application/json', 'x-telegram-init-data': initData };
+  const startOf = (d: Date) => {
+    const copy = new Date(d);
+    copy.setHours(0, 0, 0, 0);
+    return copy.toISOString();
   };
 
-  const fetchReport = useCallback(async () => {
+  const endOf = (d: Date) => {
+    const copy = new Date(d);
+    copy.setHours(23, 59, 59, 999);
+    return copy.toISOString();
+  };
+
+  const fetchReport = useCallback(async (fromIso: string, toIso: string) => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/admin/profit-report`, { headers: getHeaders() });
+      const initData = typeof WebApp !== 'undefined' ? WebApp.initData : '';
+      const params = new URLSearchParams();
+      if (fromIso) params.append('from', fromIso);
+      if (toIso) params.append('to', toIso);
+
+      const res = await fetch(`${API_URL}/admin/profit-report?${params}`, {
+        headers: { 'x-telegram-init-data': initData }
+      });
       if (res.ok) {
         setStats(await res.json());
+      } else if (res.status === 404) {
+        alert("Backend update required! Please run 'git pull' and 'docker compose up -d --build' on your VPS.");
       }
     } catch (e) {
       console.error(e);
@@ -80,74 +61,92 @@ export default function Worker() {
     }
   }, []);
 
+  const applyPreset = (preset: string) => {
+    setActivePreset(preset);
+    setShowCustom(false);
+    const now = new Date();
+
+    let fromIso = '';
+    let toIso = '';
+
+    if (preset === 'Today') {
+      fromIso = startOf(now);
+      toIso = endOf(now);
+    } else if (preset === 'Yesterday') {
+      const yest = new Date(now);
+      yest.setDate(yest.getDate() - 1);
+      fromIso = startOf(yest);
+      toIso = endOf(yest);
+    } else if (preset === '7 Days') {
+      const d = new Date(now);
+      d.setDate(d.getDate() - 7);
+      fromIso = startOf(d);
+      toIso = endOf(now);
+    } else if (preset === '1 Month') {
+      const d = new Date(now);
+      d.setMonth(d.getMonth() - 1);
+      fromIso = startOf(d);
+      toIso = endOf(now);
+    } else if (preset === '3 Months') {
+      const d = new Date(now);
+      d.setMonth(d.getMonth() - 3);
+      fromIso = startOf(d);
+      toIso = endOf(now);
+    } else if (preset === '6 Months') {
+      const d = new Date(now);
+      d.setMonth(d.getMonth() - 6);
+      fromIso = startOf(d);
+      toIso = endOf(now);
+    } else if (preset === '1 Year') {
+      const d = new Date(now);
+      d.setFullYear(d.getFullYear() - 1);
+      fromIso = startOf(d);
+      toIso = endOf(now);
+    }
+    // All Time: fromIso & toIso stay ''
+
+    fetchReport(fromIso, toIso);
+  };
+
+  const applyCustomRange = () => {
+    if (!customFrom || !customTo) return;
+    setActivePreset('Custom');
+    setShowCustom(false);
+    const from = new Date(customFrom);
+    const to = new Date(customTo);
+    fetchReport(startOf(from), endOf(to));
+  };
+
   const fetchPendingCounts = useCallback(async () => {
     try {
-      const res = await fetch(`${API_URL}/admin/pending-counts`, { headers: getHeaders() });
+      const initData = typeof WebApp !== 'undefined' ? WebApp.initData : '';
+      const res = await fetch(`${API_URL}/admin/pending-counts`, {
+        headers: { 'x-telegram-init-data': initData }
+      });
       if (res.ok) {
         const data = await res.json();
-        setPendingDeposits(data.pendingDeposits || 0);
-        setPendingWithdrawals(data.pendingWithdrawals || 0);
+        setPendingDeposits(data.pendingDeposits);
+        setPendingWithdrawals(data.pendingWithdrawals);
       }
     } catch (e) {
       console.error(e);
     }
   }, []);
 
-  const openDetailModal = async (type: 'deposits' | 'withdrawals' | 'users') => {
-    setDetailType(type);
-    setSearchQuery('');
-    setDetailLoading(true);
-    try {
-      const res = await fetch(`${API_URL}/admin/profit-report/details?type=${type}`, { headers: getHeaders() });
-      if (res.ok) {
-        const data = await res.json();
-        setDetailItems(data.items || []);
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setDetailLoading(false);
-    }
-  };
-
-  const closeDetailModal = () => {
-    setDetailType(null);
-    setDetailItems([]);
-    setSearchQuery('');
-  };
-
   useEffect(() => {
-    fetchReport();
+    applyPreset('Today');
     fetchPendingCounts();
-  }, [fetchReport, fetchPendingCounts]);
-
-  const filteredDetailItems = useMemo(() => {
-    if (!searchQuery.trim()) return detailItems;
-    const q = searchQuery.toLowerCase().trim();
-    return detailItems.filter(item => {
-      const uName = (item.user?.username || item.username || '').toLowerCase();
-      const fName = (item.user?.first_name || item.first_name || '').toLowerCase();
-      const tid = (item.telegram_id || '').toLowerCase();
-      const method = (item.method || '').toLowerCase();
-      const accName = (item.account_name || '').toLowerCase();
-      const accNum = (item.account_number || '').toLowerCase();
-      return uName.includes(q) || fName.includes(q) || tid.includes(q) || method.includes(q) || accName.includes(q) || accNum.includes(q);
-    });
-  }, [detailItems, searchQuery]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (!user || user.role !== 'worker') {
     return <Navigate to="/" replace />;
   }
 
   const perms = user.permissions || {};
-  const totalDep = Number(stats.totalDeposits || 0);
-  const totalWith = Number(stats.totalWithdrawals || 0);
-  const totalBal = Number(stats.totalUserMainBalance || 0);
-  const netProf = Number(stats.netProfit ?? (totalDep - totalWith));
-  const netProfAfterBal = Number(stats.netProfitAfterBalances ?? (totalDep - totalWith - totalBal));
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col pb-24 text-slate-800">
+    <div className="min-h-screen bg-slate-50 flex flex-col pb-24">
       {/* Header */}
       <div className="bg-orange-600 text-white px-4 py-6 rounded-b-[2rem] shadow-md relative z-10 shrink-0">
         <div className="flex justify-between items-center mb-6">
@@ -166,9 +165,7 @@ export default function Worker() {
         <div className="grid grid-cols-2 gap-3 mt-4">
           <Link
             to="/admin/deposits"
-            className={`flex items-center p-3 rounded-2xl transition-all shadow-sm ${
-              perms.deposits ? 'bg-white text-emerald-700 active:scale-95' : 'bg-white/20 text-white/50 pointer-events-none'
-            }`}
+            className={`flex items-center p-3 rounded-2xl transition-all shadow-sm ${perms.deposits ? 'bg-white text-emerald-700 active:scale-95' : 'bg-white/20 text-white/50 pointer-events-none'}`}
           >
             <div className={`p-2 rounded-xl mr-3 ${perms.deposits ? 'bg-emerald-100' : 'bg-white/10'}`}>
               <ArrowDownToLine size={20} />
@@ -186,9 +183,7 @@ export default function Worker() {
 
           <Link
             to="/admin/withdrawals"
-            className={`flex items-center p-3 rounded-2xl transition-all shadow-sm ${
-              perms.withdrawals ? 'bg-white text-rose-700 active:scale-95' : 'bg-white/20 text-white/50 pointer-events-none'
-            }`}
+            className={`flex items-center p-3 rounded-2xl transition-all shadow-sm ${perms.withdrawals ? 'bg-white text-rose-700 active:scale-95' : 'bg-white/20 text-white/50 pointer-events-none'}`}
           >
             <div className={`p-2 rounded-xl mr-3 ${perms.withdrawals ? 'bg-rose-100' : 'bg-white/10'}`}>
               <ArrowUpFromLine size={20} />
@@ -207,373 +202,127 @@ export default function Worker() {
       </div>
 
       <div className="flex-1 p-4 -mt-2 relative z-0">
+
         {/* Report Header */}
         <div className="flex items-center justify-between mb-4 mt-2">
           <h2 className="font-black text-slate-800 text-lg flex items-center space-x-2">
             <TrendingUp size={20} className="text-orange-500" />
-            <span>Financial Report</span>
+            <span>Profit Report</span>
           </h2>
-          <button
-            onClick={fetchReport}
-            disabled={loading}
-            className="flex items-center space-x-1.5 px-3 py-1.5 bg-white border border-slate-200 rounded-full text-[11px] font-bold text-slate-600 shadow-2xs hover:bg-slate-50 transition-colors"
-          >
-            <RefreshCw size={12} className={loading ? 'animate-spin text-orange-500' : 'text-slate-400'} />
-            <span>Refresh</span>
-          </button>
+          <div className="flex items-center space-x-2">
+            {loading && <RefreshCw size={16} className="text-slate-400 animate-spin" />}
+            <button
+              onClick={() => { setShowCustom(v => !v); setActivePreset('Custom'); }}
+              className={`flex items-center space-x-1 px-3 py-1.5 rounded-full text-[11px] font-black border transition-all ${
+                activePreset === 'Custom'
+                  ? 'bg-orange-500 text-white border-orange-500'
+                  : 'bg-white text-slate-500 border-slate-200'
+              }`}
+            >
+              <Calendar size={12} />
+              <span>Custom</span>
+            </button>
+          </div>
         </div>
 
-        {perms.reports ? (
-          loading && !stats.totalDeposits ? (
-            <div className="flex flex-col items-center justify-center py-16 text-slate-400">
-              <div className="w-8 h-8 border-4 border-slate-200 border-t-orange-500 rounded-full animate-spin mb-3"></div>
-              <p className="text-xs font-bold">Calculating all-time report...</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {/* 1. PROFIT SECTION (FIRST) - CLEAN, NO EXPLANATION TEXT */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between px-1">
-                  <p className="text-[11px] font-black text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-                    <TrendingUp size={14} className="text-orange-500" />
-                    <span>Profit Overview</span>
-                  </p>
-                  <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 border border-emerald-200/60 px-2 py-0.5 rounded-full">
-                    All-Time Live
-                  </span>
-                </div>
-
-                {/* Category 1: Net Profit = Total Deposits - Total Withdrawals */}
-                <div
-                  className={`rounded-3xl p-5 shadow-sm border transition-all ${
-                    netProf >= 0
-                      ? 'bg-gradient-to-br from-emerald-600 via-teal-600 to-emerald-700 text-white border-emerald-400/30 shadow-emerald-500/10'
-                      : 'bg-gradient-to-br from-rose-600 via-red-600 to-rose-700 text-white border-rose-400/30 shadow-rose-500/10'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-black tracking-wider uppercase text-white/90">
-                      Category 1 • Cash Profit
-                    </span>
-                    <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
-                      <TrendingUp size={20} className="text-white" />
-                    </div>
-                  </div>
-                  <p className="text-3xl font-black text-white mt-2 tracking-tight">
-                    {netProf > 0 ? '+' : ''}{netProf.toLocaleString()} <span className="text-lg font-bold text-white/80">ETB</span>
-                  </p>
-                </div>
-
-                {/* Category 2: Total Net Profit = Total Deposits - Total Withdrawals - Total Users Main Balance */}
-                <div
-                  className={`rounded-3xl p-5 shadow-sm border transition-all ${
-                    netProfAfterBal >= 0
-                      ? 'bg-gradient-to-br from-indigo-600 via-blue-600 to-indigo-800 text-white border-indigo-400/30 shadow-indigo-500/10'
-                      : 'bg-gradient-to-br from-amber-600 via-rose-600 to-red-700 text-white border-rose-400/30 shadow-rose-500/10'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-black tracking-wider uppercase text-white/90">
-                      Category 2 • True Net Profit
-                    </span>
-                    <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
-                      <Wallet size={20} className="text-white" />
-                    </div>
-                  </div>
-                  <p className="text-3xl font-black text-white mt-2 tracking-tight">
-                    {netProfAfterBal > 0 ? '+' : ''}{netProfAfterBal.toLocaleString()} <span className="text-lg font-bold text-white/80">ETB</span>
-                  </p>
-                </div>
+        {/* Custom Date Range Picker */}
+        {showCustom && (
+          <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 mb-4">
+            <p className="text-xs font-black text-slate-500 uppercase tracking-wider mb-3">Select Date Range</p>
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <div>
+                <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">From</label>
+                <input
+                  type="date"
+                  value={customFrom}
+                  max={toDateStr(new Date())}
+                  onChange={e => setCustomFrom(e.target.value)}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-orange-400"
+                />
               </div>
-
-              {/* 2. BREAKDOWN SECTION (CLICKABLE CARDS) */}
-              <div className="space-y-2.5 pt-2">
-                <div className="flex items-center justify-between px-1">
-                  <p className="text-[11px] font-black text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-                    <Wallet size={14} className="text-slate-400" />
-                    <span>Breakdown Details (Tap to View)</span>
-                  </p>
-                  <span className="text-[10px] font-bold text-slate-400">All Time</span>
-                </div>
-
-                <div className="grid grid-cols-1 gap-2.5">
-                  {/* Total Deposits - Clickable */}
-                  <button
-                    onClick={() => openDetailModal('deposits')}
-                    className="w-full text-left bg-white rounded-2xl p-4 shadow-2xs border border-slate-200/80 hover:border-emerald-300 hover:shadow-sm active:scale-[0.99] transition-all flex items-center space-x-3.5 group"
-                  >
-                    <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-100">
-                      <ArrowDownToLine size={24} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Deposits</p>
-                        <span className="text-[9.5px] font-black text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
-                          Approved
-                        </span>
-                      </div>
-                      <p className="text-xl font-black text-slate-800 mt-0.5">
-                        {totalDep.toLocaleString()} <span className="text-xs font-bold text-slate-400 font-sans">ETB</span>
-                      </p>
-                      <p className="text-[10px] font-bold text-emerald-600 mt-0.5 flex items-center gap-1 group-hover:underline">
-                        <span>View all approved deposits</span>
-                        <ChevronRight size={12} />
-                      </p>
-                    </div>
-                  </button>
-
-                  {/* Total Withdrawals - Clickable */}
-                  <button
-                    onClick={() => openDetailModal('withdrawals')}
-                    className="w-full text-left bg-white rounded-2xl p-4 shadow-2xs border border-slate-200/80 hover:border-rose-300 hover:shadow-sm active:scale-[0.99] transition-all flex items-center space-x-3.5 group"
-                  >
-                    <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0 border border-rose-100">
-                      <ArrowUpFromLine size={24} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Withdrawals</p>
-                        <span className="text-[9.5px] font-black text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full">
-                          Approved
-                        </span>
-                      </div>
-                      <p className="text-xl font-black text-slate-800 mt-0.5">
-                        {totalWith.toLocaleString()} <span className="text-xs font-bold text-slate-400 font-sans">ETB</span>
-                      </p>
-                      <p className="text-[10px] font-bold text-rose-600 mt-0.5 flex items-center gap-1 group-hover:underline">
-                        <span>View all approved withdrawals</span>
-                        <ChevronRight size={12} />
-                      </p>
-                    </div>
-                  </button>
-
-                  {/* Total Users Main Balance - Clickable */}
-                  <button
-                    onClick={() => openDetailModal('users')}
-                    className="w-full text-left bg-white rounded-2xl p-4 shadow-2xs border border-slate-200/80 hover:border-blue-300 hover:shadow-sm active:scale-[0.99] transition-all flex items-center space-x-3.5 group"
-                  >
-                    <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-100">
-                      <Users size={24} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Users Main Balance</p>
-                        <span className="text-[9.5px] font-black text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full">
-                          Balance &gt; 0
-                        </span>
-                      </div>
-                      <p className="text-xl font-black text-slate-800 mt-0.5">
-                        {totalBal.toLocaleString()} <span className="text-xs font-bold text-slate-400 font-sans">ETB</span>
-                      </p>
-                      <p className="text-[10px] font-bold text-blue-600 mt-0.5 flex items-center gap-1 group-hover:underline">
-                        <span>View users with active balance</span>
-                        <ChevronRight size={12} />
-                      </p>
-                    </div>
-                  </button>
-                </div>
+              <div>
+                <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">To</label>
+                <input
+                  type="date"
+                  value={customTo}
+                  max={toDateStr(new Date())}
+                  onChange={e => setCustomTo(e.target.value)}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-orange-400"
+                />
               </div>
             </div>
-          )
-        ) : (
-          <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-2xs text-center space-y-3 my-6">
-            <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto border border-amber-100">
-              <ShieldAlert size={24} />
-            </div>
-            <h3 className="font-black text-slate-800 text-sm">Permission Required</h3>
-            <p className="text-xs text-slate-500 max-w-xs mx-auto">
-              You do not currently have permission to view Financial Reports. Contact an administrator to grant you access.
-            </p>
+            <button
+              onClick={applyCustomRange}
+              disabled={!customFrom || !customTo}
+              className="w-full py-2.5 rounded-xl bg-orange-500 text-white font-black text-sm disabled:opacity-40 flex items-center justify-center space-x-2 active:scale-95 transition-transform"
+            >
+              <Search size={14} />
+              <span>Generate Report</span>
+            </button>
           </div>
         )}
-      </div>
 
-      {/* DETAIL MODAL / DRAWER */}
-      {detailType && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex flex-col justify-end">
-          <div className="bg-white w-full rounded-t-[2rem] max-h-[85vh] flex flex-col shadow-2xl animate-in slide-in-from-bottom duration-200">
-            {/* Modal Header */}
-            <div className="p-4 border-b border-slate-100 flex items-center justify-between shrink-0">
-              <div className="flex items-center space-x-2.5">
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
-                  detailType === 'deposits'
-                    ? 'bg-emerald-100 text-emerald-600'
-                    : detailType === 'withdrawals'
-                    ? 'bg-rose-100 text-rose-600'
-                    : 'bg-blue-100 text-blue-600'
-                }`}>
-                  {detailType === 'deposits' && <ArrowDownToLine size={20} />}
-                  {detailType === 'withdrawals' && <ArrowUpFromLine size={20} />}
-                  {detailType === 'users' && <Users size={20} />}
-                </div>
-                <div>
-                  <h3 className="font-black text-slate-800 text-sm">
-                    {detailType === 'deposits' && 'All Approved Deposits'}
-                    {detailType === 'withdrawals' && 'All Approved Withdrawals'}
-                    {detailType === 'users' && 'Users With Balance > 0'}
-                  </h3>
-                  <p className="text-[11px] font-bold text-slate-400">
-                    {detailItems.length} records total
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={closeDetailModal}
-                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 transition-colors"
-              >
-                <X size={18} />
-              </button>
+        {/* Preset Buttons */}
+        <div className="flex overflow-x-auto hide-scrollbar space-x-2 pb-2 mb-4 snap-x">
+          {['Today', 'Yesterday', '7 Days', '1 Month', '3 Months', '6 Months', '1 Year', 'All Time'].map(preset => (
+            <button
+              key={preset}
+              onClick={() => applyPreset(preset)}
+              className={`snap-start whitespace-nowrap px-4 py-2 rounded-full text-[11px] font-black transition-all ${
+                activePreset === preset
+                  ? 'bg-orange-500 text-white shadow-md shadow-orange-500/20'
+                  : 'bg-white text-slate-500 border border-slate-200'
+              }`}
+            >
+              {preset}
+            </button>
+          ))}
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-1 gap-3 mb-6">
+          <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-center space-x-3">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+              <ArrowDownToLine size={24} />
             </div>
-
-            {/* Search Input */}
-            <div className="p-3 bg-slate-50 border-b border-slate-100 shrink-0">
-              <div className="relative">
-                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Search user, ID, method..."
-                  value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                  className="w-full bg-white border border-slate-200 rounded-xl pl-8 pr-3 py-2 text-xs font-medium text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-400"
-                />
-                {searchQuery && (
-                  <button
-                    onClick={() => setSearchQuery('')}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                  >
-                    <X size={12} />
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Modal Body / Items List */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-2.5 min-h-[300px]">
-              {detailLoading ? (
-                <div className="flex flex-col items-center justify-center py-20 text-slate-400">
-                  <div className="w-8 h-8 border-4 border-slate-200 border-t-orange-500 rounded-full animate-spin mb-3"></div>
-                  <p className="text-xs font-bold">Loading records...</p>
-                </div>
-              ) : filteredDetailItems.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16 text-slate-400 text-center">
-                  <p className="text-xs font-bold">No matching records found</p>
-                </div>
-              ) : (
-                filteredDetailItems.map((item, idx) => {
-                  const dDate = item.created_at ? new Date(item.created_at).toLocaleString() : '';
-
-                  if (detailType === 'deposits') {
-                    return (
-                      <div
-                        key={item.id}
-                        className="bg-white rounded-2xl p-3 border border-slate-100 shadow-2xs flex items-center justify-between"
-                      >
-                        <div className="min-w-0 flex-1 pr-3">
-                          <div className="flex items-center space-x-1.5">
-                            <span className="font-black text-xs text-slate-800 truncate">
-                              {item.user?.first_name || 'User'}
-                            </span>
-                            <span className="text-[10px] text-slate-400 truncate">
-                              @{item.user?.username || item.telegram_id}
-                            </span>
-                          </div>
-                          <div className="flex items-center space-x-2 mt-1">
-                            <span className="text-[9.5px] font-black uppercase text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-md border border-emerald-100">
-                              {item.method}
-                            </span>
-                            <span className="text-[10px] text-slate-400">{dDate}</span>
-                          </div>
-                        </div>
-                        <div className="text-right shrink-0">
-                          <span className="text-sm font-black text-emerald-600">
-                            +{Number(item.amount || 0).toLocaleString()} ETB
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  }
-
-                  if (detailType === 'withdrawals') {
-                    return (
-                      <div
-                        key={item.id}
-                        className="bg-white rounded-2xl p-3 border border-slate-100 shadow-2xs flex items-center justify-between"
-                      >
-                        <div className="min-w-0 flex-1 pr-3">
-                          <div className="flex items-center space-x-1.5">
-                            <span className="font-black text-xs text-slate-800 truncate">
-                              {item.user?.first_name || item.account_name || 'User'}
-                            </span>
-                            <span className="text-[10px] text-slate-400 truncate">
-                              @{item.user?.username || item.telegram_id}
-                            </span>
-                          </div>
-                          <div className="flex items-center space-x-2 mt-1">
-                            <span className="text-[9.5px] font-black uppercase text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded-md border border-rose-100">
-                              {item.method}
-                            </span>
-                            {item.account_number && (
-                              <span className="text-[10px] font-mono text-slate-600">{item.account_number}</span>
-                            )}
-                            <span className="text-[10px] text-slate-400">{dDate}</span>
-                          </div>
-                        </div>
-                        <div className="text-right shrink-0">
-                          <span className="text-sm font-black text-rose-600">
-                            -{Number(item.amount || 0).toLocaleString()} ETB
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  }
-
-                  // Users with main_balance > 0
-                  return (
-                    <div
-                      key={item.id}
-                      className="bg-white rounded-2xl p-3 border border-slate-100 shadow-2xs flex items-center justify-between"
-                    >
-                      <div className="flex items-center space-x-3 min-w-0 flex-1 pr-3">
-                        <span className="w-6 h-6 rounded-lg bg-blue-50 text-blue-700 text-[10px] font-black flex items-center justify-center shrink-0">
-                          #{idx + 1}
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center space-x-1.5">
-                            <span className="font-black text-xs text-slate-800 truncate">
-                              {item.first_name || 'User'}
-                            </span>
-                            <span className="text-[10px] text-slate-400 truncate">
-                              @{item.username || item.telegram_id}
-                            </span>
-                          </div>
-                          <p className="text-[10px] text-slate-400 mt-0.5">
-                            ID: {item.telegram_id}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <span className="text-sm font-black text-blue-600">
-                          {Number(item.main_balance || 0).toLocaleString()} ETB
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-
-            {/* Modal Footer */}
-            <div className="p-3 bg-slate-50 border-t border-slate-100 text-center shrink-0">
-              <button
-                onClick={closeDetailModal}
-                className="w-full py-2.5 rounded-xl bg-slate-800 text-white font-black text-xs active:scale-[0.98] transition-transform"
-              >
-                Done
-              </button>
+            <div>
+              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Deposits</p>
+              <p className="text-xl font-black text-slate-800">{stats.totalDeposits.toLocaleString()} ETB</p>
             </div>
           </div>
+
+          <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-center space-x-3">
+            <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+              <ArrowUpFromLine size={24} />
+            </div>
+            <div>
+              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Withdrawals</p>
+              <p className="text-xl font-black text-slate-800">{stats.totalWithdrawals.toLocaleString()} ETB</p>
+            </div>
+          </div>
+
+          <div className={`rounded-2xl p-5 shadow-sm flex items-center justify-between ${
+            stats.netProfit >= 0
+              ? 'bg-gradient-to-r from-orange-500 to-amber-500'
+              : 'bg-gradient-to-r from-rose-500 to-red-500'
+          }`}>
+            <div>
+              <p className="text-white/80 text-xs font-bold uppercase tracking-wider mb-1">Net Profit</p>
+              <p className="text-3xl font-black text-white">
+                {stats.netProfit > 0 ? '+' : ''}{stats.netProfit.toLocaleString()} ETB
+              </p>
+            </div>
+            <TrendingUp size={40} className="text-white/20" />
+          </div>
         </div>
-      )}
+
+        {/* Note */}
+        <div className="bg-blue-50 text-blue-800 p-4 rounded-2xl flex items-start space-x-3 text-xs font-medium">
+          <Calendar size={18} className="shrink-0 text-blue-500 mt-0.5" />
+          <p>Only <strong>approved</strong> deposits and withdrawals are counted. Pending transactions are excluded.</p>
+        </div>
+
+      </div>
     </div>
   );
 }

@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { Link, Navigate } from 'react-router-dom';
 import WebApp from '@twa-dev/sdk';
+import { supabase } from '../lib/supabase';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -119,10 +120,35 @@ export default function AdminWorkers() {
   const fetchReport = useCallback(async () => {
     setReportLoading(true);
     try {
+      // 1. Fetch live active user balances directly from Supabase (failsafe & real-time)
+      const { data: uRows } = await supabase.from('users').select('main_balance');
+      const liveUserBalance = (uRows || []).reduce((sum, u: any) => sum + Number(u.main_balance || 0), 0);
+
+      // 2. Fetch deposits & withdrawals report from API
       const res = await fetch(`${API_URL}/admin/profit-report`, { headers: getHeaders() });
       if (res.ok) {
         const d = await res.json();
-        setReportStats(d);
+        const totalDep = Number(d.totalDeposits || 0);
+        const totalWith = Number(d.totalWithdrawals || 0);
+        const finalBal = Number(d.totalUserMainBalance || liveUserBalance);
+        const netProf = totalDep - totalWith;
+        const netProfAfter = netProf - finalBal;
+
+        setReportStats({
+          totalDeposits: totalDep,
+          totalWithdrawals: totalWith,
+          totalUserMainBalance: finalBal,
+          netProfit: netProf,
+          netProfitAfterBalances: netProfAfter,
+        });
+      } else {
+        setReportStats(prev => ({
+          totalDeposits: prev?.totalDeposits || 0,
+          totalWithdrawals: prev?.totalWithdrawals || 0,
+          totalUserMainBalance: liveUserBalance,
+          netProfit: (prev?.totalDeposits || 0) - (prev?.totalWithdrawals || 0),
+          netProfitAfterBalances: (prev?.totalDeposits || 0) - (prev?.totalWithdrawals || 0) - liveUserBalance,
+        }));
       }
     } catch (e) {
       console.error(e);
@@ -137,13 +163,74 @@ export default function AdminWorkers() {
     setSearchQuery('');
     setDetailLoading(true);
     try {
+      if (type === 'users') {
+        // Direct Supabase query: always succeeds instantly without any network or version issues
+        const { data: uList, error: uErr } = await supabase
+          .from('users')
+          .select('id, telegram_id, username, first_name, main_balance, created_at')
+          .gt('main_balance', 0)
+          .order('main_balance', { ascending: false });
+
+        if (!uErr && uList && uList.length > 0) {
+          const items: DetailItem[] = uList.map(u => ({
+            id: u.id,
+            telegram_id: u.telegram_id,
+            username: u.username,
+            first_name: u.first_name,
+            main_balance: Number(u.main_balance || 0),
+            created_at: u.created_at,
+          }));
+          setDetailItems(items);
+          return;
+        }
+      }
+
+      // Try API endpoint
       const res = await fetch(`${API_URL}/admin/profit-report/details?type=${type}`, { headers: getHeaders() });
       if (res.ok) {
         const data = await res.json();
         setDetailItems(data.items || []);
-      } else {
-        showToast('error', `Failed to load ${type} details`);
+        return;
       }
+
+      // Failsafe fallbacks for deposits and withdrawals
+      if (type === 'deposits') {
+        const depRes = await fetch(`${API_URL}/admin/deposits`, { headers: getHeaders() });
+        if (depRes.ok) {
+          const allDeps = await depRes.json();
+          const approved = (allDeps || []).filter((d: any) => d.status === 'approved');
+          const items: DetailItem[] = approved.map((d: any) => ({
+            id: d.id,
+            telegram_id: d.telegram_id,
+            amount: Number(d.amount || 0),
+            created_at: d.created_at,
+            method: d.deposit_methods?.name || d.deposit_methods?.type || 'Deposit',
+            user: d.users || { first_name: 'User', username: d.telegram_id },
+          }));
+          setDetailItems(items);
+          return;
+        }
+      } else if (type === 'withdrawals') {
+        const withRes = await fetch(`${API_URL}/admin/withdrawals`, { headers: getHeaders() });
+        if (withRes.ok) {
+          const allWiths = await withRes.json();
+          const approved = (allWiths || []).filter((w: any) => w.status === 'approved');
+          const items: DetailItem[] = approved.map((w: any) => ({
+            id: w.id,
+            telegram_id: w.telegram_id,
+            amount: Number(w.amount || 0),
+            account_name: w.account_name,
+            account_number: w.account_number,
+            created_at: w.created_at,
+            method: w.withdrawal_methods?.type || 'Withdrawal',
+            user: w.users || { first_name: 'User', username: w.telegram_id },
+          }));
+          setDetailItems(items);
+          return;
+        }
+      }
+
+      showToast('error', `Failed to load ${type} details`);
     } catch (e) {
       console.error(e);
       showToast('error', `Failed to load ${type} details`);
@@ -433,15 +520,12 @@ export default function AdminWorkers() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
                           <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Users Main Balance</p>
-                          <span className="text-[9.5px] font-black text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full">
-                            Balance &gt; 0
-                          </span>
                         </div>
                         <p className="text-xl font-black text-slate-800 mt-0.5">
                           {totalBal.toLocaleString()} <span className="text-xs font-bold text-slate-400 font-sans">ETB</span>
                         </p>
                         <p className="text-[10px] font-bold text-blue-600 mt-0.5 flex items-center gap-1 group-hover:underline">
-                          <span>View users with active balance</span>
+                          <span>View user balance details</span>
                           <ChevronRight size={12} />
                         </p>
                       </div>
@@ -562,7 +646,7 @@ export default function AdminWorkers() {
                   <h3 className="font-black text-slate-800 text-sm">
                     {detailType === 'deposits' && 'All Approved Deposits'}
                     {detailType === 'withdrawals' && 'All Approved Withdrawals'}
-                    {detailType === 'users' && 'Users With Balance > 0'}
+                    {detailType === 'users' && 'Users Main Balance'}
                   </h3>
                   <p className="text-[11px] font-bold text-slate-400">
                     {detailItems.length} records total
