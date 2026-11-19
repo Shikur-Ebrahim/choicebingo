@@ -638,32 +638,50 @@ router.delete('/withdrawals/:id/reject', async (req, res) => {
   res.json({ success: true });
 });
 
-// ─── PROFIT REPORT ────────────────────────────────────────────────────────────
+// ─── PROFIT / FINANCIAL REPORT ──────────────────────────────────────────────
 router.get('/profit-report', validateTelegramAuth, requireAdmin, async (req, res) => {
-  const { from, to } = req.query;
-  
-  let dQuery = supabase.from('deposits').select('amount').eq('status', 'approved');
-  let wQuery = supabase.from('withdrawals').select('amount').eq('status', 'approved');
+  try {
+    const { from, to } = req.query;
 
-  if (from) {
-    dQuery = dQuery.gte('created_at', from);
-    wQuery = wQuery.gte('created_at', from);
+    const [deposits, withdrawals, users] = await Promise.all([
+      fetchAllRows(async (rangeFrom, rangeTo) => {
+        let q = supabase.from('deposits').select('amount').eq('status', 'approved').range(rangeFrom, rangeTo);
+        if (from) q = q.gte('created_at', from as string);
+        if (to)   q = q.lte('created_at', to as string);
+        return q;
+      }),
+      fetchAllRows(async (rangeFrom, rangeTo) => {
+        let q = supabase.from('withdrawals').select('amount').eq('status', 'approved').range(rangeFrom, rangeTo);
+        if (from) q = q.gte('created_at', from as string);
+        if (to)   q = q.lte('created_at', to as string);
+        return q;
+      }),
+      fetchAllRows(async (rangeFrom, rangeTo) => {
+        return supabase.from('users').select('main_balance').range(rangeFrom, rangeTo);
+      }),
+    ]);
+
+    const totalDeposits = deposits.reduce((sum, d: any) => sum + Number(d.amount || 0), 0);
+    const totalWithdrawals = withdrawals.reduce((sum, w: any) => sum + Number(w.amount || 0), 0);
+    const totalUserMainBalance = users.reduce((sum, u: any) => sum + Number(u.main_balance || 0), 0);
+
+    // Category 1: Net Profit = Total Deposits - Total Withdrawals
+    const netProfit = totalDeposits - totalWithdrawals;
+
+    // Category 2: Total Net Profit = Total Deposits - Total Withdrawals - Total Users Main Balance
+    const netProfitAfterBalances = totalDeposits - totalWithdrawals - totalUserMainBalance;
+
+    res.json({
+      totalDeposits,
+      totalWithdrawals,
+      totalUserMainBalance,
+      netProfit,
+      netProfitAfterBalances,
+    });
+  } catch (err: any) {
+    console.error('Failed to generate profit report:', err);
+    res.status(500).json({ error: err.message || 'Failed to generate profit report' });
   }
-  if (to) {
-    dQuery = dQuery.lte('created_at', to);
-    wQuery = wQuery.lte('created_at', to);
-  }
-
-  const [dRes, wRes] = await Promise.all([dQuery, wQuery]);
-
-  if (dRes.error) return res.status(500).json({ error: dRes.error.message });
-  if (wRes.error) return res.status(500).json({ error: wRes.error.message });
-
-  const totalDeposits = (dRes.data || []).reduce((sum, d) => sum + Number(d.amount), 0);
-  const totalWithdrawals = (wRes.data || []).reduce((sum, w) => sum + Number(w.amount), 0);
-  const netProfit = totalDeposits - totalWithdrawals;
-
-  res.json({ totalDeposits, totalWithdrawals, netProfit });
 });
 
 // Helper: fetch all rows across 1000-row PostgREST pagination limit
