@@ -335,26 +335,28 @@ export function getScheduleStatus(cfg: SystemPlayersConfig): ScheduleStatus {
   const eatMinutes = now.getUTCMinutes();
   const currentTotal = eatHours * 60 + eatMinutes;
 
-  const parseHourMinute = (val: string, fallback: number): number => {
+  const parseHourMinute = (val: string, fallback: number, isEnd = false): number => {
     if (!val) return fallback;
     const parts = val.split(':').map(Number);
-    const h = parts[0] || 0;
-    const m = parts[1] || 0;
+    const h = parts[0] !== undefined ? parts[0] : 0;
+    const m = parts[1] !== undefined ? parts[1] : 0;
     if (h >= 24) return 24 * 60; // 1440
+    // If 00:00 is chosen as the end time, it represents midnight at the end of the day (24:00 = 1440 minutes)
+    if (isEnd && h === 0 && m === 0) return 24 * 60;
     return h * 60 + m;
   };
 
-  const startTotal = parseHourMinute(cfg.time_start, 0);
-  const endTotal = parseHourMinute(cfg.time_end, 1440);
+  const startTotal = parseHourMinute(cfg.time_start, 0, false);
+  const endTotal = parseHourMinute(cfg.time_end, 1440, true);
 
-  // If the schedule covers the full 24 hours (e.g. 01:00 to 24:00, or 00:00 to 24:00), it runs 24/7 with zero gap!
-  const isAllDaySpan = (startTotal <= 60 && endTotal >= 1440) || (startTotal === 0 && endTotal >= 1440);
+  // If the schedule covers the full 24 hours (e.g. 00:00 to 24:00, 01:00 to 24:00, or start==0 && end>=1440), it runs 24/7 with zero gap!
+  const isAllDaySpan = (startTotal <= 60 && endTotal >= 1440) || (startTotal === 0 && endTotal >= 1440) || (startTotal === endTotal);
   if (isAllDaySpan) {
     return {
       isActive: true,
       multiplier: 1.0,
       phase: 'peak',
-      description: 'Active 24/7 (1-24h schedule fully active with zero gaps)',
+      description: 'Active 24/7 (0-24h schedule fully active with zero gaps every day)',
     };
   }
 

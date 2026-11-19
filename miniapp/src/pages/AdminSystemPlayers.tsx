@@ -423,12 +423,13 @@ export default function AdminSystemPlayers() {
   };
 
 
-  // Hours for 1-24 Hour Selectors
-  const hours24 = Array.from({ length: 24 }, (_, i) => {
-    const hour = i + 1;
-    const pad = hour < 10 ? `0${hour}` : `${hour}`;
-    return `${pad}:00`;
-  });
+  // Hours for 0-24 Hour Selectors
+  const hours24 = [
+    '00:00', '01:00', '02:00', '03:00', '04:00', '05:00',
+    '06:00', '07:00', '08:00', '09:00', '10:00', '11:00',
+    '12:00', '13:00', '14:00', '15:00', '16:00', '17:00',
+    '18:00', '19:00', '20:00', '21:00', '22:00', '23:00', '24:00'
+  ];
 
   // EAT = UTC + 3
   const eatHours = (nowEat.getUTCHours() + 3) % 24;
@@ -439,20 +440,21 @@ export default function AdminSystemPlayers() {
   const padZero = (n: number) => (n < 10 ? `0${n}` : `${n}`);
   const liveEatTimeStr = `${padZero(eatHours)}:${padZero(eatMinutes)}:${padZero(eatSeconds)}`;
 
-  const parseHM = (val: string, fallback: number): number => {
+  const parseHM = (val: string, fallback: number, isEnd = false): number => {
     if (!val) return fallback;
     const parts = val.split(':').map(Number);
-    const h = parts[0] || 0;
-    const m = parts[1] || 0;
+    const h = parts[0] !== undefined ? parts[0] : 0;
+    const m = parts[1] !== undefined ? parts[1] : 0;
     if (h >= 24) return 1440;
+    if (isEnd && h === 0 && m === 0) return 1440;
     return h * 60 + m;
   };
 
-  const startMin = parseHM(config.time_start, 60);
-  const endMin = parseHM(config.time_end, 1440);
+  const startMin = parseHM(config.time_start, 0, false);
+  const endMin = parseHM(config.time_end, 1440, true);
 
-  // If 1:00 (or 0:00) to 24:00 is set, it spans the entire 24h with zero gap
-  const isAllDaySpan = (startMin <= 60 && endMin >= 1440) || (startMin === 0 && endMin >= 1440);
+  // If 0:00 or 1:00 to 24:00 is set, it spans the entire 24h with zero gap
+  const isAllDaySpan = (startMin <= 60 && endMin >= 1440) || (startMin === 0 && endMin >= 1440) || (startMin === endMin);
 
   const isScheduleActiveNow = (() => {
     if (!config.enabled) return false;
@@ -468,7 +470,7 @@ export default function AdminSystemPlayers() {
       return { text: 'Engine switch is OFF', badge: 'bg-slate-100 text-slate-600 border-slate-200', active: false };
     }
     if (!config.schedule_enabled || isAllDaySpan) {
-      return { text: '24/7 Full-Day Active (Always Running)', badge: 'bg-emerald-50 text-emerald-700 border-emerald-300', active: true };
+      return { text: '24/7 Full-Day Active (Always Running Every Day)', badge: 'bg-emerald-50 text-emerald-700 border-emerald-300', active: true };
     }
 
     if (startMin <= endMin) {
@@ -477,27 +479,20 @@ export default function AdminSystemPlayers() {
         const hLeft = Math.floor(leftMin / 60);
         const mLeft = leftMin % 60;
         return {
-          text: `Active Now • Ends in ${hLeft > 0 ? `${hLeft}h ` : ''}${mLeft}m (at ${config.time_end})`,
+          text: `Active Today • Ends in ${hLeft > 0 ? `${hLeft}h ` : ''}${mLeft}m (at ${config.time_end})`,
           badge: 'bg-emerald-50 text-emerald-700 border-emerald-300',
           active: true,
         };
-      } else if (currentMinuteOfDay < startMin) {
-        const untilMin = startMin - currentMinuteOfDay;
-        const hUntil = Math.floor(untilMin / 60);
-        const mUntil = untilMin % 60;
-        return {
-          text: `Off Hours • Starts in ${hUntil > 0 ? `${hUntil}h ` : ''}${mUntil}m (at ${config.time_start})`,
-          badge: 'bg-amber-50 text-amber-700 border-amber-300',
-          active: false,
-        };
       } else {
-        const untilMin = (1440 - currentMinuteOfDay) + startMin;
+        const untilMin = currentMinuteOfDay < startMin
+          ? startMin - currentMinuteOfDay
+          : (1440 - currentMinuteOfDay) + startMin;
         const hUntil = Math.floor(untilMin / 60);
         const mUntil = untilMin % 60;
         return {
-          text: `Off Hours • Starts in ${hUntil > 0 ? `${hUntil}h ` : ''}${mUntil}m (at ${config.time_start})`,
-          badge: 'bg-amber-50 text-amber-700 border-amber-300',
-          active: false,
+          text: `Daily Standby • Resumes at ${config.time_start} (in ${hUntil > 0 ? `${hUntil}h ` : ''}${mUntil}m)`,
+          badge: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+          active: true,
         };
       }
     } else {
@@ -506,7 +501,7 @@ export default function AdminSystemPlayers() {
         const hLeft = Math.floor(leftMin / 60);
         const mLeft = leftMin % 60;
         return {
-          text: `Active Now • Ends in ${hLeft > 0 ? `${hLeft}h ` : ''}${mLeft}m (at ${config.time_end})`,
+          text: `Active Today • Ends in ${hLeft > 0 ? `${hLeft}h ` : ''}${mLeft}m (at ${config.time_end})`,
           badge: 'bg-emerald-50 text-emerald-700 border-emerald-300',
           active: true,
         };
@@ -515,9 +510,9 @@ export default function AdminSystemPlayers() {
         const hUntil = Math.floor(untilMin / 60);
         const mUntil = untilMin % 60;
         return {
-          text: `Off Hours • Starts in ${hUntil > 0 ? `${hUntil}h ` : ''}${mUntil}m (at ${config.time_start})`,
-          badge: 'bg-amber-50 text-amber-700 border-amber-300',
-          active: false,
+          text: `Daily Standby • Resumes at ${config.time_start} (in ${hUntil > 0 ? `${hUntil}h ` : ''}${mUntil}m)`,
+          badge: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+          active: true,
         };
       }
     }
@@ -525,12 +520,13 @@ export default function AdminSystemPlayers() {
 
   const isHourInActiveSchedule = (hourNum: number): boolean => {
     if (!config.schedule_enabled || isAllDaySpan) return true;
-    const sH = Number(config.time_start.split(':')[0]) || 1;
+    const sH = Number(config.time_start.split(':')[0]) || 0;
     const eH = Number(config.time_end.split(':')[0]) || 24;
-    if (sH <= eH) {
-      return hourNum >= sH && hourNum <= eH;
+    const effectiveEH = eH === 0 ? 24 : eH;
+    if (sH <= effectiveEH) {
+      return hourNum >= sH && hourNum <= effectiveEH;
     }
-    return hourNum >= sH || hourNum <= eH;
+    return hourNum >= sH || hourNum <= effectiveEH;
   };
 
   const currentHourNum = eatHours === 0 ? 24 : eatHours;
@@ -566,27 +562,29 @@ export default function AdminSystemPlayers() {
         </div>
 
         {/* Global Active Badge */}
-        <div className={`px-3 py-1 rounded-full text-[11px] font-bold flex items-center space-x-1.5 shadow-sm ${
+        <div className={`px-3 py-1 rounded-full text-[11px] font-black flex items-center space-x-1.5 shadow-sm ${
           config.enabled
-            ? isScheduleActiveNow
+            ? (!config.schedule_enabled || isAllDaySpan)
               ? 'bg-emerald-50 text-emerald-700 border border-emerald-300'
-              : 'bg-amber-50 text-amber-700 border border-amber-300'
+              : isScheduleActiveNow
+                ? 'bg-emerald-50 text-emerald-700 border border-emerald-300'
+                : 'bg-indigo-50 text-indigo-700 border border-indigo-200'
             : 'bg-slate-100 text-slate-600 border border-slate-200'
         }`}>
           <span className={`w-2 h-2 rounded-full ${
             config.enabled
-              ? isScheduleActiveNow
+              ? (!config.schedule_enabled || isAllDaySpan || isScheduleActiveNow)
                 ? 'bg-emerald-500 animate-pulse'
-                : 'bg-amber-500'
+                : 'bg-indigo-500'
               : 'bg-slate-400'
           }`} />
           <span>
             {config.enabled
-              ? config.schedule_enabled
-                ? isScheduleActiveNow
-                  ? 'ACTIVE'
-                  : 'OFF-HOURS'
-                : 'ACTIVE 24/7'
+              ? (!config.schedule_enabled || isAllDaySpan)
+                ? 'ACTIVE 24/7'
+                : isScheduleActiveNow
+                  ? 'ACTIVE TODAY'
+                  : 'DAILY STANDBY'
               : 'OFF'}
           </span>
         </div>
@@ -796,10 +794,17 @@ export default function AdminSystemPlayers() {
                     <div className="flex flex-wrap gap-1.5">
                       <button
                         type="button"
-                        onClick={() => setConfig({ ...config, time_start: '01:00', time_end: '24:00' })}
+                        onClick={() => setConfig({ ...config, time_start: '00:00', time_end: '24:00' })}
                         className="px-2.5 py-1 text-[11px] font-semibold bg-violet-50 text-violet-700 hover:bg-violet-100 border border-violet-200 rounded-lg"
                       >
-                        24 Hours (All Day 01:00–24:00)
+                        24 Hours All-Day (00:00–24:00)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setConfig({ ...config, time_start: '06:00', time_end: '24:00' })}
+                        className="px-2.5 py-1 text-[11px] font-semibold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 rounded-lg"
+                      >
+                        Day & Night (06:00–24:00)
                       </button>
                       <button
                         type="button"
@@ -815,21 +820,14 @@ export default function AdminSystemPlayers() {
                       >
                         Evening (18:00–24:00)
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => setConfig({ ...config, time_start: '03:00', time_end: '05:00' })}
-                        className="px-2.5 py-1 text-[11px] font-semibold bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 rounded-lg"
-                      >
-                        Interval (03:00–05:00)
-                      </button>
                     </div>
                   </div>
 
-                  {/* 1 - 24 Hour Selectors */}
+                  {/* 0 - 24 Hour Selectors */}
                   <div className="grid grid-cols-2 gap-3 pt-1">
                     <div>
                       <label className="text-[11px] font-bold text-slate-700 block mb-1">
-                        Start Hour (1–24)
+                        Start Hour (00:00 – 24:00)
                       </label>
                       <select
                         value={config.time_start}
@@ -838,14 +836,14 @@ export default function AdminSystemPlayers() {
                       >
                         {hours24.map((h, i) => (
                           <option key={h} value={h}>
-                            Hour {i + 1} ({h})
+                            {h === '00:00' ? '00:00 (Midnight Start)' : h === '24:00' ? '24:00 (Midnight End)' : `Hour ${i} (${h})`}
                           </option>
                         ))}
                       </select>
                     </div>
                     <div>
                       <label className="text-[11px] font-bold text-slate-700 block mb-1">
-                        End Hour (1–24)
+                        End Hour (00:00 – 24:00)
                       </label>
                       <select
                         value={config.time_end}
@@ -854,15 +852,21 @@ export default function AdminSystemPlayers() {
                       >
                         {hours24.map((h, i) => (
                           <option key={h} value={h}>
-                            Hour {i + 1} ({h})
+                            {h === '00:00' ? '00:00 (Midnight End / 24:00)' : h === '24:00' ? '24:00 (Full Day End)' : `Hour ${i} (${h})`}
                           </option>
                         ))}
                       </select>
                     </div>
                   </div>
 
-                  <div className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-xl p-2.5">
-                    ⏰ Virtual players will only join games between <b>{config.time_start}</b> and <b>{config.time_end}</b> (Ethiopian Standard Time UTC+3). Outside this window, bots pause.
+                  <div className="text-[11px] text-emerald-900 bg-emerald-50 border border-emerald-200 rounded-xl p-3 space-y-1">
+                    <p className="font-bold flex items-center gap-1.5">
+                      <CheckCircle2 size={14} className="text-emerald-600" />
+                      <span>Permanent Daily Schedule</span>
+                    </p>
+                    <p className="text-[10.5px] leading-relaxed text-emerald-800">
+                      Saved once, runs automatically <b>every single day</b> from <b>{config.time_start}</b> to <b>{config.time_end}</b> (UTC+3 Ethiopian Time). It never resets or cancels when reaching end time — it repeats every day continuously without needing manual reactivation.
+                    </p>
                   </div>
                 </div>
               ) : (
@@ -1122,12 +1126,17 @@ export default function AdminSystemPlayers() {
             <div className="bg-white border-2 border-cyan-400/60 rounded-2xl p-4 space-y-3.5 shadow-sm">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
-                    <Users size={16} className="text-cyan-600" />
-                    Waiter Player (የተጠባባቂ ተጫዋች)
-                  </h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-sm text-slate-900 flex items-center gap-1.5">
+                      <Users size={16} className="text-cyan-600" />
+                      <span>Waiter Player (የተጠባባቂ ተጫዋች)</span>
+                    </h3>
+                    <span className="text-[9.5px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-cyan-100 text-cyan-800 border border-cyan-200">
+                      24/7 Uninterrupted
+                    </span>
+                  </div>
                   <p className="text-xs text-slate-500">
-                    Standby bot opponent that joins when a real player buys a cartela and waits alone
+                    Runs 24 hours a day non-stop: whenever a real player buys a cartela and waits alone, a waiter joins
                   </p>
                 </div>
                 <div className="flex items-center gap-2.5">
@@ -1246,8 +1255,14 @@ export default function AdminSystemPlayers() {
               </div>
 
               {/* Info Banner */}
-              <div className="text-[11px] text-cyan-900 bg-cyan-50 border border-cyan-200 rounded-xl p-2.5">
-                ⚡ <b>Independent Opponent Guard</b>: If a real player buys a cartela in any enabled stake and no opponent joins, a Waiter Player from the 1,000 system players automatically joins after 10–30s so the game can start smoothly without refunding solo players.
+              <div className="text-[11px] text-cyan-900 bg-cyan-50 border border-cyan-200 rounded-xl p-3 space-y-1">
+                <p className="font-bold flex items-center gap-1.5">
+                  <Clock size={14} className="text-cyan-600" />
+                  <span>24/7 Uninterrupted Operation</span>
+                </p>
+                <p className="text-[10.5px] leading-relaxed text-cyan-800">
+                  Once saved, the Waiter Player operates <b>24 hours a day without any interruption</b>. Even outside system player hours, whenever any real human player buys a cartela in any stake (10, 20, 50, 100 ETB), 1 to 2 authentic waiter players automatically join after 10–30s so games always start smoothly and real players never wait alone.
+                </p>
               </div>
             </div>
 
