@@ -8,6 +8,7 @@ import { supabase } from '../lib/supabase';
 import VideoGuideModal, { useAutoVideoGuide } from '../components/VideoGuideModal';
 import PwaInstallBanner, { isRunningInPwa, isRunningInTelegram } from '../components/PwaInstallBanner';
 import NotificationModal, { NotificationItem } from '../components/NotificationModal';
+import LoyaltyClaimModal from '../components/LoyaltyClaimModal';
 
 export default function Home() {
   const { user, language, setIsPhoneModalOpen, setProfileOpen } = useGameStore();
@@ -807,6 +808,9 @@ export default function Home() {
           })}
         </div>
       </div>
+
+      {/* ── LOYALTY REWARD CELEBRATION MODAL ── */}
+      <LoyaltyClaimModal />
 
       {/* ── NOTIFICATION MODAL / DRAWER ── */}
       <NotificationModal

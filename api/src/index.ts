@@ -20,6 +20,7 @@ import rewardsRouter from './routes/rewards';
 import supportVideosRouter from './routes/supportVideos';
 import notificationsRouter from './routes/notifications';
 import systemPlayersRouter from './routes/systemPlayers';
+import loyaltyRewardsRouter from './routes/loyaltyRewards';
 
 const app = express();
 const PORT = process.env.PORT || 3002;
@@ -43,6 +44,7 @@ app.use('/api/broadcast', broadcastRouter);
 app.use('/api/rewards', rewardsRouter);
 app.use('/api/support-videos', supportVideosRouter);
 app.use('/api/notifications', notificationsRouter);
+app.use('/api/loyalty-rewards', loyaltyRewardsRouter);
 
 app.listen(PORT, () => {
   console.log(`🚀 API running on port ${PORT}`);

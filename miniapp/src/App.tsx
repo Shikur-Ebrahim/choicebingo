@@ -138,6 +138,7 @@ import AdminUsers from './pages/AdminUsers';
 import AdminWorkers from './pages/AdminWorkers';
 import AdminBroadcast from './pages/AdminBroadcast';
 import AdminRewards from './pages/AdminRewards';
+import AdminLoyaltyRewards from './pages/AdminLoyaltyRewards';
 import AdminSupportVideos from './pages/AdminSupportVideos';
 import AdminQrCode from './pages/AdminQrCode';
 import InstallApp from './pages/InstallApp';
@@ -216,6 +217,7 @@ function App() {
           <Route path="/admin/withdrawals" element={<AdminWithdrawals />} />
           <Route path="/admin/settings" element={<AdminSettings />} />
           <Route path="/admin/rewards" element={<AdminRewards />} />
+          <Route path="/admin/loyalty-rewards" element={<AdminLoyaltyRewards />} />
           <Route path="/admin/support-videos" element={<AdminSupportVideos />} />
           <Route path="/admin/users" element={<AdminUsers />} />
           <Route path="/admin/workers" element={<AdminWorkers />} />
