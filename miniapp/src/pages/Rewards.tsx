@@ -307,31 +307,6 @@ export default function Rewards() {
                 <span className="text-xs font-bold text-amber-100 ml-1">ETB</span>
               </p>
             </div>
-
-            {/* 3 Compact metrics in an inline row */}
-            <div className="flex items-center gap-1.5">
-              <div 
-                className="bg-black/15 backdrop-blur-xs rounded-xl px-2.5 py-1 text-center border border-white/10 shadow-xs cursor-pointer"
-                title={`${Number(userStats?.total_games ?? user?.total_games ?? 0).toLocaleString()} games`}
-              >
-                <p className="text-[7.5px] font-bold uppercase text-amber-100 leading-none">{isAmharic ? 'ጨዋታ' : 'Games'}</p>
-                <p className="text-[11px] font-black text-white mt-0.5 leading-none">🎮 {formatCompact(userStats?.total_games ?? user?.total_games ?? 0)}</p>
-              </div>
-              <div 
-                className="bg-black/15 backdrop-blur-xs rounded-xl px-2.5 py-1 text-center border border-white/10 shadow-xs cursor-pointer"
-                title={`${Number(userStats?.total_stake ?? user?.total_stake ?? 0).toLocaleString()} ETB`}
-              >
-                <p className="text-[7.5px] font-bold uppercase text-amber-100 leading-none">{isAmharic ? 'ውርርድ' : 'Stake'}</p>
-                <p className="text-[11px] font-black text-white mt-0.5 leading-none">{formatCompact(userStats?.total_stake ?? user?.total_stake ?? 0)} <span className="text-[7px]">ETB</span></p>
-              </div>
-              <div 
-                className="bg-black/15 backdrop-blur-xs rounded-xl px-2.5 py-1 text-center border border-white/10 shadow-xs cursor-pointer"
-                title={`${Number(userStats?.invited_reward ?? user?.invited_reward ?? 0).toLocaleString()} ETB`}
-              >
-                <p className="text-[7.5px] font-bold uppercase text-amber-100 leading-none">{isAmharic ? 'ግብዣ' : 'Invite'}</p>
-                <p className="text-[11px] font-black text-white mt-0.5 leading-none">{formatCompact(userStats?.invited_reward ?? user?.invited_reward ?? 0)} <span className="text-[7px]">ETB</span></p>
-              </div>
-            </div>
           </div>
         </div>
 
