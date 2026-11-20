@@ -389,62 +389,96 @@ export function getScheduleStatus(cfg: SystemPlayersConfig): ScheduleStatus {
 
   // 1. Inside schedule:
   if (isInside) {
-    // Ramp-up phase: first 20 minutes after start time starts small and builds up organically
-    const rampUpMinutes = 20;
-    if (minutesSinceStart < rampUpMinutes) {
-      const progress = minutesSinceStart / rampUpMinutes;
-      const multiplier = Math.max(0.35, Math.min(1.0, 0.35 + 0.65 * progress));
+    // Ramp-down phase: final 30 minutes approaching end time
+    // Decreases slowly and smoothly below min amount, tapering down to 2 players at end time
+    const rampDownMinutes = 30;
+    if (minutesUntilEnd <= rampDownMinutes) {
+      const progress = Math.max(0, Math.min(1.0, minutesUntilEnd / rampDownMinutes)); // 1.0 -> 0.0
       return {
         isActive: true,
-        multiplier,
-        phase: 'ramp_up',
-        description: `Ramping up traffic (${Math.round(multiplier * 100)}% traffic, +${minutesSinceStart}m after start)`,
-      };
-    }
-
-    // Ramp-down phase: last 20 minutes before end time gradually downgrades
-    const rampDownMinutes = 20;
-    if (minutesUntilEnd < rampDownMinutes) {
-      const progress = minutesUntilEnd / rampDownMinutes;
-      const multiplier = Math.max(0.40, Math.min(1.0, 0.40 + 0.60 * progress));
-      return {
-        isActive: true,
-        multiplier,
+        multiplier: progress,
         phase: 'ramp_down',
-        description: `Winding down traffic (${Math.round(multiplier * 100)}% traffic, -${minutesUntilEnd}m to end)`,
+        description: `Winding down towards end time (-${minutesUntilEnd}m left, tapering below min down to 2 players)`,
       };
     }
 
-    // Peak active phase: 100% full capacity
+    // Active schedule (start time, midday, and regular hours):
+    // 100% traffic, strictly at or above configured min! No ramp-up reduction below min!
     return {
       isActive: true,
       multiplier: 1.0,
       phase: 'peak',
-      description: 'Peak schedule active (100% traffic)',
+      description: 'Active schedule (100% traffic, strictly at or above configured min)',
     };
   }
 
   // 2. Outside schedule (after reaching end time):
-  // User: "if ths ystem player is reach end time bro just not totaly stop please just make reduced the user dungraned and just tile that patter bro not stop automatically bro to make just as the real player bro"
-  // For the first 35 minutes past end time, gracefully taper off (downgrade):
-  if (minutesAfterEnd <= 35) {
-    const progress = minutesAfterEnd / 35;
-    const multiplier = Math.max(0.20, 0.40 - 0.20 * progress);
+  // For the first 30 minutes past end time, hold at 2 players as a gentle transition:
+  if (minutesAfterEnd <= 30) {
     return {
       isActive: true,
-      multiplier,
+      multiplier: 0.0,
       phase: 'trickle',
-      description: `Post-schedule gentle taper (${Math.round(multiplier * 100)}% traffic, +${minutesAfterEnd}m past end)`,
+      description: `Post-schedule transition (+${minutesAfterEnd}m past end, 2 players)`,
     };
   }
 
-  // Subtle natural baseline (trickle) so real human games never freeze or abruptly look dead
+  // Off-hours outside scheduled time: system players turn off until next day's start time
   return {
-    isActive: true,
-    multiplier: 0.15,
-    phase: 'trickle',
-    description: 'Off-hours baseline trickle (~15% traffic)',
+    isActive: false,
+    multiplier: 0,
+    phase: 'off',
+    description: `Scheduled off-hours (inactive until ${cfg.time_start} EAT)`,
   };
+}
+
+/**
+ * Calculate the effective [min, max] bot count for a given stake and schedule status.
+ * 
+ * Rules:
+ * 1. At start time and anytime during the active schedule:
+ *    NEVER drop below the configured min! Always strictly within [baseMin, baseMax].
+ * 2. In the final 30 minutes approaching end time (ramp_down):
+ *    Slowly and gracefully decreases BELOW baseMin, tapering all the way down to 2 players at end time.
+ * 3. Immediately after end time (trickle for 30 mins):
+ *    Holds at 2 players before turning off completely until the next day's start time.
+ */
+export function getEffectivePlayerRange(
+  targetRange: { min: number; max: number },
+  scheduleStatus: ScheduleStatus
+): { min: number; max: number } {
+  const baseMin = Math.max(1, Number(targetRange.min) || 0);
+  const baseMax = Math.max(baseMin, Number(targetRange.max) || 0);
+
+  // If stake has 0 bots configured or engine is inactive
+  if (baseMax <= 0 || !scheduleStatus.isActive) {
+    return { min: 0, max: 0 };
+  }
+
+  // Active / Peak phase (including start time, mid day, and all normal scheduled hours):
+  // Bot count must NEVER be below the configured min!
+  if (scheduleStatus.phase === 'peak' || scheduleStatus.phase === 'ramp_up') {
+    return { min: baseMin, max: baseMax };
+  }
+
+  // Ramp-down phase (final 30 minutes approaching end time):
+  // scheduleStatus.multiplier represents progress from 1.0 (at -30m) down to 0.0 (at end time).
+  // Smoothly decreases below baseMin, tapering step-by-step down to 2 players!
+  if (scheduleStatus.phase === 'ramp_down') {
+    const p = Math.max(0, Math.min(1.0, scheduleStatus.multiplier));
+    const targetMin = 2;
+    const effMin = Math.max(targetMin, Math.round(targetMin + (baseMin - targetMin) * p));
+    const effMax = Math.max(effMin, Math.round(targetMin + (baseMax - targetMin) * p));
+    return { min: effMin, max: effMax };
+  }
+
+  // Trickle phase (first 30 minutes after reaching end time):
+  // Reached the absolute minimum for a match: 2 players
+  if (scheduleStatus.phase === 'trickle') {
+    return { min: 2, max: Math.max(2, Math.min(baseMax, 2)) };
+  }
+
+  return { min: baseMin, max: baseMax };
 }
 
 /**

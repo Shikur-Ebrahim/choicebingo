@@ -5,6 +5,7 @@ import { recordUserEvent } from './eventNotifications';
 import {
   getSystemPlayersConfig,
   getScheduleStatus,
+  getEffectivePlayerRange,
   isWithinSchedule,
   getActiveSystemPlayersPool,
   isSystemPlayer,
@@ -342,18 +343,19 @@ class BingoEngine {
         max: Number(botCfg.max_players_per_game) || 0,
       };
 
-      // If configured as 0 bots (e.g. Stake 50 & 100 default), exit immediately
-      if (Number(targetRange.max) <= 0) {
+      // Calculate effective range:
+      // - Normal active schedule: strictly [baseMin, baseMax], never below min!
+      // - Final 30 mins approaching end time: slowly tapers below min down to 2 players at end time
+      // - First 30 mins past end time: holds at 2 players
+      const effectiveRange = getEffectivePlayerRange(targetRange, scheduleStatus);
+      const effectiveMin = effectiveRange.min;
+      const effectiveMax = effectiveRange.max;
+
+      // If configured as 0 bots (e.g. Stake 50 & 100 default) or inactive, exit immediately
+      if (effectiveMax <= 0) {
         this.botSessions.delete(game.id);
         return;
       }
-
-      const baseMin = Math.max(1, Number(targetRange.min) || 1);
-      const baseMax = Math.max(baseMin, Number(targetRange.max) || 1);
-
-      // Apply schedule status multiplier: starts small at start time, smooth taper at end time
-      const effectiveMin = Math.max(1, Math.round(baseMin * scheduleStatus.multiplier));
-      const effectiveMax = Math.max(effectiveMin, Math.round(baseMax * scheduleStatus.multiplier));
 
       const now = Date.now();
       const startTime = new Date(game.start_at).getTime();
@@ -366,21 +368,21 @@ class BingoEngine {
         session = {
           targetBots,
           lastJoinAt: now,
-          cadenceMs: 800 + Math.random() * 800, // first join between 0.8s and 1.6s
+          cadenceMs: targetBots >= 25 ? 300 : (600 + Math.random() * 500),
         };
         this.botSessions.set(game.id, session);
       }
 
       // If waiting countdown hasn't started yet, initiate 30-second waiting interval now!
       if (isFarFuture) {
-        const waitingSec = 30; // 30-second interval
+        const waitingSec = 30; // Strictly fixed 30-second interval
         const newStartAt = new Date(now + waitingSec * 1000).toISOString();
         await supabase.from('bingo_games').update({
           start_at: newStartAt,
           updated_at: new Date().toISOString(),
         }).eq('id', game.id);
         game.start_at = newStartAt;
-        console.log(`⏳ Game #${game.id.slice(0,8).toUpperCase()} (Stake: ${game.stake}): 30s waiting interval initiated! Target: ${session.targetBots} bots (${scheduleStatus.phase})`);
+        console.log(`⏳ Game #${game.id.slice(0,8).toUpperCase()} (Stake: ${game.stake}): 30s waiting interval initiated! Target: ${session.targetBots} bots (${scheduleStatus.phase}, range: ${effectiveMin}-${effectiveMax})`);
         return;
       }
 
@@ -418,22 +420,43 @@ class BingoEngine {
       const allCartelas = Array.from({ length: maxGameCartelas }, (_, i) => i + 1);
       const availableCartelas = allCartelas.filter(c => !takenCartelas.has(c));
 
-      // Always reserve at least 20 cartelas for real human players!
-      const maxCartelasToFill = Math.max(0, availableCartelas.length - 20);
+      // Always reserve at least 10 cartelas for real human players
+      const maxCartelasToFill = Math.max(0, availableCartelas.length - 10);
       if (maxCartelasToFill <= 0) return;
 
-      // How many bots join in THIS specific step?
-      // During the 30s interval: 1 or 2 bots per step
-      // In the final 5s, slightly accelerate (up to 3-4 bots) if still behind target
-      const botsThisStep = remainingSec <= 5
-        ? Math.min(4, Math.max(1, botsNeeded))
-        : (Math.random() < 0.65 ? 1 : 2);
+      // Pacing calculation across the fixed 30s waiting window:
+      // Deadline: ensure all bots finish picking cartelas smoothly before 2.0s left!
+      const buyingSecsLeft = Math.max(0.5, remainingSec - 2.0);
+      // Ticks remaining (game loop runs every TICK_MS = 500ms):
+      const ticksRemaining = Math.max(1, Math.round(buyingSecsLeft / (TICK_MS / 1000)));
+      const idealBatch = Math.ceil(botsNeeded / ticksRemaining);
 
-      const botsToJoinCount = Math.min(botsNeeded, botsThisStep);
+      let botsThisStep = idealBatch;
+      let nextCadenceMs = 450;
+
+      if (remainingSec <= 3.5) {
+        // Final urgent placement: finish placing all remaining needed bots immediately
+        botsThisStep = botsNeeded;
+        nextCadenceMs = 250;
+      } else if (remainingSec <= 6.0) {
+        // Catch-up acceleration to prevent any bots being left out
+        botsThisStep = Math.min(botsNeeded, Math.max(idealBatch * 2, Math.ceil(botsNeeded / Math.max(1, ticksRemaining))));
+        nextCadenceMs = 300;
+      } else if (session.targetBots >= 25) {
+        // High bot counts (35-40 or 100+ bots): dynamic continuous pacing every tick
+        botsThisStep = Math.max(idealBatch, Math.min(botsNeeded, Math.random() < 0.5 ? 2 : 3));
+        nextCadenceMs = 350 + Math.random() * 200;
+      } else {
+        // Small bot counts (e.g. 2-15 bots): sporadic trickling of 1 or 2 bots
+        botsThisStep = Math.max(1, Math.min(idealBatch, Math.random() < 0.65 ? 1 : 2));
+        nextCadenceMs = 700 + Math.random() * 800;
+      }
+
+      const botsToJoinCount = Math.min(botsNeeded, Math.max(1, botsThisStep));
       if (botsToJoinCount <= 0) return;
 
-      // Fetch active bot candidates from 1000 pool
-      const pool = await getActiveSystemPlayersPool(Math.max(100, effectiveMax * 2));
+      // Fetch active bot candidates from 1000 pool (ensure sufficient pool for 100+ bots)
+      const pool = await getActiveSystemPlayersPool(Math.max(300, session.targetBots * 2));
       if (!pool || pool.length === 0) return;
 
       const existingTids = new Set(players.map((p: any) => String(p.telegram_id)));
@@ -483,9 +506,9 @@ class BingoEngine {
 
       if (rowsToInsert.length === 0) return;
 
-      // Reset last join time & set next cadence (0.8s to 1.8s)
+      // Reset last join time & set next cadence
       session.lastJoinAt = now;
-      session.cadenceMs = 800 + Math.random() * 1000;
+      session.cadenceMs = nextCadenceMs;
 
       const { error: insErr } = await supabase.from('bingo_players').insert(rowsToInsert);
       if (insErr) {

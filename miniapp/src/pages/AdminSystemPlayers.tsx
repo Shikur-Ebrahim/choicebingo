@@ -916,7 +916,7 @@ export default function AdminSystemPlayers() {
                       <input
                         type="number"
                         min={0}
-                        max={100}
+                        max={500}
                         value={config.stake_player_ranges?.['10']?.min ?? 10}
                         onChange={(e) => updateStakeRange('10', 'min', Number(e.target.value))}
                         className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-black text-slate-800 text-center focus:outline-none focus:border-violet-500"
@@ -927,7 +927,7 @@ export default function AdminSystemPlayers() {
                       <input
                         type="number"
                         min={config.stake_player_ranges?.['10']?.min ?? 0}
-                        max={100}
+                        max={500}
                         value={config.stake_player_ranges?.['10']?.max ?? 31}
                         onChange={(e) => updateStakeRange('10', 'max', Number(e.target.value))}
                         className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-black text-slate-800 text-center focus:outline-none focus:border-violet-500"
@@ -952,7 +952,7 @@ export default function AdminSystemPlayers() {
                       <input
                         type="number"
                         min={0}
-                        max={100}
+                        max={500}
                         value={config.stake_player_ranges?.['20']?.min ?? 9}
                         onChange={(e) => updateStakeRange('20', 'min', Number(e.target.value))}
                         className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-black text-slate-800 text-center focus:outline-none focus:border-blue-500"
@@ -963,7 +963,7 @@ export default function AdminSystemPlayers() {
                       <input
                         type="number"
                         min={config.stake_player_ranges?.['20']?.min ?? 0}
-                        max={100}
+                        max={500}
                         value={config.stake_player_ranges?.['20']?.max ?? 15}
                         onChange={(e) => updateStakeRange('20', 'max', Number(e.target.value))}
                         className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-black text-slate-800 text-center focus:outline-none focus:border-blue-500"
@@ -992,7 +992,7 @@ export default function AdminSystemPlayers() {
                       <input
                         type="number"
                         min={0}
-                        max={100}
+                        max={500}
                         value={config.stake_player_ranges?.['50']?.min ?? 0}
                         onChange={(e) => updateStakeRange('50', 'min', Number(e.target.value))}
                         className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-black text-slate-800 text-center focus:outline-none focus:border-amber-500"
@@ -1003,7 +1003,7 @@ export default function AdminSystemPlayers() {
                       <input
                         type="number"
                         min={config.stake_player_ranges?.['50']?.min ?? 0}
-                        max={100}
+                        max={500}
                         value={config.stake_player_ranges?.['50']?.max ?? 0}
                         onChange={(e) => updateStakeRange('50', 'max', Number(e.target.value))}
                         className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-black text-slate-800 text-center focus:outline-none focus:border-amber-500"
@@ -1032,7 +1032,7 @@ export default function AdminSystemPlayers() {
                       <input
                         type="number"
                         min={0}
-                        max={100}
+                        max={500}
                         value={config.stake_player_ranges?.['100']?.min ?? 0}
                         onChange={(e) => updateStakeRange('100', 'min', Number(e.target.value))}
                         className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-black text-slate-800 text-center focus:outline-none focus:border-emerald-500"
@@ -1043,7 +1043,7 @@ export default function AdminSystemPlayers() {
                       <input
                         type="number"
                         min={config.stake_player_ranges?.['100']?.min ?? 0}
-                        max={100}
+                        max={500}
                         value={config.stake_player_ranges?.['100']?.max ?? 0}
                         onChange={(e) => updateStakeRange('100', 'max', Number(e.target.value))}
                         className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-black text-slate-800 text-center focus:outline-none focus:border-emerald-500"
